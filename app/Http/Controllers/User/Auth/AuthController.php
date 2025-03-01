@@ -31,6 +31,7 @@ class AuthController extends \Illuminate\Routing\Controller
      * @bodyParam password string required The password for the account. Example: password123
      * 
      * @return \Illuminate\Http\JsonResponse
+     * @unauthenticated
      */
     public function register(Request $request)
     {
@@ -72,6 +73,7 @@ class AuthController extends \Illuminate\Routing\Controller
      * }
      * 
      * @return \Illuminate\Http\JsonResponse
+     * @unauthenticated
      */
     public function login(Request $request)
     {
