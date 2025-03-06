@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '62d43f72393e8a0c40245fe0c07a319661e4bda3',
+        'reference' => '8d311039474b9f657ecffe950aee62e1e1fd0d86',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -406,7 +406,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '62d43f72393e8a0c40245fe0c07a319661e4bda3',
+            'reference' => '8d311039474b9f657ecffe950aee62e1e1fd0d86',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -844,8 +844,8 @@
         'psr/log-implementation' => array(
             'dev_requirement' => false,
             'provided' => array(
-                0 => '3.0.0',
-                1 => '1.0|2.0|3.0',
+                0 => '1.0|2.0|3.0',
+                1 => '3.0.0',
             ),
         ),
         'psr/simple-cache' => array(
@@ -864,14 +864,12 @@
             ),
         ),
         'pst/pst' => array(
-            'pretty_version' => 'dev-main',
-            'version' => 'dev-main',
+            'pretty_version' => 'v1.0.0',
+            'version' => '1.0.0.0',
             'reference' => '80c838cc7a2f877b4a5a6e723fb8da75e5360a8c',
             'type' => 'library',
             'install_path' => __DIR__ . '/../pst/pst',
-            'aliases' => array(
-                0 => '9999999-dev',
-            ),
+            'aliases' => array(),
             'dev_requirement' => false,
         ),
         'psy/psysh' => array(

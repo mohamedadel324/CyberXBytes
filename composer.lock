@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2fab00712a98184a1de4db87addc778f",
+    "content-hash": "0ef807deaecae3ec0d2fa8a2b1d32c21",
     "packages": [
         {
             "name": "brick/math",
@@ -3382,7 +3382,7 @@
         },
         {
             "name": "pst/pst",
-            "version": "dev-main",
+            "version": "v1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mohamedadel324/pst_package.git",
@@ -3397,7 +3397,6 @@
             "require": {
                 "php": ">=7.4"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "files": [
@@ -3406,7 +3405,7 @@
             },
             "description": "PST is a PHP library for creating and reading PST files.",
             "support": {
-                "source": "https://github.com/mohamedadel324/pst_package/tree/main",
+                "source": "https://github.com/mohamedadel324/pst_package/tree/v1.0.0",
                 "issues": "https://github.com/mohamedadel324/pst_package/issues"
             },
             "time": "2025-03-06T00:17:39+00:00"
@@ -8723,9 +8722,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "pst/pst": 20
-    },
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

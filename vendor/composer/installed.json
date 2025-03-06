@@ -4838,8 +4838,8 @@
         },
         {
             "name": "pst/pst",
-            "version": "dev-main",
-            "version_normalized": "dev-main",
+            "version": "v1.0.0",
+            "version_normalized": "1.0.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/mohamedadel324/pst_package.git",
@@ -4855,7 +4855,6 @@
                 "php": ">=7.4"
             },
             "time": "2025-03-06T00:17:39+00:00",
-            "default-branch": true,
             "type": "library",
             "installation-source": "dist",
             "autoload": {
@@ -4865,7 +4864,7 @@
             },
             "description": "PST is a PHP library for creating and reading PST files.",
             "support": {
-                "source": "https://github.com/mohamedadel324/pst_package/tree/main",
+                "source": "https://github.com/mohamedadel324/pst_package/tree/v1.0.0",
                 "issues": "https://github.com/mohamedadel324/pst_package/issues"
             },
             "install-path": "../pst/pst"
