@@ -15,6 +15,7 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
     'license' => env('LICENSE_KEY'),
+    'frontend_url' => "http://localhost:3000",
 
     /*
     |--------------------------------------------------------------------------
