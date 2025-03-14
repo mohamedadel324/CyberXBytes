@@ -18,6 +18,9 @@ return new class extends Migration
             $table->string('user_name')->unique();
             $table->string('city');
             $table->timestamp('email_verified_at')->nullable();
+            $table->string('otp', 64)->nullable();
+            $table->timestamp('otp_expires_at')->nullable();
+            $table->integer('otp_attempts')->default(0);
             $table->rememberToken();
             $table->timestamps();
             $table->string('password');

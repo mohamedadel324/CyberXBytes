@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
-use App\Models\Otp;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -27,7 +26,7 @@ class AuthController extends \Illuminate\Routing\Controller
      */
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login', 'register', 'sendResetLinkEmail', 'resetPassword', 'verifyEmail', 'verifyRegistrationOtp']]);
+        $this->middleware('auth:api', ['except' => ['login', 'register', 'sendResetLinkEmail', 'resetPassword', 'verifyEmail', 'verifyRegistrationOtp', 'sendVerificationOtp']]);
     }
 
     /**
@@ -58,17 +57,9 @@ class AuthController extends \Illuminate\Routing\Controller
             ]
         ));
 
-        // Generate and send OTP
-        $this->generateAndSendRegistrationOtp($user);
-
-        // Generate temporary token
-        $token = auth()->login($user);
 
         return response()->json([
-            'message' => 'Registration initiated. Please verify your account with the OTP sent to your email.',
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60,
+            'message' => 'Registration Successful.',
             'user' => $user
         ]);
     }
@@ -107,16 +98,14 @@ class AuthController extends \Illuminate\Routing\Controller
         }
 
         // Generate and send OTP
-        $user = auth()->user();
-        if ($user->email_verified_at === null) {
-            $this->generateAndSendRegistrationOtp($user);
+        $user = auth()->user()->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'created_at', 'updated_at']);
             return response()->json([
-                'message' => 'Registration initiated. Please verify your account with the OTP sent to your email.',
-                'temp_token' => $token
+                'message' => 'Login Successful.',
+                'user' => $user,
+                'token' => $token
             ]);
-        }
+        
 
-        return $this->respondWithToken($token);
     }
 
     /**
@@ -160,7 +149,7 @@ class AuthController extends \Illuminate\Routing\Controller
     }
 
     /**
-     * Send a password reset link to the user.
+     * Send a password OTP  to the user.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -189,20 +178,32 @@ class AuthController extends \Illuminate\Routing\Controller
         }
     }
 
-    private function generateAndSendPasswordResetOtp($user)
+    private function generateAndSendRegistrationOtp($user)
     {
-        // Delete any existing OTP for this user
-        Otp::where('user_id', $user->id)->delete();
-
         // Generate new 6-digit OTP
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // Store OTP in database
-        Otp::create([
-            'user_id' => $user->id,
-            'otp' => bcrypt($otp),
-            'expires_at' => now()->addMinutes(2),
-            'attempts' => 0
+        // Store hashed OTP in users table
+        $user->update([
+            'otp' => hash('sha256', $otp),
+            'otp_expires_at' => now()->addMinutes(5),
+            'otp_attempts' => 0
+        ]);
+
+        // Send OTP via email
+        Mail::to($user->email)->send(new RegistrationOtpMail($user, $otp));
+    }
+
+    private function generateAndSendPasswordResetOtp($user)
+    {
+        // Generate new 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store hashed OTP in users table
+        $user->update([
+            'otp' => hash('sha256', $otp),
+            'otp_expires_at' => now()->addMinutes(5),
+            'otp_attempts' => 0
         ]);
 
         // Send OTP via email
@@ -226,27 +227,25 @@ class AuthController extends \Illuminate\Routing\Controller
             ]);
 
             $user = User::where('email', $request->email)->first();
-            $otpRecord = Otp::where('user_id', $user->id)->first();
 
-            if (!$otpRecord) {
+            if (!$user->otp || !$user->otp_expires_at) {
                 return response()->json(['error' => 'No OTP request found'], 404);
             }
 
-            if ($otpRecord->expires_at < now()) {
-                $otpRecord->delete();
+            if ($user->otp_expires_at < now()) {
+                $user->update(['otp' => null, 'otp_expires_at' => null, 'otp_attempts' => 0]);
                 return response()->json(['error' => 'OTP has expired'], 400);
             }
 
-            if ($otpRecord->attempts >= 3) {
-                $otpRecord->delete();
+            if ($user->otp_attempts >= 3) {
+                $user->update(['otp' => null, 'otp_expires_at' => null, 'otp_attempts' => 0]);
                 return response()->json(['error' => 'Maximum attempts exceeded. Please request a new OTP.'], 400);
             }
 
-            $otpRecord->attempts += 1;
-            $otpRecord->save();
+            $user->increment('otp_attempts');
 
-            if (!password_verify($request->otp, $otpRecord->otp)) {
-                $remainingAttempts = 3 - $otpRecord->attempts;
+            if (hash('sha256', $request->otp) !== $user->otp) {
+                $remainingAttempts = 3 - $user->otp_attempts;
                 return response()->json([
                     'error' => 'Invalid OTP',
                     'remaining_attempts' => $remainingAttempts
@@ -254,9 +253,12 @@ class AuthController extends \Illuminate\Routing\Controller
             }
 
             // OTP is valid - update password
-            $user->password = bcrypt($request->password);
-            $user->save();
-            $otpRecord->delete();
+            $user->update([
+                'password' => bcrypt($request->password),
+                'otp' => null,
+                'otp_expires_at' => null,
+                'otp_attempts' => 0
+            ]);
 
             return response()->json([
                 'status' => 'success',
@@ -311,46 +313,12 @@ class AuthController extends \Illuminate\Routing\Controller
         }
     }
 
-    private function generateAndSendOtp($user)
-    {
-        // Delete any existing OTP for this user
-        Otp::where('user_id', $user->id)->delete();
-
-        // Generate new 6-digit OTP
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Store OTP in database
-        Otp::create([
-            'user_id' => $user->id,
-            'otp' => bcrypt($otp),
-            'expires_at' => now()->addMinutes(2),
-            'attempts' => 0
-        ]);
-
-        // Send OTP via email
-        Mail::to($user->email)->send(new \App\Mail\OtpMail($otp));
-    }
-
-    private function generateAndSendRegistrationOtp($user)
-    {
-        // Delete any existing OTP for this user
-        Otp::where('user_id', $user->id)->delete();
-
-        // Generate new 6-digit OTP
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Store OTP in database
-        Otp::create([
-            'user_id' => $user->id,
-            'otp' => bcrypt($otp),
-            'expires_at' => now()->addMinutes(2),
-            'attempts' => 0
-        ]);
-
-        // Send OTP via email using the registration-specific template
-        Mail::to($user->email)->send(new RegistrationOtpMail($user, $otp));
-    }
-
+    /**
+     * Verify OTP and activate user account
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function verifyRegistrationOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -361,7 +329,6 @@ class AuthController extends \Illuminate\Routing\Controller
             return response()->json(['errors' => $validator->errors()], 400);
         }
 
-        // Get user from token
         $user = auth()->user();
         
         if (!$user) {
@@ -369,56 +336,108 @@ class AuthController extends \Illuminate\Routing\Controller
         }
 
         if ($user->email_verified_at !== null) {
-            return response()->json(['error' => 'User is already verified'], 400);
+            return response()->json([
+                'message' => 'Email already verified',
+                'user' => $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'created_at', 'updated_at'])
+            ]);
         }
 
-        $otpRecord = Otp::where('user_id', $user->id)->first();
-
-        if (!$otpRecord) {
-            return response()->json(['error' => 'No OTP request found'], 404);
+        if (!$user->otp || !$user->otp_expires_at) {
+            return response()->json([
+                'error' => 'Please request an OTP first',
+                'code' => 'NO_OTP_FOUND'
+            ], 404);
         }
 
-        if ($otpRecord->expires_at < now()) {
-            $otpRecord->delete();
-            return response()->json(['error' => 'OTP has expired'], 400);
+        if ($user->otp_expires_at < now()) {
+            $user->update(['otp' => null, 'otp_expires_at' => null, 'otp_attempts' => 0]);
+            return response()->json([
+                'error' => 'OTP has expired. Please request a new one',
+                'code' => 'OTP_EXPIRED'
+            ], 400);
         }
 
-        if ($otpRecord->attempts >= 3) {
-            $otpRecord->delete();
-            // Delete unverified user after max attempts
-            if ($user->email_verified_at === null) {
-                $user->delete();
-                auth()->logout();
-            }
-            return response()->json(['error' => 'Maximum attempts exceeded. Please register again.'], 400);
+        if ($user->otp_attempts >= 3) {
+            $user->update(['otp' => null, 'otp_expires_at' => null, 'otp_attempts' => 0]);
+            return response()->json([
+                'error' => 'Maximum attempts exceeded. Please request a new OTP',
+                'code' => 'MAX_ATTEMPTS_EXCEEDED'
+            ], 400);
         }
 
-        $otpRecord->attempts += 1;
-        $otpRecord->save();
+        $user->increment('otp_attempts');
 
-        if (!password_verify($request->otp, $otpRecord->otp)) {
-            $remainingAttempts = 3 - $otpRecord->attempts;
+        if (hash('sha256', $request->otp) !== $user->otp) {
+            $remainingAttempts = 3 - $user->otp_attempts;
             return response()->json([
                 'error' => 'Invalid OTP',
-                'remaining_attempts' => $remainingAttempts
+                'remaining_attempts' => $remainingAttempts,
+                'code' => 'INVALID_OTP'
             ], 400);
         }
 
         // OTP is valid - verify user
-        $user->email_verified_at = now();
-        $user->status = 'active';
-        $user->save();
-        $otpRecord->delete();
+        $user->update([
+            'email_verified_at' => now(),
+            'status' => 'active',
+            'otp' => null,
+            'otp_expires_at' => null,
+            'otp_attempts' => 0
+        ]);
+        return response()->json([
+            'message' => 'Email verified successfully',
+            'user' => $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'created_at', 'updated_at']),
+        ]);
+    }
 
-        // Generate fresh token
-        $token = auth()->refresh();
+    /**
+     * Send verification OTP to user's email
+     * 
+     * @authenticated
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function sendVerificationOtp()
+    {
+        $user = auth()->user();
+
+        if ($user->email_verified_at !== null) {
+            return response()->json(['error' => 'Email is already verified'], 400);
+        }
+
+        // Check if user has exceeded maximum attempts (3)
+        if ($user->otp_attempts >= 3) {
+            return response()->json([
+                'error' => 'Maximum verification attempts exceeded. Please contact support.',
+                'remaining_attempts' => 0
+            ], 400);
+        }
+
+        // Check if previous OTP was sent within last 60 seconds
+        if ($user->otp_expires_at && now()->subSeconds(60)->lt($user->otp_expires_at)) {
+            $waitTime = now()->diffInSeconds($user->otp_expires_at->subSeconds(300));
+            return response()->json([
+                'error' => 'Please wait before requesting another OTP',
+                'wait_seconds' => $waitTime
+            ], 429);
+        }
+
+        // Generate new 6-digit OTP
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Store hashed OTP in users table
+        $user->update([
+            'otp' => hash('sha256', $otp),
+            'otp_expires_at' => now()->addMinutes(5),
+        ]);
+
+        // Send OTP via email
+        Mail::to($user->email)->send(new RegistrationOtpMail($user, $otp));
 
         return response()->json([
-            'message' => 'Registration completed successfully',
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60,
-            'user' => $user
+            'message' => 'Verification OTP has been sent to your email',
+            'expires_in' => 300, // 5 minutes
+            'remaining_attempts' => 3 - $user->otp_attempts,
+            'next_request_allowed_in' => 60 // seconds
         ]);
     }
 }
