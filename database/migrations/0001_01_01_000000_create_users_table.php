@@ -13,18 +13,16 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->uuid('uuid')->unique();
             $table->string('name');
             $table->string('email')->unique();
+            $table->string('profile_image')->nullable();
             $table->string('user_name')->unique();
-            $table->string('city');
+            $table->string('country');
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('otp', 64)->nullable();
-            $table->timestamp('otp_expires_at')->nullable();
-            $table->integer('otp_attempts')->default(0);
             $table->rememberToken();
             $table->timestamps();
             $table->string('password');
-            $table->string('status')->default('pending');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

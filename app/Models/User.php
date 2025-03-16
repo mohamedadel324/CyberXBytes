@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
@@ -43,11 +43,9 @@ class User extends Authenticatable implements JWTSubject
         'email',
         'password',
         'user_name',
-        'city',
+        'profile_image',
+        'country',
         'status',
-        'otp',
-        'otp_expires_at',
-        'otp_attempts',
         'email_verified_at'
     ];
 
@@ -62,15 +60,38 @@ class User extends Authenticatable implements JWTSubject
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
+
+    public static function boot()
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        parent::boot();
+
+        static::creating(function ($user) {
+            $user->uuid = (string) \Illuminate\Support\Str::uuid();
+        });
+        static::retrieved(function ($user) {
+            if ($user->profile_image) {
+                $user->profile_image = asset('storage/' . $user->profile_image);
+            }
+        });
+
+    }
+
+
+    public function socialMedia()
+    {
+        return $this->hasMany(UserSocialMedia::class);
+    }
+
+    public function otp()
+    {
+        return $this->hasOne(UserOtp::class);
     }
 }
