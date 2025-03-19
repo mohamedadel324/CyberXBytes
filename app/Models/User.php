@@ -39,7 +39,6 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
      * @var list<string>
      */
     protected $fillable = [
-        'name',
         'email',
         'password',
         'user_name',
@@ -52,11 +51,12 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
         'remember_token',
+        'id',
     ];
 
     /**
@@ -76,11 +76,11 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         static::creating(function ($user) {
             $user->uuid = (string) \Illuminate\Support\Str::uuid();
         });
-        static::retrieved(function ($user) {
-            if ($user->profile_image) {
-                $user->profile_image = asset('storage/' . $user->profile_image);
-            }
-        });
+        // static::retrieved(function ($user) {
+        //     if ($user->profile_image) {
+        //         $user->profile_image = asset('storage/' . $user->profile_image);
+        //     }
+        // });
 
     }
 
@@ -94,4 +94,6 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     {
         return $this->hasOne(UserOtp::class);
     }
+
+    
 }

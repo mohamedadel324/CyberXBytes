@@ -13,7 +13,11 @@ class UserController extends Controller
 {
     public function profile(Request $request)
     {
-        return response()->json(['user' => $request->user()->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id'])]);
+        $user = $request->user();
+        $user->profile_image = url('storage/' . $user->profile_image);
+        $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id']);
+        
+        return response()->json(['user' => $user]);
     }
 
     public function changeProfileData(Request $request)

@@ -7,6 +7,9 @@ use Illuminate\Support\Str;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Filament\Support\Facades\FilamentView;
+use Illuminate\Support\Facades\Blade;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -28,5 +31,16 @@ class AppServiceProvider extends ServiceProvider
                 SecurityScheme::http('bearer', 'JWT')
             );
         });
+
+    FilamentView::registerRenderHook(
+        'panels::scripts.after',
+        fn (): string => Blade::render('
+        <script>
+            if(localStorage.getItem(\'theme\') === null) {
+                localStorage.setItem(\'theme\', \'dark\')
+            }
+        </script>'),
+    );
+
     }
 }

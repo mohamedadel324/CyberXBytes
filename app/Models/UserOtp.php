@@ -14,6 +14,21 @@ class UserOtp extends Model
         'attempts'
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'id',
+        'otp',
+        'user_id',
+        'expires_at',
+        'attempts',
+        'created_at',
+        'updated_at'
+    ];
+
     protected $casts = [
         'expires_at' => 'datetime',
     ];
