@@ -57,7 +57,7 @@ class UserResource extends Resource
                 Tables\Columns\TextColumn::make('uuid')
                 ->copyable()
                 ->searchable(),
-                Tables\Columns\ImageColumn::make('profile_image')->rounded(),
+                Tables\Columns\ImageColumn::make('profile_image')->circular(),
                 Tables\Columns\TextColumn::make('user_name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')

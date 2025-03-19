@@ -3,7 +3,7 @@
         'name' => 'laravel/laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'b8007d065d219ce0d0cd2e7fa4380c3aff58321a',
+        'reference' => '94ead4450b8deebd1a92994f581f298044d6c8d2',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -319,6 +319,15 @@
             'aliases' => array(),
             'dev_requirement' => true,
         ),
+        'hasnayeen/themes' => array(
+            'pretty_version' => 'v3.0.24',
+            'version' => '3.0.24.0',
+            'reference' => '4ee2899fc8e9d565cb4daad6bf84ff9b36fe29ae',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../hasnayeen/themes',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'illuminate/auth' => array(
             'dev_requirement' => false,
             'replaced' => array(
@@ -550,7 +559,7 @@
         'laravel/laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'b8007d065d219ce0d0cd2e7fa4380c3aff58321a',
+            'reference' => '94ead4450b8deebd1a92994f581f298044d6c8d2',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
