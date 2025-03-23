@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\Auth\AuthController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\LabController;
 
 Route::prefix('auth')->middleware('api')->group(function () {
 
@@ -21,11 +22,26 @@ Route::prefix('auth')->middleware('api')->group(function () {
     Route::post('password/reset', [AuthController::class, 'resetPassword']);
 });
 
-
 Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     Route::get('profile', [UserController::class, 'profile']);
     Route::post('change-profile-data', [UserController::class, 'changeProfileData']);
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('change-socialmedia-links', [UserController::class, 'changeSocialMediaLinks']);
     Route::post('change-profile-image', [UserController::class, 'changeProfileImage']);
+    
+    // Email change routes
+    Route::post('request-email-change', [UserController::class, 'requestEmailChange']);
+    Route::post('verify-email-change', [UserController::class, 'verifyEmailChange']);
+});
+
+Route::middleware(['auth:api', 'verified'])->group(function () {
+    // Labs routes
+    Route::get('/labs', [LabController::class, 'getAllLabs']);
+    Route::get('/labs/categories', [LabController::class, 'getAllLabCategories']);
+    
+    // Challenges routes
+    Route::get('/challenges', [LabController::class, 'getAllChallenges']);
+    Route::get('/challenges/category/{LabCategoryUUID}', [LabController::class, 'getChallengesByLabCategoryUUID']);
+    Route::get('/challenges/difficulty/{difficulty}', [LabController::class, 'getChallengesByDifficulty']);
+    Route::get('/challenges/{uuid}', [LabController::class, 'getChallenge']);
 });

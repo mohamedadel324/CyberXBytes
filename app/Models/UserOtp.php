@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Hash;
 class UserOtp extends Model
 {
     protected $fillable = [
-        'user_id',
+        'user_uuid',
         'otp',
         'expires_at',
         'attempts'
@@ -22,7 +22,7 @@ class UserOtp extends Model
     protected $hidden = [
         'id',
         'otp',
-        'user_id',
+        'user_uuid',
         'expires_at',
         'attempts',
         'created_at',
@@ -57,6 +57,6 @@ class UserOtp extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_uuid');
     }
 }

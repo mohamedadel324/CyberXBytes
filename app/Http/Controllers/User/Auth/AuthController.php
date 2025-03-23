@@ -45,10 +45,10 @@ class AuthController extends \Illuminate\Routing\Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'between:2,100'],
-            'email' => ['required', 'string', 'email', 'max:100', 'unique:users'],
-            'user_name' => ['required', 'string', 'between:2,100', 'unique:users'],
+            'email' => ['required', 'string', 'email', 'max:50', 'unique:users', 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],
+            'user_name' => ['required', 'string', 'between:2,50', 'unique:users'],
             'country' => ['required', 'string', 'between:2,100'],
-            'password' => ['required', 'string', 'min:6'],
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
         ]);
 
         // Generate a unique registration ID
@@ -187,7 +187,7 @@ class AuthController extends \Illuminate\Routing\Controller
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
-            'password' => 'required|string|min:6',
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
         ]);
 
         if ($validator->fails()) {
@@ -257,32 +257,36 @@ class AuthController extends \Illuminate\Routing\Controller
      */
     public function sendResetLinkEmail(Request $request)
     {
-        try {
-            $request->validate(['email' => 'required|email|exists:users,email']);
+        $request->validate(['email' => 'required|email|exists:users,email']);
 
-            $user = User::where('email', $request->email)->first();
-            
-            $this->generateAndSendPasswordResetOtp($user);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Password reset OTP has been sent to your email.',
-                'email' => $user->email
-            ]);
-        } catch (\Exception $e) {
+        $user = User::where('email', $request->email)->first();
+        
+        $cacheKey = 'password_reset_' . $user->id;
+        if (Cache::has($cacheKey)) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to send reset OTP. Please try again.'
-            ], 500);
+                'message' => 'Please wait 60 seconds before requesting another OTP.',
+            ], 429);
         }
+
+        $this->generateAndSendPasswordResetOtp($user);
+
+        Cache::put($cacheKey, true, 60);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password reset OTP has been sent to your email.',
+            'email' => $user->email
+        ]);
     }
 
     private function generateAndSendPasswordResetOtp($user)
     {
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        $user->otp()->create([
+        UserOtp::where('user_uuid', $user->uuid)->delete();
+        UserOtp::create([
             'otp' => $otp,
+            'user_uuid' => $user->uuid,
             'expires_at' => now()->addMinutes(5),
             'attempts' => 0
         ]);
@@ -299,11 +303,10 @@ class AuthController extends \Illuminate\Routing\Controller
      */
     public function resetPassword(Request $request)
     {
-        try {
             $request->validate([
                 'email' => 'required|email|exists:users,email',
                 'otp' => 'required|string|size:6',
-                'password' => 'required|string|min:6'
+                'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
             ]);
 
             $user = User::where('email', $request->email)->first();
@@ -336,11 +339,6 @@ class AuthController extends \Illuminate\Routing\Controller
                 'status' => 'success',
                 'message' => 'Password has been successfully reset.'
             ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to reset password. Please try again.'
-            ], 500);
-        }
+       
     }
 }

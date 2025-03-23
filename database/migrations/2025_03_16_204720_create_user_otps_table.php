@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('user_otps', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignUuid('user_uuid')->constrained('users', 'uuid')->onDelete('cascade');
             $table->string('otp', 64);
             $table->timestamp('expires_at');
             $table->integer('attempts')->default(0);

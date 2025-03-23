@@ -8,7 +8,7 @@ use App\Models\User;
 class UserSocialMedia extends Model
 {
     protected $fillable = [
-        'user_id',
+        'user_uuid',
         'discord',
         'instagram',
         'twitter',
@@ -23,13 +23,13 @@ class UserSocialMedia extends Model
      */
     protected $hidden = [
         'id',
-        'user_id',
+        'user_uuid',
         'created_at',
         'updated_at'
     ];
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_uuid');
     }
 }

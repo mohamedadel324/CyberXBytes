@@ -87,12 +87,12 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     public function socialMedia()
     {
-        return $this->hasMany(UserSocialMedia::class);
+        return $this->hasMany(UserSocialMedia::class, 'user_uuid', 'uuid');
     }
 
     public function otp()
     {
-        return $this->hasOne(UserOtp::class);
+        return $this->hasOne(UserOtp::class, 'user_uuid', 'uuid');
     }
 
     
