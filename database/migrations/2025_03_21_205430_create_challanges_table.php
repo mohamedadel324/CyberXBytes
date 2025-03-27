@@ -13,15 +13,17 @@ return new class extends Migration
     {
         Schema::create('challanges', function (Blueprint $table) {
             $table->id();
-            $table->uuid();
+            $table->uuid()->index();
             $table->foreignUuid('lab_category_uuid')->constrained('lab_categories', 'uuid')->onDelete('cascade');
-            $table->string('category');
+            $table->foreignUuid('category_uuid')->constrained('challange_categories', 'uuid')->onDelete('cascade');
             $table->json('key_words');
             $table->string('title');
             $table->longText('description');
             $table->string('image');
             $table->string('difficulty')->only('easy', 'medium', 'hard', 'very_hard');
             $table->integer('bytes');
+            $table->integer('firstBloodBytes');
+            $table->text('flag');
             $table->longText('file')->nullable();
             $table->longText('link')->nullable();
 

@@ -4,17 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Lab extends Model
+class Event extends Model
 {
     protected $fillable = [
-        'name',
-        'ar_name',
-    ];
-    
-    protected $hidden = [
-        'id',
-        'created_at',
-        'updated_at',
+        'title',
+        'description',
+        'image',
+        'visible_start_date',
+        'start_date',
+        'end_date',
     ];
     public static function boot()
     {
@@ -23,10 +21,11 @@ class Lab extends Model
         static::creating(function ($data) {
             $data->uuid = (string) \Illuminate\Support\Str::uuid();
         });
-    }
-    public function labCategories()
-    {
-        return $this->hasMany(LabCategory::class, 'lab_uuid', 'uuid');
-    }
+
+    }   
+    protected $casts = [
+        'visible_start_date' => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
+    ];
 }
-    

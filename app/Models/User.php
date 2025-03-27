@@ -95,5 +95,9 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         return $this->hasOne(UserOtp::class, 'user_uuid', 'uuid');
     }
 
+    public function submissions()
+    {
+        return $this->hasMany(Submission::class, 'user_uuid', 'uuid');
+    }
     
 }

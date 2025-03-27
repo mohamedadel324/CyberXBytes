@@ -11,14 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('lab_categories', function (Blueprint $table) {
+        Schema::create('challange_categories', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uuid')->unique();
-            $table->foreignUuid('lab_uuid')->constrained('labs', 'uuid')->onDelete('cascade');
-            $table->longText('image'); 
-            $table->string('title');
-            $table->string('ar_title');
+            $table->uuid()->unique();
 
+            $table->string('name');
+            $table->longText('icon');
             $table->timestamps();
         });
     }
@@ -28,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('lab_categories');
+        Schema::dropIfExists('challange_categories');
     }
 };

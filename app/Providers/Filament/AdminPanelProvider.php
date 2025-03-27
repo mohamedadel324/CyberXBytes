@@ -18,6 +18,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
+use Filament\Navigation\NavigationItem;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -34,7 +35,6 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn () => view('admin.logo'))
             ->brandLogoHeight('3.5rem')
             ->plugins([
-                FilamentSpatieLaravelBackupPlugin::make(),
                 \Hasnayeen\Themes\ThemesPlugin::make(),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
@@ -62,6 +62,13 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+            ])
+            ->navigationItems([
+                NavigationItem::make('BackUps')
+                    ->url('/admin/backup')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->group('Settings')
+                    ->sort(1),
             ])
             ->spa()
             ->authGuard('admin')

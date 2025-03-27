@@ -19,7 +19,7 @@ class UserController extends Controller
         $user = $request->user();
         $user->profile_image = url('storage/' . $user->profile_image);
         $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id']);
-        
+        $user->socialMedia = $user->socialMedia()->first();
         return response()->json(['user' => $user]);
     }
 
@@ -62,15 +62,15 @@ class UserController extends Controller
     public function changeSocialMediaLinks(Request $request)
     {
         $validatedData = $request->validate([
-            'discord' => 'nullable|string',
-            'instagram' => 'nullable|string',
-            'twitter' => 'nullable|string',
-            'tiktok' => 'nullable|string',
-            'youtube' => 'nullable|string',
+            'discord' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?discord\.(?:gg|com)/'],
+            'instagram' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?instagram\.com/'],
+            'twitter' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?twitter\.com/'],
+            'tiktok' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?tiktok\.com/'],
+            'youtube' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?youtube\.com/'],
         ]);
 
         $socialMedia = $request->user()->socialMedia()->updateOrCreate(
-            ['user_id' => $request->user()->id],
+            ['user_uuid' => $request->user()->uuid],
             $validatedData
         );
 
@@ -80,6 +80,43 @@ class UserController extends Controller
         ]);
     }
 
+    public function unlinkSocialMedia(Request $request)
+    {
+
+        if(!$request->user()->socialMedia[0]) {
+            return response()->json([
+                'message' => 'No social media links found'
+            ], 404);
+        }
+        $validatedData = $request->validate([
+            'platform' => ['required', 'string', 'in:discord,instagram,twitter,tiktok,youtube'],
+        ]);
+
+        $socialMedia = $request->user()->socialMedia[0];
+        
+        if (!$socialMedia) {
+            return response()->json([
+                'message' => 'No social media links found'
+            ], 404);
+        }
+
+        $platform = $validatedData['platform'];
+        
+        if (is_null($socialMedia->$platform)) {
+            return response()->json([
+                'message' => 'This social media link is already unlinked'
+            ], 400);
+        }
+
+        $socialMedia->update([
+            $platform => null
+        ]);
+
+        return response()->json([
+            'message' => 'Social media link unlinked successfully',
+            'social_media' => $socialMedia
+        ]);
+    }
     /**
      * @requestMediaType multipart/form-data
      */
@@ -213,4 +250,5 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 }

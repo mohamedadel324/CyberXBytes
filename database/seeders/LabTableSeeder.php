@@ -13,13 +13,16 @@ class LabTableSeeder extends Seeder
     public function run(): void
     {
         Lab::create([
-            'name' => 'المعامل التدريبية' ,
+            'name' => 'Training Labs' ,
+            'ar_name' => 'المعامل التدريبية'
         ]);
         Lab::create([
-            'name' => 'المعامل التنافسية' ,
+            'name' => 'Challangin labs' ,
+            'ar_name' => 'المعامل التنافسية'
         ]);
         Lab::create([
-            'name' => 'الخوادم' ,
+            'name' => 'Servers' ,
+            'ar_name' => 'الخوادم'
         ]);
     }
 }

@@ -24,7 +24,7 @@ class ChallangeResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
     public static function getNavigationGroup(): ?string
     {
-        return 'Labs Management';
+        return 'Challanges Management';
     }
     public static function form(Form $form): Form
     {
@@ -34,9 +34,9 @@ class ChallangeResource extends Resource
                     ->required()
                     ->relationship('labCategory', 'title')
                     ,
-                Forms\Components\TextInput::make('category')
+                Forms\Components\Select::make('category_uuid')
                     ->required()
-                    ->maxLength(255),
+                    ->relationship('category', 'name'),
                 Forms\Components\TagsInput::make('key_words')
                     ->columnSpanFull()
                     ->required(),
@@ -63,6 +63,12 @@ class ChallangeResource extends Resource
                 Forms\Components\TextInput::make('bytes')
                     ->required()
                     ->numeric(),
+                Forms\Components\TextInput::make('firstBloodBytes')
+                    ->required()
+                    ->numeric(),
+                Forms\Components\TextInput::make('flag')
+                    ->required()
+                    ->maxLength(255),
             Select::make('input_type')
             ->label('Input Type')
             ->options([

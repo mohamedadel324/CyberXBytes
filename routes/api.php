@@ -27,6 +27,8 @@ Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     Route::post('change-profile-data', [UserController::class, 'changeProfileData']);
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('change-socialmedia-links', [UserController::class, 'changeSocialMediaLinks']);
+    Route::post('unlink-socialmedia-links', [UserController::class, 'unlinkSocialMedia']);
+
     Route::post('change-profile-image', [UserController::class, 'changeProfileImage']);
     
     // Email change routes
@@ -38,10 +40,19 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     // Labs routes
     Route::get('/labs', [LabController::class, 'getAllLabs']);
     Route::get('/labs/categories', [LabController::class, 'getAllLabCategories']);
+    Route::get('/labs/categories/{uuid}', [LabController::class, 'getAllLabCategoriesByLabUUID']);
     
     // Challenges routes
     Route::get('/challenges', [LabController::class, 'getAllChallenges']);
     Route::get('/challenges/category/{LabCategoryUUID}', [LabController::class, 'getChallengesByLabCategoryUUID']);
     Route::get('/challenges/difficulty/{difficulty}', [LabController::class, 'getChallengesByDifficulty']);
     Route::get('/challenges/{uuid}', [LabController::class, 'getChallenge']);
+    Route::get('/last-four-challenges', [LabController::class, 'lastFourChallenges']);
+
+    Route::post('/submit-challenge', [LabController::class, 'SubmitChallange']);
+    Route::post('/check-if-solved', [LabController::class, 'checkIfSolved']);
+
+    Route::get('/leader-board', [LabController::class, 'getLeaderBoard']);
+
 });
+

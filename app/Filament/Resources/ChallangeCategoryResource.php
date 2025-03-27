@@ -2,9 +2,9 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\LabResource\Pages;
-use App\Filament\Resources\LabResource\RelationManagers;
-use App\Models\Lab;
+use App\Filament\Resources\ChallangeCategoryResource\Pages;
+use App\Filament\Resources\ChallangeCategoryResource\RelationManagers;
+use App\Models\ChallangeCategory;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,15 +13,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class LabResource extends Resource
+class ChallangeCategoryResource extends Resource
 {
-    protected static ?string $model = Lab::class;
+    protected static ?string $model = ChallangeCategory::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
     public static function getNavigationGroup(): ?string
     {
-        return 'Labs Management';
+        return 'Challanges Management';
     }
     public static function form(Form $form): Form
     {
@@ -29,10 +28,13 @@ class LabResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
+                    ->columnSpanFull()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('ar_name')
+                Forms\Components\FileUpload::make('icon')
                     ->required()
-                    ->maxLength(255),
+                    ->imageEditor()
+                    ->image()
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -42,8 +44,8 @@ class LabResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
-                    Tables\Columns\TextColumn::make('ar_name')
-                    ->searchable(),   
+                    Tables\Columns\ImageColumn::make('icon')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -76,9 +78,9 @@ class LabResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListLabs::route('/'),
-            'create' => Pages\CreateLab::route('/create'),
-            'edit' => Pages\EditLab::route('/{record}/edit'),
+            'index' => Pages\ListChallangeCategories::route('/'),
+            'create' => Pages\CreateChallangeCategory::route('/create'),
+            'edit' => Pages\EditChallangeCategory::route('/{record}/edit'),
         ];
     }
 }

@@ -4,23 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class LabCategory extends Model
+class Submission extends Model
 {
     protected $fillable = [
-        'lab_uuid',
-        'title',
-        'ar_title',
-        'image',
+        'challange_uuid',
+        'user_uuid',
+        'flag',
+        'solved',
+        'ip',
     ];
-
-    public function lab()
+    
+    public function challange()
     {
-        return $this->belongsTo(Lab::class, 'lab_uuid', 'uuid');
+        return $this->belongsTo(Challange::class, 'challange_uuid', 'uuid');
     }
 
-    public function challanges()
+    public function user()
     {
-        return $this->hasMany(Challange::class , 'lab_category_uuid', 'uuid');
+        return $this->belongsTo(User::class, 'user_uuid', 'uuid');
     }
     public static function boot()
     {
@@ -30,7 +31,10 @@ class LabCategory extends Model
             $data->uuid = (string) \Illuminate\Support\Str::uuid();
         });
 
-    }
+    }   
+    protected $casts = [
+        'solved' => 'boolean',
+    ];
     protected $hidden = [
         'id',
         'created_at',

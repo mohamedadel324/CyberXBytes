@@ -11,13 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('lab_categories', function (Blueprint $table) {
+        Schema::create('events', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uuid')->unique();
-            $table->foreignUuid('lab_uuid')->constrained('labs', 'uuid')->onDelete('cascade');
-            $table->longText('image'); 
+            $table->uuid();
             $table->string('title');
-            $table->string('ar_title');
+            $table->string('description');
+            $table->longText('image');
+
+            $table->date('visible_start_date');
+            $table->date('start_date');
+            $table->date('end_date');
 
             $table->timestamps();
         });
@@ -28,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('lab_categories');
+        Schema::dropIfExists('events');
     }
 };

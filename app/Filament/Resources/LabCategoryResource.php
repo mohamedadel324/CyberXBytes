@@ -32,9 +32,15 @@ class LabCategoryResource extends Resource
                     ->createOptionForm([
                         Forms\Components\TextInput::make('name')
                             ->required(),
+                            Forms\Components\TextInput::make('ar_name')
+                            ->required(),
                     ])
                     ->required(),
                     Forms\Components\TextInput::make('title')
+                        ->required()
+                        ->columnSpanFull()
+                        ->maxLength(255),
+                        Forms\Components\TextInput::make('ar_title')
                         ->required()
                         ->columnSpanFull()
                         ->maxLength(255),
@@ -54,6 +60,8 @@ class LabCategoryResource extends Resource
                     ->numeric()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('title')
+                    ->searchable(),
+                    Tables\Columns\TextColumn::make('ar_title')
                     ->searchable(),
                     Tables\Columns\ImageColumn::make('image')
                     ->searchable(),

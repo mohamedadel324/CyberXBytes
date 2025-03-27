@@ -44,7 +44,6 @@ class AuthController extends \Illuminate\Routing\Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name' => ['required', 'string', 'between:2,100'],
             'email' => ['required', 'string', 'email', 'max:50', 'unique:users', 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],
             'user_name' => ['required', 'string', 'between:2,50', 'unique:users'],
             'country' => ['required', 'string', 'between:2,100'],
@@ -186,18 +185,22 @@ class AuthController extends \Illuminate\Routing\Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
+            'login' => 'required|string',
+            'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 400);
         }
 
-        $credentials = $request->only('email', 'password');
+        $loginField = filter_var($request->input('login'), FILTER_VALIDATE_EMAIL) ? 'email' : 'user_name';
+        $credentials = [
+            $loginField => $request->input('login'),
+            'password' => $request->input('password'),
+        ];
 
         if (!$token = auth()->attempt($credentials)) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['error' => 'Email or password is incorrect'], 401);
         }
 
         $user = auth()->user()->makeHidden(['created_at', 'updated_at']);
