@@ -36,12 +36,13 @@ class LabController extends Controller
             ->withCount('challanges')
             ->get();
 
-        $lastChallenge = Challange::whereHas('labCategory', function ($query) use ($uuid) {
+        $lastThreeChallenges = Challange::whereHas('labCategory', function ($query) use ($uuid) {
             $query->where('lab_uuid', $uuid);
         })
         ->with('category:uuid,icon')
         ->latest()
-        ->first();
+        ->take(3)
+        ->get();
 
         $categoriesWithCount = $categories->map(function ($category) {
             return [
@@ -52,20 +53,19 @@ class LabController extends Controller
             ];
         });
 
-        $lastChallengeData = null;
-        if ($lastChallenge) {
-            $lastChallengeData = [
-                'title' => $lastChallenge->title,
-                'difficulty' => $this->translateDifficulty($lastChallenge->difficulty),
-                'category_icon' => $lastChallenge->category->icon ?? null,
+        $lastThreeChallengesData = $lastThreeChallenges->map(function ($challenge) {
+            return [
+                'title' => $challenge->title,
+                'difficulty' => $this->translateDifficulty($challenge->difficulty),
+                'category_icon' => $challenge->category->icon ?? null,
             ];
-        }
+        });
 
         return response()->json([
             'status' => 'success',
             'data' => $categoriesWithCount,
             'challenges_count' => $categories->sum('challanges_count'),
-            'last_challenge' => $lastChallengeData
+            'last_three_challenges' => $lastThreeChallengesData
         ]);
     }
     public function getAllChallenges()
@@ -158,11 +158,11 @@ class LabController extends Controller
         ]);
     }
 
-    public function lastFourChallenges()
+    public function lastThreeChallenges()
     {
         $challenges = Challange::with('category:uuid,icon')
             ->latest()
-            ->take(4)
+            ->take(3)
             ->get();
         
         $challenges->each(function ($challenge) {
