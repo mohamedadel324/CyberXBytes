@@ -133,7 +133,7 @@ class ChallangeResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('lab_category_uuid')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('category')
+                Tables\Columns\ImageColumn::make('category.icon')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('title')
                     ->searchable(),
