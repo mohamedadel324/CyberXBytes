@@ -75,6 +75,7 @@ class UserController extends Controller
             'twitter' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?twitter\.com/'],
             'tiktok' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?tiktok\.com/'],
             'youtube' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?youtube\.com/'],
+            'linkedIn' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?linkedin\.com/'],
         ]);
 
         $socialMedia = $request->user()->socialMedia()->updateOrCreate(

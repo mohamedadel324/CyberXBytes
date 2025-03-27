@@ -14,6 +14,7 @@ class UserSocialMedia extends Model
         'twitter',
         'tiktok',
         'youtube',  
+        'linkedIn'
     ];
 
     /**

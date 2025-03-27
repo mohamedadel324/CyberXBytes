@@ -19,6 +19,7 @@ class LabController extends Controller
             ->get()
             ->map(function ($lab) {
                 return [
+                    'uuid' => $lab->uuid,
                     'name' => $lab->name,
                     'category_count' => $lab->lab_categories_count,
                     'challenge_count' => $lab->challenge_count,
