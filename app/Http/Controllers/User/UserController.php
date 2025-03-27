@@ -22,6 +22,14 @@ class UserController extends Controller
         $user->socialMedia = $user->socialMedia()->first();
         return response()->json(['user' => $user]);
     }
+    public function profileByUUID(Request $request)
+    {
+        $user = User::where('uuid', $request->uuid)->firstOrFail();
+        $user->profile_image = url('storage/' . $user->profile_image);
+        $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id']);
+        $user->socialMedia = $user->socialMedia()->first();
+        return response()->json(['user' => $user]);
+    }
 
     public function changeProfileData(Request $request)
     {

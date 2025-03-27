@@ -24,6 +24,7 @@ Route::prefix('auth')->middleware('api')->group(function () {
 
 Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     Route::get('profile', [UserController::class, 'profile']);
+    Route::get('profile/{uuid}', [UserController::class, 'profileByUUID']);
     Route::post('change-profile-data', [UserController::class, 'changeProfileData']);
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('change-socialmedia-links', [UserController::class, 'changeSocialMediaLinks']);
