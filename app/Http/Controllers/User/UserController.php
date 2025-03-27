@@ -17,7 +17,9 @@ class UserController extends Controller
     public function profile(Request $request)
     {
         $user = $request->user();
-        $user->profile_image = url('storage/' . $user->profile_image);
+        if ($user->profile_image) {
+            $user->profile_image = url('storage/' . $user->profile_image);
+        }
         $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id']);
         $user->socialMedia = $user->socialMedia()->first();
         return response()->json(['user' => $user]);
@@ -25,7 +27,9 @@ class UserController extends Controller
     public function profileByUserName($user_name)
     {
         $user = User::where('user_name', $user_name)->firstOrFail();
-        $user->profile_image = url('storage/' . $user->profile_image);
+        if ($user->profile_image) {
+            $user->profile_image = url('storage/' . $user->profile_image);
+        }
         $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id']);
         $user->socialMedia = $user->socialMedia()->first();
         return response()->json(['user' => $user]);
