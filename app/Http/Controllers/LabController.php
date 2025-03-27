@@ -21,8 +21,8 @@ class LabController extends Controller
                 return [
                     'uuid' => $lab->uuid,
                     'name' => $lab->name,
+                    'ar_name' => $lab->ar_name,
                     'category_count' => $lab->lab_categories_count,
-                    'challenge_count' => $lab->challenge_count,
                 ];
             });
 

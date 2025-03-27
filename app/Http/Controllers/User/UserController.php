@@ -22,9 +22,9 @@ class UserController extends Controller
         $user->socialMedia = $user->socialMedia()->first();
         return response()->json(['user' => $user]);
     }
-    public function profileByUUID(Request $request)
+    public function profileByUserName($user_name)
     {
-        $user = User::where('uuid', $request->uuid)->firstOrFail();
+        $user = User::where('user_name', $user_name)->firstOrFail();
         $user->profile_image = url('storage/' . $user->profile_image);
         $user->makeHidden(['otp', 'otp_expires_at', 'otp_attempts', 'id']);
         $user->socialMedia = $user->socialMedia()->first();
@@ -98,7 +98,7 @@ class UserController extends Controller
             ], 404);
         }
         $validatedData = $request->validate([
-            'platform' => ['required', 'string', 'in:discord,instagram,twitter,tiktok,youtube'],
+            'platform' => ['required', 'string', 'in:discord,instagram,twitter,tiktok,youtube,linkedIn'],
         ]);
 
         $socialMedia = $request->user()->socialMedia[0];
