@@ -51,7 +51,7 @@ class LabController extends Controller
             return [
                 'uuid' => $category->uuid,
                 'title' => $category->title,
-                'image' => $category->image,
+                'image' => $category->image ? asset('storage/' . $category->image) : null,
                 'challenges_count' => $category->challanges_count,
             ];
         });
