@@ -60,7 +60,7 @@ class LabController extends Controller
             return [
                 'title' => $challenge->title,
                 'difficulty' => $this->translateDifficulty($challenge->difficulty),
-                'category_icon' => $challenge->category->icon ?? null,
+                'category_icon' => $challenge->category->icon ? asset('storage/' . $challenge->category->icon) : null,
             ];
         });
 
