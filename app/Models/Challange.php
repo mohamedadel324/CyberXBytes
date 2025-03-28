@@ -21,7 +21,7 @@ class Challange extends Model
         'flag',
     ];
 
-    protected $appends = ['category_icon'];
+    protected $appends = ['category_icon_url'];
 
     public static function boot()
     {
@@ -47,9 +47,9 @@ class Challange extends Model
         return $this->hasMany(Submission::class, 'challange_uuid', 'uuid');
     }
 
-    public function getCategoryIconAttribute()
+    public function getCategoryIconUrlAttribute()
     {
-        return $this->category->icon ?? null;
+        return $this->category->icon ? asset('storage/' . $this->category->icon) : null;
     }
 
     protected $hidden = [

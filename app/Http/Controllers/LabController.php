@@ -33,6 +33,8 @@ class LabController extends Controller
     }
     public function getallLabCategoriesByLabUUID($uuid)
     {
+        $lab = Lab::where('uuid', $uuid)->first(['uuid', 'name', 'ar_name', 'description', 'ar_description']);
+
         $categories = LabCategory::where('lab_uuid', $uuid)
             ->withCount('challanges')
             ->get();
@@ -64,6 +66,7 @@ class LabController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'lab' => $lab,
             'data' => $categoriesWithCount,
             'challenges_count' => $categories->sum('challanges_count'),
             'last_three_challenges' => $lastThreeChallengesData

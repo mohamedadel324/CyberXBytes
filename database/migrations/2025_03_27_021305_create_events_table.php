@@ -18,9 +18,12 @@ return new class extends Migration
             $table->string('description');
             $table->longText('image');
 
-            $table->date('visible_start_date');
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->dateTime('visible_start_date');
+            $table->dateTime('start_date');
+            $table->dateTime('end_date');
+
+            $table->integer('team_minimum_members');
+            $table->integer('team_maximum_members');
 
             $table->timestamps();
         });

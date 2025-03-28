@@ -13,6 +13,8 @@ class Event extends Model
         'visible_start_date',
         'start_date',
         'end_date',
+        'team_minimum_members',
+        'team_maximum_members',
     ];
     public static function boot()
     {

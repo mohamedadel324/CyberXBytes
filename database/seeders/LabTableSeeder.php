@@ -14,15 +14,21 @@ class LabTableSeeder extends Seeder
     {
         Lab::create([
             'name' => 'Training Labs' ,
-            'ar_name' => 'المعامل التدريبية'
+            'ar_name' => 'المعامل التدريبية',
+            'description' => 'Training Labs Description',
+            'ar_description' => 'وصف المعامل التدريبية باللغة العربية'
         ]);
         Lab::create([
             'name' => 'Challangin labs' ,
-            'ar_name' => 'المعامل التنافسية'
+            'ar_name' => 'المعامل التنافسية',
+            'description' => 'Challangin labs Description',
+            'ar_description' => 'وصف المعامل التنافسية باللغة العربية'
         ]);
         Lab::create([
             'name' => 'Servers' ,
-            'ar_name' => 'الخوادم'
+            'ar_name' => 'الخوادم',
+            'description' => 'Servers Description',
+            'ar_description' => 'وصف الخوادم باللغة العربية'
         ]);
     }
 }

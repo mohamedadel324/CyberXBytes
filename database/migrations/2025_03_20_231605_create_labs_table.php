@@ -16,6 +16,9 @@ return new class extends Migration
             $table->uuid()->unique()->index();
             $table->string('name');
             $table->string('ar_name');
+            $table->string('description');
+            $table->string('ar_description');
+
             $table->timestamps();
         });
     }

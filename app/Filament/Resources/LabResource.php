@@ -33,6 +33,12 @@ class LabResource extends Resource
                 Forms\Components\TextInput::make('ar_name')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('description')
+                    ->required()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('ar_description')
+                    ->required()
+                    ->maxLength(255),
             ]);
     }
 
@@ -44,6 +50,7 @@ class LabResource extends Resource
                     ->searchable(),
                     Tables\Columns\TextColumn::make('ar_name')
                     ->searchable(),   
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
