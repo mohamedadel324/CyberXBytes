@@ -59,6 +59,7 @@ class LabController extends Controller
         $lastThreeChallengesData = $lastThreeChallenges->map(function ($challenge) {
             return [
                 'title' => $challenge->title,
+                'description' => $challenge->description,
                 'difficulty' => $this->translateDifficulty($challenge->difficulty),
                 'category_icon' => $challenge->category->icon ? asset('storage/' . $challenge->category->icon) : null,
             ];
