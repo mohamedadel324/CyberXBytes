@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class LabCategory extends Model
 {
@@ -20,8 +21,9 @@ class LabCategory extends Model
 
     public function challanges()
     {
-        return $this->hasMany(Challange::class , 'lab_category_uuid', 'uuid');
+        return $this->hasMany(Challange::class, 'lab_category_uuid', 'uuid');
     }
+
     public static function boot()
     {
         parent::boot();
@@ -29,11 +31,18 @@ class LabCategory extends Model
         static::creating(function ($data) {
             $data->uuid = (string) \Illuminate\Support\Str::uuid();
         });
-
     }
+
     protected $hidden = [
         'id',
         'created_at',
         'updated_at',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute()
+    {
+        return $this->image ? Storage::url($this->image) : null;
+    }
 }
