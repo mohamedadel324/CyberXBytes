@@ -41,6 +41,7 @@ return array(
     '9720327d09ed9a4ba00c9b5071b71c7d' => $vendorDir . '/danharrin/date-format-converter/src/standards.php',
     '2ad94ea6f6f6013119e9abcf4e302a08' => $vendorDir . '/filament/forms/src/helpers.php',
     'b69d5f1f95cd1ed438c038b6cbcc45b5' => $vendorDir . '/filament/notifications/src/Testing/Autoload.php',
+    '2cffec82183ee1cea088009cef9a6fc3' => $vendorDir . '/ezyang/htmlpurifier/library/HTMLPurifier.composer.php',
     '89e9938b64b06cc502d7ceca69a380fe' => $vendorDir . '/filament/filament/src/global_helpers.php',
     'ebb446bb6d02e998480945fbbb73dc64' => $vendorDir . '/filament/filament/src/helpers.php',
     '6124b4c8570aa390c21fafd04a26c69f' => $vendorDir . '/myclabs/deep-copy/src/DeepCopy/deep_copy.php',
@@ -53,4 +54,5 @@ return array(
     'ec07570ca5a812141189b1fa81503674' => $vendorDir . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
     'c0dbcc5167e0e20bf07a89820f2f42bb' => $vendorDir . '/pst/pst/src/PST.php',
     '377b22b161c09ed6e5152de788ca020a' => $vendorDir . '/spatie/laravel-permission/src/helpers.php',
+    'cb13af02c6f0ae847685564c9910670f' => $baseDir . '/app/Helpers/FilamentHelper.php',
 );

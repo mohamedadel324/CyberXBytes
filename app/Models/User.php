@@ -97,7 +97,15 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
     public function submissions()
     {
-        return $this->hasMany(Submission::class, 'user_uuid', 'uuid');
+        return $this->hasMany(EventChallangeSubmission::class, 'user_uuid', 'uuid');
+    }
+
+    public function solvedChallenges()
+    {
+        return $this->belongsToMany(EventChallange::class, 'event_challange_submissions', 'user_uuid', 'event_challange_id', 'uuid', 'id')
+            ->wherePivot('solved', true)
+            ->withPivot(['solved_at', 'attempts'])
+            ->withTimestamps();
     }
     
 }

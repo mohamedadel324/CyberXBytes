@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\Auth\AuthController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\LabController;
+use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\EventRegistrationController;
+use App\Http\Controllers\Api\EventTeamController;
+use App\Http\Controllers\Api\EventChallengeController;
 
 Route::prefix('auth')->middleware('api')->group(function () {
 
@@ -55,5 +59,33 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
 
     Route::get('/leader-board', [LabController::class, 'getLeaderBoard']);
 
-});
+    // Events routes
+    Route::get('/events', [EventController::class, 'index']);
+    Route::get('/events/{uuid}', [EventController::class, 'show']);
 
+    // Event routes
+        // Event registration
+        Route::post('{eventUuid}/register', [EventRegistrationController::class, 'register']);
+        Route::delete('{eventUuid}/unregister', [EventRegistrationController::class, 'unregister']);
+        Route::get('my-registrations', [EventRegistrationController::class, 'myRegistrations']);
+
+        // Team management
+        Route::post('{eventUuid}/teams', [EventTeamController::class, 'create']);
+        Route::get('{eventUuid}/teams', [EventTeamController::class, 'listTeams']);
+        Route::get('{eventUuid}/my-team', [EventTeamController::class, 'myTeam']);
+        Route::post('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'generateJoinSecret']);
+        Route::get('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'listJoinSecrets']);
+        Route::post('teams/join', [EventTeamController::class, 'joinWithSecret']);
+        Route::post('teams/{teamUuid}', [EventTeamController::class, 'updateTeam']);
+        Route::delete('teams/{teamUuid}/leave', [EventTeamController::class, 'leave']);
+        Route::post('teams/{teamUuid}/lock', [EventTeamController::class, 'lock']);
+        Route::post('teams/{teamUuid}/unlock', [EventTeamController::class, 'unlock']);
+        Route::delete('teams/{teamUuid}/members', [EventTeamController::class, 'removeMember']);
+
+        // Challenge management
+        Route::get('{eventUuid}/challenges', [EventChallengeController::class, 'listChallenges']);
+        Route::post('challenges/{eventChallengeUuid}/submit', [EventChallengeController::class, 'submit']);
+        Route::get('{eventUuid}/scoreboard', [EventChallengeController::class, 'scoreboard']);
+        Route::get('{eventUuid}/team-stats', [EventChallengeController::class, 'teamStats']);
+
+});

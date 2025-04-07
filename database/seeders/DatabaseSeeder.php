@@ -9,6 +9,7 @@ use App\Models\LabCategory;
 use App\Models\ChallangeCategory;
 use App\Models\Lab;
 use App\Models\Challange;
+use App\Models\Event;
 class DatabaseSeeder extends Seeder
 {
     /**
@@ -21,6 +22,22 @@ class DatabaseSeeder extends Seeder
             UserTableSeeder::class,
             LabTableSeeder::class
         ]);
+        Event::create([
+            'title' => 'Sample Event',
+            'description' => 'This is a sample event description.',
+            'background_image' => 'background.jpg',
+            'image' => 'event_image.jpg',
+            'is_private' => false,
+            'registration_start_date' => now(),
+            'registration_end_date' => now()->addDays(30),
+            'team_formation_start_date' => now()->addDays(7),
+            'team_formation_end_date' => now()->addDays(25),
+            'start_date' => now()->addDays(35),
+            'end_date' => now()->addDays(37),
+            'requires_team' => true,
+            'team_minimum_members' => 2,
+            'team_maximum_members' => 5,
+        ]);
         LabCategory::create([
             'lab_uuid' => Lab::first()->uuid,
             'title' => 'Training',
@@ -31,7 +48,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Training',
             'icon' => 'test.png',
         ]);
-        // Add 3 lab categories, one for each lab
+        
         $labs = Lab::all();
         foreach ($labs as $index => $lab) {
             LabCategory::create([
@@ -42,7 +59,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Add 3 challenge categories for each lab
         $labCategories = LabCategory::all();
         foreach ($labCategories as $labCategory) {
             for ($i = 1; $i <= 3; $i++) {
@@ -51,7 +67,6 @@ class DatabaseSeeder extends Seeder
                     'icon' => 'challenge_category' . $i . '.png',
                 ]);
 
-                // Add 3 challenges for each challenge category
                 for ($j = 1; $j <= 3; $j++) {
                     Challange::create([
                         'lab_category_uuid' => $labCategory->uuid,
@@ -61,9 +76,7 @@ class DatabaseSeeder extends Seeder
                         'difficulty' => ['easy', 'medium', 'hard'][array_rand(['easy', 'medium', 'hard'])],
                         'bytes' => rand(10, 100),
                         'flag' => 'flag' . $j,
-                        'key_words' => ['keyword1', 'keyword2', 'keyword3'][array_rand(['keyword1', 'keyword2', 'keyword3'])],
                         'firstBloodBytes' => rand(100, 1000),
-                        'image' => 'challenge' . $j . '.png',
                     ]);
                 }
             }

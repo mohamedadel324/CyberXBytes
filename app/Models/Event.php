@@ -3,31 +3,107 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 
 class Event extends Model
 {
     protected $fillable = [
         'title',
         'description',
+        'background_image',
         'image',
+        'is_private',
+        'registration_start_date',
+        'registration_end_date',
+        'team_formation_start_date',
+        'team_formation_end_date',
         'visible_start_date',
         'start_date',
         'end_date',
+        'requires_team',
         'team_minimum_members',
         'team_maximum_members',
     ];
-    public static function boot()
+
+    protected $casts = [
+        'is_private' => 'boolean',
+        'requires_team' => 'boolean',
+        'registration_start_date' => 'datetime',
+        'registration_end_date' => 'datetime',
+        'team_formation_start_date' => 'datetime',
+        'team_formation_end_date' => 'datetime',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'invited_emails' => 'array',
+    ];
+
+    protected static function boot()
     {
         parent::boot();
 
-        static::creating(function ($data) {
-            $data->uuid = (string) \Illuminate\Support\Str::uuid();
+        static::creating(function ($event) {
+            $event->uuid = (string) Str::uuid();
         });
 
-    }   
-    protected $casts = [
-        'visible_start_date' => 'date',
-        'start_date' => 'date',
-        'end_date' => 'date',
-    ];
+        // Handle invitations after event creation
+        static::created(function ($event) {
+            if ($event->is_private) {
+                $pendingInvitations = session('pending_invitations', []);
+                foreach ($pendingInvitations as $email) {
+                    $invitation = EventInvitation::create([
+                        'event_uuid' => $event->uuid,
+                        'email' => $email,
+                    ]);
+
+                    // Send invitation email
+                    Mail::to($email)->queue(new EventInvitationMail($invitation));
+                    
+                    $invitation->update(['email_sent_at' => now()]);
+                }
+                // Clear the pending invitations
+                session()->forget('pending_invitations');
+            }
+        });
+    }
+
+    public function invitations()
+    {
+        return $this->hasMany(EventInvitation::class, 'event_uuid', 'uuid');
+    }
+
+    public function isUserInvited($email)
+    {
+        return $this->is_private ? $this->invitations()->where('email', $email)->exists() : true;
+    }
+
+    public function scopeVisibleToUser($query, $email = null)
+    {
+        return $query->where(function ($q) use ($email) {
+            $q->where('is_private', false)
+              ->orWhereHas('invitations', function ($q) use ($email) {
+                  $q->where('email', $email);
+              });
+        });
+    }
+
+    public function registrations()
+    {
+        return $this->hasMany(EventRegistration::class);
+    }
+
+    public function teams()
+    {
+        return $this->hasMany(EventTeam::class);
+    }
+
+    public function challenges()
+    {
+        return $this->hasMany(EventChallenge::class);
+    }
+
+    public function registeredUsers()
+    {
+        return $this->belongsToMany(User::class, 'event_registrations');
+    }
 }

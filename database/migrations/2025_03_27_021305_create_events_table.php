@@ -13,15 +13,27 @@ return new class extends Migration
     {
         Schema::create('events', function (Blueprint $table) {
             $table->id();
-            $table->uuid();
+            $table->uuid()->index();
             $table->string('title');
-            $table->string('description');
+            $table->text('description');
             $table->longText('image');
+            $table->longText('background_image');
+            $table->boolean('is_private')->default(false);
 
-            $table->dateTime('visible_start_date');
+            // Registration period
+            $table->dateTime('registration_start_date');
+            $table->dateTime('registration_end_date');
+
+            // Team formation period
+            $table->dateTime('team_formation_start_date');
+            $table->dateTime('team_formation_end_date');
+
+            // Event visibility and actual event dates
             $table->dateTime('start_date');
             $table->dateTime('end_date');
 
+            // Team requirements
+            $table->boolean('requires_team')->default(true);
             $table->integer('team_minimum_members');
             $table->integer('team_maximum_members');
 

@@ -18,9 +18,12 @@ return new class extends Migration
             $table->string('profile_image')->nullable();
             $table->string('user_name')->unique();
             $table->string('country');
+            $table->string('time_zone')->default('UTC')->nullable();
+
             $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+
             $table->string('password');
         });
 

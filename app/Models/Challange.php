@@ -9,10 +9,8 @@ class Challange extends Model
     protected $fillable = [
         'lab_category_uuid',
         'category_uuid',
-        'key_words',
         'title',
         'description',
-        'image',
         'difficulty',
         'bytes',
         'file',
@@ -55,10 +53,5 @@ class Challange extends Model
     protected $hidden = [
         'id',
         'updated_at',
-        'flag',
-    ];
-
-    protected $casts = [
-        'key_words' => 'array',
     ];
 }

@@ -37,9 +37,7 @@ class ChallangeResource extends Resource
                 Forms\Components\Select::make('category_uuid')
                     ->required()
                     ->relationship('category', 'name'),
-                Forms\Components\TagsInput::make('key_words')
-                    ->columnSpanFull()
-                    ->required(),
+   
                 Forms\Components\TextInput::make('title')
                     ->required()
                     ->columnSpanFull()
@@ -47,11 +45,7 @@ class ChallangeResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\FileUpload::make('image')
-                    ->image()
-                    ->imageEditor()
-                    ->columnSpanFull()
-                    ->required(),
+
                 Forms\Components\Select::make('difficulty')
                     ->required()
                     ->options([

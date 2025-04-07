@@ -157,9 +157,14 @@ class LabController extends Controller
         unset($challenge->category);
         $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
 
+        $solvedCount = $challenge->submissions()->where('solved', true)->count();
+
+        $challengeData = $challenge->toArray();
+        $challengeData['solved_count'] = $solvedCount;
+
         return response()->json([
             'status' => 'success',
-            'data' => $challenge
+            'data' => $challengeData
         ]);
     }
 
