@@ -75,11 +75,28 @@ class LabController extends Controller
     }
     public function getAllChallenges()
     {
-        $challenges = Challange::with('category:uuid,icon')->get();
+        $challenges = Challange::with(['category:uuid,icon', 'flags'])->get();
         $challenges->each(function ($challenge) {
             $challenge->category_icon = $challenge->category->icon ?? null;
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
+            
+            // Add flag information
+            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+            
+            // For multiple flag types, format the flags data
+            if ($challenge->flag_type !== 'single' && $challenge->flags) {
+                $challenge->flags_data = $challenge->flags->map(function ($flag) {
+                    return [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                    ];
+                });
+                $challenge->flags_count = $challenge->flags->count();
+            }
         });
         return response()->json([
             'status' => 'success',
@@ -102,7 +119,7 @@ class LabController extends Controller
 
     public function getChallengesByLabCategoryUUID($categoryUUID)
     {
-        $challenges = Challange::with('category:uuid,icon')
+        $challenges = Challange::with(['category:uuid,icon', 'flags'])
             ->where('lab_category_uuid', $categoryUUID)
             ->get();
         
@@ -110,6 +127,23 @@ class LabController extends Controller
             $challenge->category_icon = $challenge->category->icon ?? null;
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
+            
+            // Add flag information
+            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+            
+            // For multiple flag types, format the flags data
+            if ($challenge->flag_type !== 'single' && $challenge->flags) {
+                $challenge->flags_data = $challenge->flags->map(function ($flag) {
+                    return [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                    ];
+                });
+                $challenge->flags_count = $challenge->flags->count();
+            }
         });
 
         $lastChallenge = $challenges->last();
@@ -123,7 +157,7 @@ class LabController extends Controller
 
     public function getChallengesByDifficulty($difficulty)
     {
-        $challenges = Challange::with('category:uuid,icon')
+        $challenges = Challange::with(['category:uuid,icon', 'flags'])
             ->where('difficulty', $difficulty)
             ->get();
         
@@ -131,6 +165,23 @@ class LabController extends Controller
             $challenge->category_icon = $challenge->category->icon ?? null;
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
+            
+            // Add flag information
+            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+            
+            // For multiple flag types, format the flags data
+            if ($challenge->flag_type !== 'single' && $challenge->flags) {
+                $challenge->flags_data = $challenge->flags->map(function ($flag) {
+                    return [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                    ];
+                });
+                $challenge->flags_count = $challenge->flags->count();
+            }
         });
 
         return response()->json([
@@ -142,7 +193,7 @@ class LabController extends Controller
 
     public function getChallenge($uuid)
     {
-        $challenge = Challange::with('category:uuid,icon')
+        $challenge = Challange::with(['category:uuid,icon', 'flags'])
             ->where('uuid', $uuid)
             ->first();
 
@@ -158,6 +209,23 @@ class LabController extends Controller
         $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
 
         $solvedCount = $challenge->submissions()->where('solved', true)->count();
+        
+        // Add flag information
+        $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+        
+        // For multiple flag types, format the flags data
+        if ($challenge->flag_type !== 'single' && $challenge->flags) {
+            $challenge->flags_data = $challenge->flags->map(function ($flag) {
+                return [
+                    'id' => $flag->id,
+                    'name' => $flag->name,
+                    'description' => $flag->description,
+                    'bytes' => $flag->bytes,
+                    'first_blood_bytes' => $flag->firstBloodBytes,
+                ];
+            });
+            $challenge->flags_count = $challenge->flags->count();
+        }
 
         $challengeData = $challenge->toArray();
         $challengeData['solved_count'] = $solvedCount;
@@ -170,7 +238,7 @@ class LabController extends Controller
 
     public function lastThreeChallenges()
     {
-        $challenges = Challange::with('category:uuid,icon')
+        $challenges = Challange::with(['category:uuid,icon', 'flags'])
             ->latest()
             ->take(3)
             ->get();
@@ -179,6 +247,23 @@ class LabController extends Controller
             $challenge->category_icon = $challenge->category->icon ?? null;
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
+            
+            // Add flag information
+            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+            
+            // For multiple flag types, format the flags data
+            if ($challenge->flag_type !== 'single' && $challenge->flags) {
+                $challenge->flags_data = $challenge->flags->map(function ($flag) {
+                    return [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                    ];
+                });
+                $challenge->flags_count = $challenge->flags->count();
+            }
         });
 
         return response()->json([
@@ -198,6 +283,249 @@ class LabController extends Controller
         ];
 
         return $translations[$difficulty] ?? $difficulty;
+    }
+
+    /**
+     * Get flags for a specific challenge
+     * 
+     * @param string $uuid Challenge UUID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getChallengeFlags($uuid)
+    {
+        $challenge = Challange::where('uuid', $uuid)->first();
+
+        if (!$challenge) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Challenge not found'
+            ], 404);
+        }
+
+        // Get flag type information
+        $flagType = $challenge->flag_type;
+        $flagTypeDescription = $this->getFlagTypeDescription($flagType);
+        
+        // For single flag type, return the flag directly
+        if ($flagType === 'single') {
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'flag_type' => $flagType,
+                    'flag_type_description' => $flagTypeDescription,
+                    'flag' => $challenge->flag,
+                    'bytes' => $challenge->bytes,
+                    'first_blood_bytes' => $challenge->firstBloodBytes,
+                ]
+            ]);
+        }
+        
+        // For multiple flag types, return all flags
+        $flags = $challenge->flags()->get()->map(function ($flag) {
+            return [
+                'id' => $flag->id,
+                'name' => $flag->name,
+                'description' => $flag->description,
+                'bytes' => $flag->bytes,
+                'first_blood_bytes' => $flag->firstBloodBytes,
+            ];
+        });
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'flag_type' => $flagType,
+                'flag_type_description' => $flagTypeDescription,
+                'total_bytes' => $challenge->bytes,
+                'total_first_blood_bytes' => $challenge->firstBloodBytes,
+                'flags' => $flags,
+                'flags_count' => $flags->count(),
+            ]
+        ]);
+    }
+    
+    /**
+     * Get description for flag type
+     * 
+     * @param string $flagType
+     * @return string
+     */
+    private function getFlagTypeDescription($flagType)
+    {
+        $descriptions = [
+            'single' => 'Single flag challenge - solve one flag to complete',
+            'multiple_all' => 'Multiple flags challenge - solve all flags to get points',
+            'multiple_individual' => 'Multiple flags challenge - get points for each flag solved',
+        ];
+        
+        return $descriptions[$flagType] ?? 'Unknown flag type';
+    }
+
+    /**
+     * Get flags solved by the authenticated user for a specific challenge
+     * 
+     * @param string $uuid Challenge UUID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserSolvedFlags($uuid)
+    {
+        $challenge = Challange::where('uuid', $uuid)->first();
+
+        if (!$challenge) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Challenge not found'
+            ], 404);
+        }
+
+        $user = auth('api')->user();
+        
+        // For single flag type
+        if ($challenge->flag_type === 'single') {
+            $solved = $challenge->submissions()
+                ->where('user_uuid', $user->uuid)
+                ->where('solved', true)
+                ->exists();
+                
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'flag_type' => 'single',
+                    'solved' => $solved,
+                    'flag' => $solved ? $challenge->flag : null,
+                    'solved_at' => $solved ? $challenge->submissions()
+                        ->where('user_uuid', $user->uuid)
+                        ->where('solved', true)
+                        ->first()
+                        ->created_at : null,
+                ]
+            ]);
+        }
+        
+        // For multiple flag types
+        $solvedFlags = collect();
+        
+        foreach ($challenge->flags as $flag) {
+            $isSolved = $challenge->submissions()
+                ->where('user_uuid', $user->uuid)
+                ->where('flag', $flag->flag)
+                ->where('solved', true)
+                ->exists();
+                
+            if ($isSolved) {
+                $solvedAt = $challenge->submissions()
+                    ->where('user_uuid', $user->uuid)
+                    ->where('flag', $flag->flag)
+                    ->where('solved', true)
+                    ->first()
+                    ->created_at;
+                    
+                $solvedFlags->push([
+                    'id' => $flag->id,
+                    'name' => $flag->name,
+                    'description' => $flag->description,
+                    'bytes' => $flag->bytes,
+                    'first_blood_bytes' => $flag->firstBloodBytes,
+                    'solved_at' => $solvedAt,
+                ]);
+            }
+        }
+        
+        // Check if all flags are solved
+        $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'flag_type' => $challenge->flag_type,
+                'flag_type_description' => $this->getFlagTypeDescription($challenge->flag_type),
+                'all_flags_solved' => $allFlagsSolved,
+                'solved_flags_count' => $solvedFlags->count(),
+                'total_flags_count' => $challenge->flags->count(),
+                'solved_flags' => $solvedFlags,
+            ]
+        ]);
+    }
+
+    /**
+     * Check if the authenticated user has solved specific flags for a challenge
+     * 
+     * @param string $uuid Challenge UUID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkUserSolvedFlags($uuid)
+    {
+        $challenge = Challange::where('uuid', $uuid)->first();
+
+        if (!$challenge) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Challenge not found'
+            ], 404);
+        }
+
+        $user = auth('api')->user();
+        
+        // For single flag type
+        if ($challenge->flag_type === 'single') {
+            $solved = $challenge->submissions()
+                ->where('user_uuid', $user->uuid)
+                ->where('solved', true)
+                ->exists();
+                
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'flag_type' => 'single',
+                    'solved' => $solved,
+                    'solved_at' => $solved ? $challenge->submissions()
+                        ->where('user_uuid', $user->uuid)
+                        ->where('solved', true)
+                        ->first()
+                        ->created_at : null,
+                ]
+            ]);
+        }
+        
+        // For multiple flag types
+        $solvedFlags = collect();
+        
+        foreach ($challenge->flags as $flag) {
+            $isSolved = $challenge->submissions()
+                ->where('user_uuid', $user->uuid)
+                ->where('flag', $flag->flag)
+                ->where('solved', true)
+                ->exists();
+                
+            if ($isSolved) {
+                $solvedAt = $challenge->submissions()
+                    ->where('user_uuid', $user->uuid)
+                    ->where('flag', $flag->flag)
+                    ->where('solved', true)
+                    ->first()
+                    ->created_at;
+                    
+                $solvedFlags->push([
+                    'id' => $flag->id,
+                    'name' => $flag->name,
+                    'solved_at' => $solvedAt,
+                ]);
+            }
+        }
+        
+        // Check if all flags are solved
+        $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'flag_type' => $challenge->flag_type,
+                'all_flags_solved' => $allFlagsSolved,
+                'solved_flags_count' => $solvedFlags->count(),
+                'total_flags_count' => $challenge->flags->count(),
+                'solved_flags' => $solvedFlags,
+            ]
+        ]);
     }
 
     public function SubmitChallange(Request $request)
