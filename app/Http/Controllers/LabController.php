@@ -86,7 +86,6 @@ class LabController extends Controller
             
             // Get solved count for the challenge
             $solvedCount = $challenge->submissions()->where('solved', true)->count();
-            $challenge->solved_count = $solvedCount;
             
             // Get first blood information
             $firstBlood = null;
@@ -117,6 +116,7 @@ class LabController extends Controller
                     'first_blood_bytes' => $challenge->firstBloodBytes,
                     'solved_count' => $solvedCount,
                 ];
+                $challenge->solved_count = $solvedCount;
             }
             // For multiple flag types
             else if ($challenge->flags) {
@@ -168,7 +168,10 @@ class LabController extends Controller
                 if ($challenge->flag_type === 'multiple_all') {
                     $challenge->total_bytes = $challenge->bytes;
                     $challenge->total_first_blood_bytes = $challenge->firstBloodBytes;
+                    $challenge->solved_count = $solvedCount;
                 }
+                // For multiple_individual, we don't need to add a total solved count
+                // as we're showing individual solved counts for each flag
             }
         });
         return response()->json([
@@ -366,11 +369,18 @@ class LabController extends Controller
             if ($challenge->flag_type === 'multiple_all') {
                 $challenge->total_bytes = $challenge->bytes;
                 $challenge->total_first_blood_bytes = $challenge->firstBloodBytes;
+                $challenge->solved_count = $solvedCount;
             }
+            // For multiple_individual, we don't need to add a total solved count
+            // as we're showing individual solved counts for each flag
         }
 
         $challengeData = $challenge->toArray();
-        $challengeData['solved_count'] = $solvedCount;
+        
+        // Only add solved_count to the response for single and multiple_all types
+        if ($challenge->flag_type !== 'multiple_individual') {
+            $challengeData['solved_count'] = $solvedCount;
+        }
 
         return response()->json([
             'status' => 'success',
