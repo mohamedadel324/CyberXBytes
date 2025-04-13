@@ -12,6 +12,7 @@ class EventChallengeSubmission extends Model
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+    protected $table = 'event_challange_submissions';
 
     protected $fillable = [
         'event_challenge_id',
@@ -30,7 +31,7 @@ class EventChallengeSubmission extends Model
 
     public function eventChallenge()
     {
-        return $this->belongsTo(EventChallenge::class, 'event_challenge_id', 'id');
+        return $this->belongsTo(EventChallange::class, 'event_challenge_id', 'id');
     }
 
     public function team()

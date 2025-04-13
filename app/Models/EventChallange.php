@@ -23,12 +23,14 @@ class EventChallange extends Model
         'firstBloodBytes',
         'flag',
         'file',
-        'link'
+        'link',
+        'flag_type'
     ];
 
     protected $casts = [
         'bytes' => 'integer',
-        'firstBloodBytes' => 'integer'
+        'firstBloodBytes' => 'integer',
+        'flag_type' => 'string'
     ];
 
     protected $appends = ['category_icon_url'];
@@ -68,6 +70,21 @@ class EventChallange extends Model
             ->wherePivot('solved', true)
             ->withPivot(['solved_at', 'attempts'])
             ->withTimestamps();
+    }
+
+    public function flags()
+    {
+        return $this->hasMany(EventChallangeFlag::class, 'event_challange_id', 'id');
+    }
+
+    public function usesMultipleFlags()
+    {
+        return in_array($this->flag_type, ['multiple_all', 'multiple_individual']);
+    }
+    
+    public function usesIndividualFlagPoints()
+    {
+        return $this->flag_type === 'multiple_individual';
     }
 
     protected $hidden = [

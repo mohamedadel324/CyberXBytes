@@ -12,7 +12,9 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('event_uuid');
             $table->string('name');
+
             $table->string('description')->nullable();
+            $table->string('icon')->nullable();
             $table->uuid('leader_uuid');
             $table->boolean('is_locked')->default(false);
             $table->timestamps();

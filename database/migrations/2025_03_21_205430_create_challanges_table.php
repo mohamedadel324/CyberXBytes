@@ -22,6 +22,7 @@ return new class extends Migration
             $table->integer('bytes');
             $table->integer('firstBloodBytes');
             $table->text('flag');   
+            $table->enum('flag_type', ['single', 'multiple_all', 'multiple_individual'])->default('single');
             $table->longText('file')->nullable();
             $table->longText('link')->nullable();
 

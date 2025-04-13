@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventRegistrationController;
 use App\Http\Controllers\Api\EventTeamController;
 use App\Http\Controllers\Api\EventChallengeController;
+use App\Http\Controllers\Api\UserChallangeController;
+use App\Http\Controllers\Api\ChallangeCategoryController;
 
 Route::prefix('auth')->middleware('api')->group(function () {
 
@@ -59,6 +61,11 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
 
     Route::get('/leader-board', [LabController::class, 'getLeaderBoard']);
 
+    // User Challenges routes
+    Route::post('/user-challenges', [UserChallangeController::class, 'store']);
+    Route::get('/user-challenges/statistics', [UserChallangeController::class, 'getStatistics']);
+    Route::get('/user-challenges', [UserChallangeController::class, 'getUserChallenges']);
+
     // Events routes
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{uuid}', [EventController::class, 'show']);
@@ -67,12 +74,14 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         // Event registration
         Route::post('{eventUuid}/register', [EventRegistrationController::class, 'register']);
         Route::delete('{eventUuid}/unregister', [EventRegistrationController::class, 'unregister']);
+        Route::get('{eventUuid}/check-registration', [EventRegistrationController::class, 'checkRegistration']);
         Route::get('my-registrations', [EventRegistrationController::class, 'myRegistrations']);
-
+        Route::get('{eventUuid}/check-if-event-started', [EventController::class, 'checkIfEventStarted']);
         // Team management
         Route::post('{eventUuid}/teams', [EventTeamController::class, 'create']);
         Route::get('{eventUuid}/teams', [EventTeamController::class, 'listTeams']);
         Route::get('{eventUuid}/my-team', [EventTeamController::class, 'myTeam']);
+        Route::get('{eventUuid}/check-if-in-team', [EventTeamController::class, 'checkIfInTeam']);
         Route::post('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'generateJoinSecret']);
         Route::get('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'listJoinSecrets']);
         Route::post('teams/join', [EventTeamController::class, 'joinWithSecret']);
@@ -84,8 +93,14 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
 
         // Challenge management
         Route::get('{eventUuid}/challenges', [EventChallengeController::class, 'listChallenges']);
+        Route::get('challenges/{eventChallengeUuid}', [EventChallengeController::class, 'getChallengeDetails']);
+        Route::get('challenges/{eventChallengeUuid}/solved-flags', [EventChallengeController::class, 'getSolvedFlags']);
+        Route::get('challenges/{eventChallengeUuid}/check', [EventChallengeController::class, 'checkIfSolved']);
         Route::post('challenges/{eventChallengeUuid}/submit', [EventChallengeController::class, 'submit']);
         Route::get('{eventUuid}/scoreboard', [EventChallengeController::class, 'scoreboard']);
         Route::get('{eventUuid}/team-stats', [EventChallengeController::class, 'teamStats']);
 
+    // Challenge Categories
+    Route::get('/challenge-categories', [ChallangeCategoryController::class, 'index']);
+    Route::get('/challenge-categories/{uuid}', [ChallangeCategoryController::class, 'show']);
 });

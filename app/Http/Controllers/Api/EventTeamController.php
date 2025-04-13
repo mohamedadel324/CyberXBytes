@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\EventTeam;
 use App\Models\EventTeamJoinSecret;
 use App\Models\User;
+use App\Traits\HandlesTimezones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -15,10 +16,12 @@ use Illuminate\Support\Str;
 
 class EventTeamController extends Controller
 {
+    use HandlesTimezones;
+
     public function create(Request $request, $eventUuid)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:event_teams,name',
             'description' => 'nullable|string'
         ]);
 
@@ -39,18 +42,20 @@ class EventTeamController extends Controller
         }
 
         // Check if team formation is open
-        if (now() < $event->team_formation_start_date) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Team formation has not started yet'
-            ], 400);
-        }
+        if (!$this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date)) {
+            if (now() < $event->team_formation_start_date) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Team formation has not started yet'
+                ], 400);
+            }
 
-        if (now() > $event->team_formation_end_date) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Team formation period has ended'
-            ], 400);
+            if (now() > $event->team_formation_end_date) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Team formation period has ended'
+                ], 400);
+            }
         }
 
         // Check if user is already in a team for this event
@@ -179,7 +184,26 @@ class EventTeamController extends Controller
             'message' => 'Successfully left the team'
         ]);
     }
+    public function checkIfInTeam($eventUuid) {
+        $team = EventTeam::with(['members', 'event'])
+            ->where('event_uuid', $eventUuid)
+            ->whereHas('members', function ($query) {
+                $query->where('user_uuid', Auth::user()->uuid);
+            })
+            ->first();
 
+        if (!$team) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not in a team for this event'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'You are in a team for this event'
+        ]);
+    }
     public function myTeam($eventUuid)
     {
         $team = EventTeam::with(['members', 'event'])
@@ -203,13 +227,16 @@ class EventTeamController extends Controller
                 'name' => $team->name,
                 'description' => $team->description,
                 'is_locked' => $team->is_locked,
-                'leader' => $team->leader->only(['uuid', 'name', 'username', 'email']),
+                'leader' => [
+                    'uuid' => $team->leader->uuid,
+                    'user_name' => $team->leader->user_name,
+                    'profile_image' => $team->leader->profile_image ? url('storage/' . $team->leader->profile_image) : null
+                ],
                 'members' => $team->members->map(function ($member) {
                     return [
                         'uuid' => $member->uuid,
-                        'name' => $member->name,
-                        'username' => $member->username,
-                        'email' => $member->email,
+                        'username' => $member->user_name,
+                        'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
                         'role' => $member->pivot->role
                     ];
                 })
@@ -411,7 +438,8 @@ class EventTeamController extends Controller
     public function joinWithSecret(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'secret' => 'required|string|size:16'
+            'secret' => 'required|string|size:16',
+            'team_name' => 'required|string|max:255'
         ]);
 
         if ($validator->fails()) {
@@ -421,16 +449,19 @@ class EventTeamController extends Controller
             ], 422);
         }
 
-        // Find the unused secret
+        // Find the unused secret and verify team name
         $joinSecret = EventTeamJoinSecret::with('team.event')
             ->where('secret', $request->secret)
             ->where('used', false)
+            ->whereHas('team', function($query) use ($request) {
+                $query->where('name', $request->team_name);
+            })
             ->first();
 
         if (!$joinSecret) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Invalid or already used join secret'
+                'message' => 'Invalid secret, team name, or secret already used'
             ], 400);
         }
 

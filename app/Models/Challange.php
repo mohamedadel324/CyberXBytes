@@ -17,6 +17,13 @@ class Challange extends Model
         'link',
         'firstBloodBytes',
         'flag',
+        'flag_type'
+    ];
+
+    protected $casts = [
+        'bytes' => 'integer',
+        'firstBloodBytes' => 'integer',
+        'flag_type' => 'string'
     ];
 
     protected $appends = ['category_icon_url'];
@@ -43,6 +50,21 @@ class Challange extends Model
     public function submissions()
     {
         return $this->hasMany(Submission::class, 'challange_uuid', 'uuid');
+    }
+
+    public function flags()
+    {
+        return $this->hasMany(ChallangeFlag::class, 'challange_id', 'id');
+    }
+
+    public function usesMultipleFlags()
+    {
+        return in_array($this->flag_type, ['multiple_all', 'multiple_individual']);
+    }
+    
+    public function usesIndividualFlagPoints()
+    {
+        return $this->flag_type === 'multiple_individual';
     }
 
     public function getCategoryIconUrlAttribute()

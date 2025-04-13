@@ -99,7 +99,7 @@ class Event extends Model
 
     public function challenges()
     {
-        return $this->hasMany(EventChallenge::class);
+        return $this->hasMany(EventChallange::class, 'event_uuid', 'uuid');
     }
 
     public function registeredUsers()

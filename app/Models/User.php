@@ -45,7 +45,8 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'profile_image',
         'country',
         'status',
-        'email_verified_at'
+        'email_verified_at',
+        'time_zone'
     ];
 
     /**
@@ -75,6 +76,11 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 
         static::creating(function ($user) {
             $user->uuid = (string) \Illuminate\Support\Str::uuid();
+            
+            // Set default timezone if not provided
+            if (!isset($user->time_zone)) {
+                $user->time_zone = 'UTC';
+            }
         });
         // static::retrieved(function ($user) {
         //     if ($user->profile_image) {
@@ -108,4 +114,29 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
             ->withTimestamps();
     }
     
+    public function flagSubmissions()
+    {
+        return $this->hasMany(EventChallangeFlagSubmission::class, 'user_uuid', 'uuid');
+    }
+    
+    public function solvedFlags()
+    {
+        return $this->belongsToMany(EventChallangeFlag::class, 'event_challange_flag_submissions', 'user_uuid', 'event_challange_flag_id', 'uuid', 'id')
+            ->wherePivot('solved', true)
+            ->withPivot(['solved_at', 'attempts'])
+            ->withTimestamps();
+    }
+
+    public function getCurrentTitleAttribute()
+    {
+        $totalChallenges = EventChallange::count();
+        if ($totalChallenges === 0) {
+            return null;
+        }
+
+        $solvedChallenges = $this->solvedChallenges()->count();
+        $percentage = ($solvedChallenges / $totalChallenges) * 100;
+        
+        return PlayerTitle::getTitleForPercentage($percentage);
+    }
 }

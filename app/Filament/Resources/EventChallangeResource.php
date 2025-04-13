@@ -50,54 +50,100 @@ class EventChallangeResource extends Resource
                         'very_hard' => 'Very Hard',
                     ]),
                 Forms\Components\TextInput::make('bytes')
-                    ->required()
+                    ->required(fn (Forms\Get $get) => $get('flag_type') !== 'multiple_individual')
+                    ->visible(fn (Forms\Get $get) => $get('flag_type') !== 'multiple_individual')
                     ->numeric(),
                 Forms\Components\TextInput::make('firstBloodBytes')
-                    ->required()
+                    ->required(fn (Forms\Get $get) => $get('flag_type') !== 'multiple_individual')
+                    ->visible(fn (Forms\Get $get) => $get('flag_type') !== 'multiple_individual')
                     ->numeric(),
-                Forms\Components\TextInput::make('flag')
+                Forms\Components\Select::make('flag_type')
                     ->required()
-                    ->maxLength(255),
-                    Forms\Components\Select::make('input_type')
-            ->label('Input Type')
-            ->options([
-                'file' => 'File Only',
-                'link' => 'Link Only',
-                'file_and_link' => 'File and Link',
+                    ->options([
+                        'single' => 'Single Flag',
+                        'multiple_all' => 'Multiple Flags (Points after all flags)',
+                        'multiple_individual' => 'Multiple Flags (Individual points)',
+                    ])
+                    ->default('single')
+                    ->reactive()
+                    ->afterStateUpdated(function (Forms\Set $set, $state) {
+                        if ($state !== 'single') {
+                            $set('flag', null);
+                        }
+                        
+                        if ($state === 'multiple_individual') {
+                            $set('bytes', null);
+                            $set('firstBloodBytes', null);
+                        }
+                    }),
+                Forms\Components\TextInput::make('flag')
+                    ->required(fn (Forms\Get $get) => $get('flag_type') === 'single')
+                    ->maxLength(255)
+                    ->visible(fn (Forms\Get $get) => $get('flag_type') === 'single'),
+                Forms\Components\Section::make('Multiple Flags')
+                    ->schema([
+                        Forms\Components\Repeater::make('flags')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\TextInput::make('flag')
+                                    ->required()
+                                    ->maxLength(255),
+                                Forms\Components\TextInput::make('bytes')
+                                    ->numeric()
+                                    ->required(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual')
+                                    ->visible(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual'),
+                                Forms\Components\TextInput::make('firstBloodBytes')
+                                    ->numeric()
+                                    ->required(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual')
+                                    ->visible(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual'),
+                            ])
+                            ->orderable(fn (Forms\Get $get) => $get('../../flag_type') !== 'multiple_individual')
+                            ->orderColumn('name')
+                            ->defaultItems(0)
+                            ->addActionLabel('Add Flag')
+                    ])
+                    ->visible(fn (Forms\Get $get) => $get('flag_type') !== 'single')
+                    ->columns(1),
+                Forms\Components\Select::make('input_type')
+                    ->label('Input Type')
+                    ->options([
+                        'file' => 'File Only',
+                        'link' => 'Link Only',
+                        'file_and_link' => 'File and Link',
+                    ])
+                    ->reactive()
+                    ->afterStateHydrated(function (Forms\Get $get, Forms\Set $set, $state, $record) {
+                        if (!$state) {
+                            if ($record?->file && $record?->link) {
+                                $set('input_type', 'file_and_link');
+                            } elseif ($record?->file) {
+                                $set('input_type', 'file');
+                            } elseif ($record?->link) {
+                                $set('input_type', 'link');
+                            } else {
+                                $set('input_type', 'file'); 
+                            }
+                        }
+                    })
+                    ->afterStateUpdated(function ($state, Forms\Set $set) {
+                        if ($state === 'file') {
+                            $set('link', null);
+                        } elseif ($state === 'link') {
+                            $set('file', null);
+                        }
+                    })
+                    ->required(),
+
+
+                Forms\Components\Group::make([
+                Forms\Components\FileUpload::make('file')
+                ->required()
+                    ->label('File')
+                    ->columnSpanFull(),
             ])
-            ->reactive()
-            ->afterStateHydrated(function (Forms\Get $get, Forms\Set $set, $state, $record) {
-                if (!$state) {
-                    if ($record?->file && $record?->link) {
-                        $set('input_type', 'file_and_link');
-                    } elseif ($record?->file) {
-                        $set('input_type', 'file');
-                    } elseif ($record?->link) {
-                        $set('input_type', 'link');
-                    } else {
-                        $set('input_type', 'file'); 
-                    }
-                }
-            })
-            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                if ($state === 'file') {
-                    $set('link', null);
-                } elseif ($state === 'link') {
-                    $set('file', null);
-                }
-            })
-            ->required(),
-
-
-            Forms\Components\Group::make([
-            Forms\Components\FileUpload::make('file')
-            ->required()
-                ->label('File')
-                ->columnSpanFull(),
-        ])
-        ->visible(function (Forms\Get $get) {
-            return in_array($get('input_type'), ['file', 'file_and_link']);
-        }),
+            ->visible(function (Forms\Get $get) {
+                return in_array($get('input_type'), ['file', 'file_and_link']);
+            }),
 
         // Link Field Group
         Forms\Components\Group::make([

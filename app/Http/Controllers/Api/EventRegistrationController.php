@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\EventRegistration;
+use App\Traits\HandlesTimezones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class EventRegistrationController extends Controller
 {
+    use HandlesTimezones;
+
     public function register($eventUuid)
     {
         $event = Event::where('uuid', $eventUuid)->first();
@@ -22,18 +25,20 @@ class EventRegistrationController extends Controller
         }
 
         // Check if registration is open
-        if (now() < $event->registration_start_date) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Registration has not started yet'
-            ], 400);
-        }
+        if (!$this->isNowBetween($event->registration_start_date, $event->registration_end_date)) {
+            if (now() < $event->registration_start_date) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Registration has not started yet'
+                ], 400);
+            }
 
-        if (now() > $event->registration_end_date) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Registration period has ended'
-            ], 400);
+            if (now() > $event->registration_end_date) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Registration period has ended'
+                ], 400);
+            }
         }
 
         // Check if user is already registered
@@ -59,6 +64,33 @@ class EventRegistrationController extends Controller
             'status' => 'success',
             'message' => 'Successfully registered for the event',
             'data' => $registration
+        ]);
+    }
+    public function checkRegistration($eventUuid)
+    {
+        $event = Event::where('uuid', $eventUuid)->first();
+        
+        if (!$event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Event not found'
+            ], 404);
+        }
+
+        $registration = EventRegistration::where('event_uuid', $event->uuid)
+            ->where('user_uuid', Auth::user()->uuid)
+            ->first();
+            
+        if (!$registration) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are not registered for this event'
+            ], 403);
+        }
+            
+        return response()->json([
+            'status' => 'success',
+            'message' => 'You are registered for this event'
         ]);
     }
 
@@ -96,15 +128,15 @@ class EventRegistrationController extends Controller
                         'title' => $registration->event->title,
                         'description' => $registration->event->description,
                         'image' => url('storage/' . $registration->event->image),
-                        'registration_start_date' => $registration->event->registration_start_date->format('c'),
-                        'registration_end_date' => $registration->event->registration_end_date->format('c'),
-                        'team_formation_start_date' => $registration->event->team_formation_start_date->format('c'),
-                        'team_formation_end_date' => $registration->event->team_formation_end_date->format('c'),
-                        'start_date' => $registration->event->start_date->format('c'),
-                        'end_date' => $registration->event->end_date->format('c'),
+                        'registration_start_date' => $this->formatInUserTimezone($registration->event->registration_start_date),
+                        'registration_end_date' => $this->formatInUserTimezone($registration->event->registration_end_date),
+                        'team_formation_start_date' => $this->formatInUserTimezone($registration->event->team_formation_start_date),
+                        'team_formation_end_date' => $this->formatInUserTimezone($registration->event->team_formation_end_date),
+                        'start_date' => $this->formatInUserTimezone($registration->event->start_date),
+                        'end_date' => $this->formatInUserTimezone($registration->event->end_date),
                     ],
                     'status' => $registration->status,
-                    'registered_at' => $registration->created_at->format('c')
+                    'registered_at' => $this->formatInUserTimezone($registration->created_at)
                 ];
             });
 

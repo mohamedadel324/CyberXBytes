@@ -12,6 +12,7 @@ class EventChallenge extends Model
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+    protected $table = 'event_challanges';
 
     protected $fillable = [
         'event_uuid',

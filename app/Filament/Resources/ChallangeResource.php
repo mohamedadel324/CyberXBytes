@@ -16,6 +16,9 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Toggle;
 
 class ChallangeResource extends Resource
 {
@@ -60,60 +63,98 @@ class ChallangeResource extends Resource
                 Forms\Components\TextInput::make('firstBloodBytes')
                     ->required()
                     ->numeric(),
-                Forms\Components\TextInput::make('flag')
+                Select::make('flag_type')
+                    ->label('Flag Type')
+                    ->options([
+                        'single' => 'Single Flag',
+                        'multiple_all' => 'Multiple Flags (Points after all flags)',
+                        'multiple_individual' => 'Multiple Flags (Points for each flag)',
+                    ])
+                    ->default('single')
                     ->required()
-                    ->maxLength(255),
-            Select::make('input_type')
-            ->label('Input Type')
-            ->options([
-                'file' => 'File Only',
-                'link' => 'Link Only',
-                'file_and_link' => 'File and Link',
-            ])
-            ->reactive()
-            ->afterStateHydrated(function (Forms\Get $get, Forms\Set $set, $state, $record) {
-                if (!$state) {
-                    if ($record?->file && $record?->link) {
-                        $set('input_type', 'file_and_link');
-                    } elseif ($record?->file) {
-                        $set('input_type', 'file');
-                    } elseif ($record?->link) {
-                        $set('input_type', 'link');
-                    } else {
-                        $set('input_type', 'file'); 
+                    ->live(),
+                TextInput::make('flag')
+                    ->label('Flag')
+                    ->required()
+                    ->visible(fn (Forms\Get $get) => $get('flag_type') === 'single'),
+                Repeater::make('flags')
+                    ->label('Flags')
+                    ->relationship('flags')
+                    ->schema([
+                        TextInput::make('flag')
+                            ->label('Flag')
+                            ->required(),
+                        TextInput::make('bytes')
+                            ->label('Bytes')
+                            ->numeric()
+                            ->required()
+                            ->visible(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual'),
+                        TextInput::make('firstBloodBytes')
+                            ->label('First Blood Bytes')
+                            ->numeric()
+                            ->required()
+                            ->visible(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual'),
+                        TextInput::make('name')
+                            ->label('Name')
+                            ->required(),
+                        Textarea::make('description')
+                            ->label('Description')
+                            ->visible(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_all'),
+                    ])
+                    ->visible(fn (Forms\Get $get) => in_array($get('flag_type'), ['multiple_all', 'multiple_individual']))
+                    ->required()
+                    ->minItems(1),
+                Select::make('input_type')
+                ->label('Input Type')
+                ->options([
+                    'file' => 'File Only',
+                    'link' => 'Link Only',
+                    'file_and_link' => 'File and Link',
+                ])
+                ->reactive()
+                ->afterStateHydrated(function (Forms\Get $get, Forms\Set $set, $state, $record) {
+                    if (!$state) {
+                        if ($record?->file && $record?->link) {
+                            $set('input_type', 'file_and_link');
+                        } elseif ($record?->file) {
+                            $set('input_type', 'file');
+                        } elseif ($record?->link) {
+                            $set('input_type', 'link');
+                        } else {
+                            $set('input_type', 'file'); 
+                        }
                     }
-                }
-            })
-            ->afterStateUpdated(function ($state, Forms\Set $set) {
-                if ($state === 'file') {
-                    $set('link', null);
-                } elseif ($state === 'link') {
-                    $set('file', null);
-                }
-            })
-            ->required(),
+                })
+                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                    if ($state === 'file') {
+                        $set('link', null);
+                    } elseif ($state === 'link') {
+                        $set('file', null);
+                    }
+                })
+                ->required(),
 
 
-        Group::make([
-            FileUpload::make('file')
-            ->required()
-                ->label('File')
-                ->columnSpanFull(),
-        ])
-        ->visible(function (Forms\Get $get) {
-            return in_array($get('input_type'), ['file', 'file_and_link']);
-        }),
-
-        // Link Field Group
-        Group::make([
-            Textarea::make('link')
-                ->label('Link')
+            Group::make([
+                FileUpload::make('file')
                 ->required()
-                ->columnSpanFull(),
-        ])
-        ->visible(function (Forms\Get $get) {
-            return in_array($get('input_type'), ['link', 'file_and_link']);
-        }),
+                    ->label('File')
+                    ->columnSpanFull(),
+            ])
+            ->visible(function (Forms\Get $get) {
+                return in_array($get('input_type'), ['file', 'file_and_link']);
+            }),
+
+            // Link Field Group
+            Group::make([
+                Textarea::make('link')
+                    ->label('Link')
+                    ->required()
+                    ->columnSpanFull(),
+            ])
+            ->visible(function (Forms\Get $get) {
+                return in_array($get('input_type'), ['link', 'file_and_link']);
+            }),
                 
             ]);
     }
