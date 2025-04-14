@@ -517,7 +517,7 @@ class EventChallengeController extends Controller
 
     public function show($eventChallengeUuid)
     {
-        $challenge = EventChallange::where('id', $eventChallengeUuid)
+        $challenge = EventChallange::where('uuid', $eventChallengeUuid)
             ->with([
                 'category:uuid,name,icon', 
                 'solvedBy' => function($query) {
