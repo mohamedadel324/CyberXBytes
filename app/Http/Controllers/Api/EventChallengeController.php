@@ -543,7 +543,7 @@ class EventChallengeController extends Controller
         if (!$challenge) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Challenge not found'
+                'message' => 'Challenge noasdast found'
             ], 404);
         }
 
