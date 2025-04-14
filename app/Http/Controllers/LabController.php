@@ -317,6 +317,8 @@ class LabController extends Controller
                 'first_blood_bytes' => $challenge->firstBloodBytes,
                 'solved_count' => $solvedCount,
             ];
+            // Remove flags relationship data for single flag challenges
+            unset($challenge->flags);
         }
         // For multiple flag types
         else if ($challenge->flags) {
