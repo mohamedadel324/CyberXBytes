@@ -849,6 +849,7 @@ class LabController extends Controller
                 }
             } else if ($challenge->flag_type === 'multiple_individual') {
                 // For multiple_individual, points are awarded immediately for each flag
+                // Always award base points for solving the flag
                 $points = $matchedFlag->bytes;
                 
                 // Check if this is first blood for this flag
@@ -858,8 +859,8 @@ class LabController extends Controller
                     ->orderBy('created_at', 'asc')
                     ->first();
                 
-                // First solver will be the current submission if this is first blood
-                $isFirstBlood = $firstSolver && $firstSolver->id === $submission->id;
+                // Check if the current user is the first solver
+                $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
                 
                 if ($isFirstBlood) {
                     $firstBloodPoints = $matchedFlag->firstBloodBytes;
@@ -885,8 +886,8 @@ class LabController extends Controller
                     ->orderBy('created_at', 'asc')
                     ->first();
                 
-                // First solver will be the current submission if this is first blood
-                $isFirstBlood = $firstSolver && $firstSolver->id === $submission->id;
+                // Check if the current user is the first solver
+                $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
                 
                 if ($isFirstBlood) {
                     $firstBloodPoints = $challenge->firstBloodBytes;
