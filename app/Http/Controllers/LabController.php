@@ -925,13 +925,31 @@ class LabController extends Controller
                 ->where('solved', true)
                 ->exists();
                 
+            // Check if the user was the first solver
+            $isFirstBlood = false;
+            $firstBloodPoints = 0;
+            
+            if ($solved) {
+                $firstSolver = $challenge->submissions()
+                    ->where('solved', true)
+                    ->orderBy('created_at', 'asc')
+                    ->first();
+                    
+                $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $user->uuid;
+                
+                if ($isFirstBlood) {
+                    $firstBloodPoints = $challenge->firstBloodBytes;
+                }
+            }
+                
             return response()->json([
                 'status' => 'success',
                 'solved' => $solved,
                 'data' => [
                     'flag_type' => 'single',
                     'points' => $solved ? $challenge->bytes : 0,
-                    'first_blood_points' => $solved ? $challenge->firstBloodBytes : 0
+                    'first_blood_points' => $firstBloodPoints,
+                    'is_first_blood' => $isFirstBlood
                 ]
             ]);
         }
