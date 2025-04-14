@@ -313,9 +313,11 @@ class LabController extends Controller
         // For single flag type
         if ($challenge->flag_type === 'single') {
             $challenge->flag_data = [
-                'bytes' => $challenge->bytes,
-                'first_blood_bytes' => $challenge->firstBloodBytes,
-                'solved_count' => $solvedCount,
+                [
+                    'bytes' => $challenge->bytes,
+                    'first_blood_bytes' => $challenge->firstBloodBytes,
+                    'solved_count' => $solvedCount,
+                ]
             ];
             // Remove flags relationship data for single flag challenges
             unset($challenge->flags);
