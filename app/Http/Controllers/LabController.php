@@ -813,19 +813,23 @@ class LabController extends Controller
             $firstBloodPoints = 0;
             
             if ($challenge->flag_type === 'multiple_all') {
+                // Get all flags solved by this user for this challenge
                 $solvedFlags = $challenge->submissions()
                     ->where('user_uuid', auth('api')->user()->uuid)
                     ->where('solved', true)
                     ->pluck('flag')
+                    ->unique()
                     ->toArray();
                 
+                // Get all available flags for this challenge
                 $allFlags = $challenge->flags->pluck('flag')->toArray();
                 
-                // Fix: Check if all flags are solved by comparing arrays
+                // Check if all flags are solved by comparing arrays
                 $allFlagsSolved = count(array_intersect($solvedFlags, $allFlags)) === count($allFlags);
                 
                 // For multiple_all, points are only awarded when all flags are solved
                 if ($allFlagsSolved) {
+                    // Always award base points for solving all flags
                     $points = $challenge->bytes;
                     
                     // Check if this is first blood for all flags
@@ -903,7 +907,9 @@ class LabController extends Controller
                     'all_flags_solved' => $allFlagsSolved,
                     'points' => $points,
                     'first_blood_points' => $firstBloodPoints,
-                    'is_first_blood' => $firstBloodPoints > 0
+                    'is_first_blood' => $firstBloodPoints > 0,
+                    'total_flags' => $challenge->flag_type === 'multiple_all' ? count($allFlags) : null,
+                    'solved_flags' => $challenge->flag_type === 'multiple_all' ? count($solvedFlags) : null
                 ]
             ], 200);
         }
@@ -986,6 +992,7 @@ class LabController extends Controller
         if ($challenge->flag_type === 'multiple_all') {
             // For multiple_all, points are only awarded when all flags are solved
             if ($allFlagsSolved) {
+                // Always award base points if all flags are solved
                 $points = $challenge->bytes;
                 
                 // Check if this user has first blood for all flags
