@@ -27,7 +27,7 @@ class Challange extends Model
         'flag_type' => 'string'
     ];
 
-    protected $appends = ['category_icon_url'];
+    protected $appends = ['category_icon_url', 'flag_data'];
 
     public static function boot()
     {
@@ -71,6 +71,28 @@ class Challange extends Model
     public function getCategoryIconUrlAttribute()
     {
         return $this->category->icon ? asset('storage/' . $this->category->icon) : null;
+    }
+
+    public function getFlagDataAttribute()
+    {
+        if ($this->flag_type === 'single') {
+            return [
+                [
+                    'bytes' => $this->bytes,
+                    'first_blood_bytes' => $this->firstBloodBytes,
+                    'solved_count' => $this->submissions()->where('solved', true)->count(),
+                ]
+            ];
+        } elseif ($this->flag_type === 'multiple_all') {
+            return [
+                [
+                    'bytes' => $this->bytes,
+                    'first_blood_bytes' => $this->firstBloodBytes,
+                    'solved_count' => $this->submissions()->where('solved', true)->count(),
+                ]
+            ];
+        }
+        return null;
     }
 
     protected $hidden = [
