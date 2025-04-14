@@ -63,6 +63,9 @@ class ChallangeResource extends Resource
                 Forms\Components\TextInput::make('firstBloodBytes')
                     ->required()
                     ->numeric(),
+                Forms\Components\TextInput::make('made_by')
+                    ->label('Made By')
+                    ->required(),
                 Select::make('flag_type')
                     ->label('Flag Type')
                     ->options([
@@ -178,6 +181,9 @@ class ChallangeResource extends Resource
                 Tables\Columns\TextColumn::make('bytes')
                     ->numeric()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('made_by')
+                    ->label('Made By')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

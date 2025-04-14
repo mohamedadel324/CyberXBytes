@@ -17,7 +17,8 @@ class Challange extends Model
         'link',
         'firstBloodBytes',
         'flag',
-        'flag_type'
+        'flag_type',
+        'made_by'
     ];
 
     protected $casts = [

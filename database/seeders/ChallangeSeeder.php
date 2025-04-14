@@ -47,6 +47,7 @@ class ChallangeSeeder extends Seeder
                         'bytes' => $bytes,
                         'flag' => "flag_{$labCategory->uuid}_{$category->uuid}_{$i}",
                         'firstBloodBytes' => $firstBloodBytes,
+                        'made_by' => 'Admin',
                     ]);
                 }
             }
