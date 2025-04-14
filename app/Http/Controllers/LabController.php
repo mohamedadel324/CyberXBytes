@@ -370,8 +370,12 @@ class LabController extends Controller
             $challenge->flags_count = $challenge->flags->count();
         }
 
+        // Convert to array and remove unwanted fields
         $challengeData = $challenge->toArray();
         $challengeData['solved_count'] = $solvedCount;
+        
+        // Remove flags from response
+        unset($challengeData['flags']);
 
         return response()->json([
             'status' => 'success',
