@@ -517,6 +517,11 @@ class EventChallengeController extends Controller
 
     public function getChallengeDetails($eventChallengeUuid)
     {
+        $challange =  EventChallange::where('id', $eventChallengeUuid)->first();
+        return response()->json([
+            'status' => 'success',
+            'data' => $challange
+        ]);
         $challenge = EventChallange::where('id', $eventChallengeUuid)
             ->with([
                 'category:uuid,name,icon', 
