@@ -96,8 +96,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
 
         // Challenge management
         Route::get('{eventUuid}/challenges', [EventChallengeController::class, 'listChallenges']);
-        Route::get('/challenges/{eventChallengeUuid}', [EventChallengeController::class, 'show']);
-        Route::get('challenges/{eventChallengeUuid}', [EventChallengeController::class, 'getChallengeDetails']);
+        Route::get('challenges/{eventChallengeUuid}', [EventChallengeController::class, 'show']);
 
         Route::get('challenges/{eventChallengeUuid}/solved-flags', [EventChallengeController::class, 'getSolvedFlags']);
         Route::get('challenges/{eventChallengeUuid}/check', [EventChallengeController::class, 'checkIfSolved']);
