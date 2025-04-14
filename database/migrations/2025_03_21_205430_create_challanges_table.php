@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('difficulty')->only('easy', 'medium', 'hard', 'very_hard');
             $table->integer('bytes');
             $table->integer('firstBloodBytes');
-            $table->text('flag');   
+            $table->text('flag')->nullable();   
             $table->enum('flag_type', ['single', 'multiple_all', 'multiple_individual'])->default('single');
             $table->longText('file')->nullable();
             $table->longText('link')->nullable();
