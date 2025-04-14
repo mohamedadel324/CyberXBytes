@@ -310,7 +310,6 @@ class LabController extends Controller
         // For single flag type
         if ($challenge->flag_type === 'single') {
             $challenge->flags_data = [[
-                'flag' => $challenge->flag,
                 'bytes' => $challenge->bytes,
                 'first_blood_bytes' => $challenge->firstBloodBytes,
                 'solved_count' => $solvedCount,
@@ -319,7 +318,6 @@ class LabController extends Controller
         // For multiple_all type
         else if ($challenge->flag_type === 'multiple_all') {
             $challenge->flags_data = [[
-                'flag' => $challenge->flag,
                 'bytes' => $challenge->bytes,
                 'first_blood_bytes' => $challenge->firstBloodBytes,
                 'solved_count' => $solvedCount,
