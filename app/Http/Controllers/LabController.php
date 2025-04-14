@@ -373,6 +373,15 @@ class LabController extends Controller
                 $challenge->total_bytes = $challenge->bytes;
                 $challenge->total_first_blood_bytes = $challenge->firstBloodBytes;
                 $challenge->solved_count = $solvedCount;
+                
+                // Set flag_data for multiple_all to be an array with a single object
+                $challenge->flag_data = [
+                    [
+                        'bytes' => $challenge->bytes,
+                        'first_blood_bytes' => $challenge->firstBloodBytes,
+                        'solved_count' => $solvedCount,
+                    ]
+                ];
             }
             // For multiple_individual, we don't need to add a total solved count
             // as we're showing individual solved counts for each flag
