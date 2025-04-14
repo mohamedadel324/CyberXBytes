@@ -266,39 +266,5 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Get all available time zones for the frontend
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getTimeZones()
-    {
-        $timeZones = timezone_identifiers_list();
-        
-        // Group time zones by region for better organization
-        $groupedTimeZones = [];
-        foreach ($timeZones as $timeZone) {
-            $parts = explode('/', $timeZone);
-            $region = $parts[0];
-            
-            if (!isset($groupedTimeZones[$region])) {
-                $groupedTimeZones[$region] = [];
-            }
-            
-            $groupedTimeZones[$region][] = $timeZone;
-        }
-        
-        // Sort regions alphabetically
-        ksort($groupedTimeZones);
-        
-        // Sort time zones within each region
-        foreach ($groupedTimeZones as &$zones) {
-            sort($zones);
-        }
-        
-        return response()->json([
-            'time_zones' => $groupedTimeZones
-        ]);
-    }
 
 }
