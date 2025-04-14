@@ -813,27 +813,32 @@ class LabController extends Controller
             $firstBloodPoints = 0;
             
             if ($challenge->flag_type === 'multiple_all') {
-                // Get all flags solved by this user for this challenge
-                $solvedFlags = $challenge->submissions()
+                // Get all flags available for this challenge
+                $allFlags = $challenge->flags->pluck('flag')->toArray();
+                $totalFlags = count($allFlags);
+                
+                // Get all flags this specific user has solved
+                $userSolvedFlags = $challenge->submissions()
                     ->where('user_uuid', auth('api')->user()->uuid)
                     ->where('solved', true)
                     ->pluck('flag')
                     ->unique()
+                    ->values()
                     ->toArray();
                 
-                // Get all available flags for this challenge
-                $allFlags = $challenge->flags->pluck('flag')->toArray();
+                $userSolvedCount = count($userSolvedFlags);
                 
-                // Check if all flags are solved by comparing arrays
-                $allFlagsSolved = count(array_intersect($solvedFlags, $allFlags)) === count($allFlags);
+                // Check if this user has solved all flags
+                $allFlagsSolved = count(array_intersect($userSolvedFlags, $allFlags)) === $totalFlags;
                 
-                // For multiple_all, points are only awarded when all flags are solved
+                // Only award points if ALL flags are solved
                 if ($allFlagsSolved) {
                     // Always award base points for solving all flags
                     $points = $challenge->bytes;
                     
-                    // Check if this is first blood for all flags
+                    // Check if this user was the first to solve all flags
                     $isFirstBlood = true;
+                    
                     foreach ($allFlags as $flag) {
                         $firstSolver = $challenge->submissions()
                             ->where('flag', $flag)
@@ -908,8 +913,7 @@ class LabController extends Controller
                     'points' => $points,
                     'first_blood_points' => $firstBloodPoints,
                     'is_first_blood' => $firstBloodPoints > 0,
-                    'total_flags' => $challenge->flag_type === 'multiple_all' ? count($allFlags) : null,
-                    'solved_flags' => $challenge->flag_type === 'multiple_all' ? count($solvedFlags) : null
+                   
                 ]
             ], 200);
         }
@@ -1042,6 +1046,10 @@ class LabController extends Controller
                 'all_flags_solved' => $allFlagsSolved,
                 'points' => $points,
                 'first_blood_points' => $firstBloodPoints,
+                'debug' => $challenge->flag_type === 'multiple_all' ? [
+                    'solved_flags_by_user' => $solvedFlags->pluck('flag')->toArray(),
+                    'all_flags_available' => $allFlags->pluck('flag')->toArray()
+                ] : null,
                 'solved_flags_data' => $solvedFlags->map(function($solvedFlag) use ($user, $challenge) {
                     $solvedAt = $challenge->submissions()
                         ->where('user_uuid', $user->uuid)
