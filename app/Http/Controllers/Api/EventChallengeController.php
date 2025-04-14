@@ -517,10 +517,9 @@ class EventChallengeController extends Controller
 
     public function getChallengeDetails($eventChallengeUuid)
     {
-        $challange =  EventChallange::where('id', $eventChallengeUuid)->first();
         return response()->json([
             'status' => 'success',
-            'data' => $challange
+            'data' => '555'
         ]);
         $challenge = EventChallange::where('id', $eventChallengeUuid)
             ->with([
@@ -543,7 +542,7 @@ class EventChallengeController extends Controller
         if (!$challenge) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Challenge noasdast found'
+                'message' => 'Challenge not found'
             ], 404);
         }
 
