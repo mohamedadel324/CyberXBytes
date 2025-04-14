@@ -313,7 +313,6 @@ class LabController extends Controller
         // For single flag type
         if ($challenge->flag_type === 'single') {
             $challenge->flag_data = [
-                'flag' => $challenge->flag,
                 'bytes' => $challenge->bytes,
                 'first_blood_bytes' => $challenge->firstBloodBytes,
                 'solved_count' => $solvedCount,
@@ -377,6 +376,9 @@ class LabController extends Controller
 
         $challengeData = $challenge->toArray();
         
+        // Remove the actual flags data to prevent exposing sensitive information
+        unset($challengeData['flags']);
+        
         // Only add solved_count to the response for single and multiple_all types
         if ($challenge->flag_type !== 'multiple_individual') {
             $challengeData['solved_count'] = $solvedCount;
@@ -418,9 +420,16 @@ class LabController extends Controller
             }
         });
 
+        // Convert to array and remove the actual flags data
+        $challengesData = $challenges->map(function($challenge) {
+            $challengeData = $challenge->toArray();
+            unset($challengeData['flags']);
+            return $challengeData;
+        });
+
         return response()->json([
             'status' => 'success',
-            'data' => $challenges,
+            'data' => $challengesData,
             'count' => $challenges->count()
         ]);
     }
@@ -465,7 +474,6 @@ class LabController extends Controller
                 'data' => [
                     'flag_type' => $flagType,
                     'flag_type_description' => $flagTypeDescription,
-                    'flag' => $challenge->flag,
                     'bytes' => $challenge->bytes,
                     'first_blood_bytes' => $challenge->firstBloodBytes,
                 ]
