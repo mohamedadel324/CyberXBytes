@@ -41,8 +41,10 @@ class UserController extends Controller
             'name' => 'sometimes|required|string|max:255',
             'user_name' => 'sometimes|required|string|max:255|unique:users,user_name,' . auth('api')->user()->id,
             'country' => 'sometimes|required|string|max:255',
+            'time_zone' => 'sometimes|required|string|timezone',
         ]);
 
+        
         $request->user()->update($validatedData);
 
         return response()->json([
