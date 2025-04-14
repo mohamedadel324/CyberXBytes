@@ -717,7 +717,7 @@ class EventChallengeController extends Controller
 
     public function showChallenge($challengeUuid) {
         $challenge = EventChallange::with(['category:uuid,icon', 'flags'])
-            ->where('uuid', $challengeUuid)
+            ->where('id', $challengeUuid)
             ->first();
 
         if (!$challenge) {
