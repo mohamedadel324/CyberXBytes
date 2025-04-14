@@ -514,7 +514,13 @@ class EventChallengeController extends Controller
             ]
         ]);
     }
-
+    public function show ($eventChallengeUuid)
+    {
+        return response()->json([
+            'status' => 'success',
+            'data' => '555'
+        ]);
+    }
     public function getChallengeDetails($eventChallengeUuid)
     {
         return response()->json([
