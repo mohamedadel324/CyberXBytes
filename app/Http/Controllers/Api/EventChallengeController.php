@@ -7,6 +7,7 @@ use App\Models\EventChallange;
 use App\Models\EventChallangeSubmission;
 use App\Models\EventChallangeFlagSubmission;
 use App\Models\EventTeam;
+use App\Models\User;
 use App\Traits\HandlesTimezones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -715,125 +716,137 @@ class EventChallengeController extends Controller
 
 
     public function showChallenge($challengeUuid) {
-        $challange =  EventChallange::where('id', $challengeUuid)->first();
-        return response()->json([
-            'status' => 'success',
-            'data' => $challange
-        ]);
-        $challenge = EventChallange::where('id', $eventChallengeUuid)
-            ->with([
-                'category:uuid,name,icon', 
-                'solvedBy' => function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                }, 
-                'flags' => function($query) {
-                    $query->orderBy('order', 'asc');
-                }, 
-                'flags.solvedBy' => function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                },
-                'submissions' => function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                }
-            ])
+        $challenge = EventChallange::with(['category:uuid,icon', 'flags'])
+            ->where('uuid', $challengeUuid)
             ->first();
 
         if (!$challenge) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Challenge noasdast found'
+                'message' => 'Challenge not found'
             ], 404);
         }
 
-        $isSolved = $challenge->solvedBy->isNotEmpty();
+        $challenge->category_icon = $challenge->category->icon ?? null;
+        unset($challenge->category);
+
+        // Get solved count for the challenge
+        $solvedCount = $challenge->submissions()->where('solved', true)->count();
         
-        // Handle different flag types
-        $flagData = [];
-        
-        if ($challenge->flag_type === 'single') {
-            $flagData = [
-                'type' => 'single',
-                'solved' => $isSolved,
-                'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
-                'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0,
-                'submissions' => $challenge->submissions->map(function($submission) {
-                    return [
-                        'submission' => $submission->submission,
-                        'solved' => $submission->solved,
-                        'solved_at' => $submission->solved ? $this->formatInUserTimezone($submission->solved_at) : null,
-                        'attempts' => $submission->attempts,
-                        'created_at' => $this->formatInUserTimezone($submission->created_at)
-                    ];
-                })
-            ];
-        } else {
-            // For multiple flags
-            $solvedFlags = $challenge->flags()
-                ->whereHas('solvedBy', function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                })
-                ->get();
+        // Get first blood information
+        $firstBlood = null;
+        if ($solvedCount > 0) {
+            $firstSolver = $challenge->submissions()
+                ->where('solved', true)
+                ->orderBy('created_at', 'asc')
+                ->first();
             
-            $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
-            
-            $flagData = [
-                'type' => $challenge->flag_type,
-                'total_flags' => $challenge->flags->count(),
-                'solved_flags' => $solvedFlags->count(),
-                'all_solved' => $allFlagsSolved,
-                'flags' => $challenge->flags->map(function($flag) use ($solvedFlags) {
-                    $isFlagSolved = $solvedFlags->contains('id', $flag->id);
-                    $solvedByUser = $flag->solvedBy->isNotEmpty();
-                    
-                    // Get flag submissions
-                    $flagSubmissions = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
-                        ->where('user_uuid', Auth::user()->uuid)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
-                    
-                    return [
-                        'id' => $flag->id,
-                        'name' => $flag->name,
-                        'description' => $flag->description,
-                        'bytes' => $flag->bytes,
-                        'first_blood_bytes' => $flag->firstBloodBytes,
-                        'solved' => $isFlagSolved,
-                        'solved_at' => $solvedByUser ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null,
-                        'attempts' => $solvedByUser ? $flag->solvedBy->first()->pivot->attempts : 0,
-                        'submissions' => $flagSubmissions->map(function($submission) {
-                            return [
-                                'submission' => $submission->submission,
-                                'solved' => $submission->solved,
-                                'solved_at' => $submission->solved ? $this->formatInUserTimezone($submission->solved_at) : null,
-                                'attempts' => $submission->attempts,
-                                'created_at' => $this->formatInUserTimezone($submission->created_at)
-                            ];
-                        })
+            if ($firstSolver) {
+                $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
+                if ($firstBloodUser) {
+                    $firstBlood = [
+                        'user_name' => $firstBloodUser->user_name,
+                        'profile_image' => $firstBloodUser->profile_image ? asset('storage/profile_images/' . $firstBloodUser->profile_image) : null,
+                        'solved_at' => $firstSolver->created_at,
                     ];
-                })
-            ];
+                }
+            }
         }
+        $challenge->first_blood = $firstBlood;
         
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'id' => $challenge->id,
-                'title' => $challenge->title,
-                'description' => $challenge->description,
-                'category' => [
-                    'title' => $challenge->category->name,
-                    'icon_url' => $challenge->category_icon_url
-                ],
-                'difficulty' => $challenge->difficulty,
+        // Add flag information
+        $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+        
+        // For single flag type
+        if ($challenge->flag_type === 'single') {
+            $challenge->flags_data = [[
                 'bytes' => $challenge->bytes,
                 'first_blood_bytes' => $challenge->firstBloodBytes,
-                'file' => $challenge->file,
-                'link' => $challenge->link,
-                'solved' => $isSolved,
-                'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
-                'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0,
-                'flag_data' => $flagData
-            ]
+                'solved_count' => $solvedCount,
+            ]];
+        }
+        // For multiple_all type
+        else if ($challenge->flag_type === 'multiple_all') {
+            $challenge->flags_data = [[
+                'bytes' => $challenge->bytes,
+                'first_blood_bytes' => $challenge->firstBloodBytes,
+                'solved_count' => $solvedCount,
+            ]];
+        }
+        // For multiple_individual type
+        else if ($challenge->flag_type === 'multiple_individual' && $challenge->flags) {
+            $flagsData = [];
+            
+            foreach ($challenge->flags as $flag) {
+                // Get solved count for this flag
+                $flagSolvedCount = $challenge->submissions()
+                    ->where('flag', $flag->flag)
+                    ->where('solved', true)
+                    ->count();
+                
+                // Get first blood for this flag
+                $flagFirstBlood = null;
+                if ($flagSolvedCount > 0) {
+                    $flagFirstSolver = $challenge->submissions()
+                        ->where('flag', $flag->flag)
+                        ->where('solved', true)
+                        ->orderBy('created_at', 'asc')
+                        ->first();
+                    
+                    if ($flagFirstSolver) {
+                        $flagFirstBloodUser = User::where('uuid', $flagFirstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
+                        if ($flagFirstBloodUser) {
+                            $flagFirstBlood = [
+                                'user_name' => $flagFirstBloodUser->user_name,
+                                'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/profile_images/' . $flagFirstBloodUser->profile_image) : null,
+                                'solved_at' => $flagFirstSolver->created_at,
+                            ];
+                        }
+                    }
+                }
+                
+                $flagsData[] = [
+                    'id' => $flag->id,
+                    'name' => $flag->name,
+                    'description' => $flag->description,
+                    'bytes' => $flag->bytes,
+                    'first_blood_bytes' => $flag->firstBloodBytes,
+                    'solved_count' => $flagSolvedCount,
+                    'first_blood' => $flagFirstBlood,
+                ];
+            }
+            
+            $challenge->flags_data = $flagsData;
+            $challenge->flags_count = $challenge->flags->count();
+        }
+
+        // Convert to array and remove unwanted fields
+        $challengeData = $challenge->toArray();
+        $challengeData['solved_count'] = $solvedCount;
+        
+        // Remove flags from response
+        unset($challengeData['flags']);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $challengeData
         ]);
+    }
+    
+    /**
+     * Get flag type description 
+     * 
+     * @param string $flagType
+     * @return string
+     */
+    private function getFlagTypeDescription($flagType)
+    {
+        $descriptions = [
+            'single' => 'Single flag challenge - solve one flag to complete',
+            'multiple_all' => 'Multiple flags challenge - solve all flags to get points',
+            'multiple_individual' => 'Multiple flags challenge - get points for each flag solved',
+        ];
+        
+        return $descriptions[$flagType] ?? 'Unknown flag type';
     }
 }
