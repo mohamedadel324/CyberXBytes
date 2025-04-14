@@ -309,15 +309,24 @@ class LabController extends Controller
         
         // For single flag type
         if ($challenge->flag_type === 'single') {
-            $challenge->flags_data = [
+            $challenge->flags_data = [[
                 'flag' => $challenge->flag,
                 'bytes' => $challenge->bytes,
                 'first_blood_bytes' => $challenge->firstBloodBytes,
                 'solved_count' => $solvedCount,
-            ];
+            ]];
         }
-        // For multiple flag types
-        else if ($challenge->flags) {
+        // For multiple_all type
+        else if ($challenge->flag_type === 'multiple_all') {
+            $challenge->flags_data = [[
+                'flag' => $challenge->flag,
+                'bytes' => $challenge->bytes,
+                'first_blood_bytes' => $challenge->firstBloodBytes,
+                'solved_count' => $solvedCount,
+            ]];
+        }
+        // For multiple_individual type
+        else if ($challenge->flag_type === 'multiple_individual' && $challenge->flags) {
             $flagsData = [];
             
             foreach ($challenge->flags as $flag) {
@@ -361,16 +370,6 @@ class LabController extends Controller
             
             $challenge->flags_data = $flagsData;
             $challenge->flags_count = $challenge->flags->count();
-            
-            // For multiple_all, add total bytes and first blood bytes
-            if ($challenge->flag_type === 'multiple_all') {
-                $challenge->flags_data = [
-                    'flag' => $challenge->flag,
-                    'bytes' => $challenge->bytes,
-                    'first_blood_bytes' => $challenge->firstBloodBytes,
-                    'solved_count' => $solvedCount,
-                ];
-            }
         }
 
         $challengeData = $challenge->toArray();
