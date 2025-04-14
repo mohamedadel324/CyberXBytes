@@ -35,6 +35,7 @@ Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('change-socialmedia-links', [UserController::class, 'changeSocialMediaLinks']);
     Route::post('unlink-socialmedia-links', [UserController::class, 'unlinkSocialMedia']);
+    Route::get('time-zones', [UserController::class, 'getTimeZones']);
 
     Route::post('change-profile-image', [UserController::class, 'changeProfileImage']);
     
