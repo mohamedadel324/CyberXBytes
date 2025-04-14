@@ -514,125 +514,7 @@ class EventChallengeController extends Controller
             ]
         ]);
     }
-
-    public function show($eventChallengeUuid)
-    {
-        $challenge = EventChallange::where('uuid', $eventChallengeUuid)
-            ->with([
-                'category:uuid,name,icon', 
-                'solvedBy' => function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                }, 
-                'flags' => function($query) {
-                    $query->orderBy('order', 'asc');
-                }, 
-                'flags.solvedBy' => function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                },
-                'submissions' => function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                }
-            ])
-            ->first();
-
-        if (!$challenge) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Challenge not found'
-            ], 404);
-        }
-
-        $isSolved = $challenge->solvedBy->isNotEmpty();
-        
-        // Handle different flag types
-        $flagData = [];
-        
-        if ($challenge->flag_type === 'single') {
-            $flagData = [
-                'type' => 'single',
-                'solved' => $isSolved,
-                'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
-                'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0,
-                'submissions' => $challenge->submissions->map(function($submission) {
-                    return [
-                        'submission' => $submission->submission,
-                        'solved' => $submission->solved,
-                        'solved_at' => $submission->solved ? $this->formatInUserTimezone($submission->solved_at) : null,
-                        'attempts' => $submission->attempts,
-                        'created_at' => $this->formatInUserTimezone($submission->created_at)
-                    ];
-                })
-            ];
-        } else {
-            // For multiple flags
-            $solvedFlags = $challenge->flags()
-                ->whereHas('solvedBy', function($query) {
-                    $query->where('user_uuid', Auth::user()->uuid);
-                })
-                ->get();
-            
-            $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
-            
-            $flagData = [
-                'type' => $challenge->flag_type,
-                'total_flags' => $challenge->flags->count(),
-                'solved_flags' => $solvedFlags->count(),
-                'all_solved' => $allFlagsSolved,
-                'flags' => $challenge->flags->map(function($flag) use ($solvedFlags) {
-                    $isFlagSolved = $solvedFlags->contains('id', $flag->id);
-                    $solvedByUser = $flag->solvedBy->isNotEmpty();
-                    
-                    // Get flag submissions
-                    $flagSubmissions = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
-                        ->where('user_uuid', Auth::user()->uuid)
-                        ->orderBy('created_at', 'desc')
-                        ->get();
-                    
-                    return [
-                        'id' => $flag->id,
-                        'name' => $flag->name,
-                        'description' => $flag->description,
-                        'bytes' => $flag->bytes,
-                        'first_blood_bytes' => $flag->firstBloodBytes,
-                        'solved' => $isFlagSolved,
-                        'solved_at' => $solvedByUser ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null,
-                        'attempts' => $solvedByUser ? $flag->solvedBy->first()->pivot->attempts : 0,
-                        'submissions' => $flagSubmissions->map(function($submission) {
-                            return [
-                                'submission' => $submission->submission,
-                                'solved' => $submission->solved,
-                                'solved_at' => $submission->solved ? $this->formatInUserTimezone($submission->solved_at) : null,
-                                'attempts' => $submission->attempts,
-                                'created_at' => $this->formatInUserTimezone($submission->created_at)
-                            ];
-                        })
-                    ];
-                })
-            ];
-        }
-        
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'id' => $challenge->id,
-                'title' => $challenge->title,
-                'description' => $challenge->description,
-                'category' => [
-                    'title' => $challenge->category->name,
-                    'icon_url' => $challenge->category_icon_url
-                ],
-                'difficulty' => $challenge->difficulty,
-                'bytes' => $challenge->bytes,
-                'first_blood_bytes' => $challenge->firstBloodBytes,
-                'file' => $challenge->file,
-                'link' => $challenge->link,
-                'solved' => $isSolved,
-                'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
-                'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0,
-                'flag_data' => $flagData
-            ]
-        ]);
-    }
+    
 
     public function getSolvedFlags($eventChallengeUuid)
     {
@@ -827,6 +709,130 @@ class EventChallengeController extends Controller
                         'is_first_blood' => $solvedFlag->solvedBy()->orderBy('event_flag_solved.solved_at', 'asc')->first()->id === $team->id
                     ];
                 })
+            ]
+        ]);
+    }
+
+
+    public function showChallenge($challengeUuid) {
+        $challange =  EventChallange::where('id', $challengeUuid)->first();
+        return response()->json([
+            'status' => 'success',
+            'data' => $challange
+        ]);
+        $challenge = EventChallange::where('id', $eventChallengeUuid)
+            ->with([
+                'category:uuid,name,icon', 
+                'solvedBy' => function($query) {
+                    $query->where('user_uuid', Auth::user()->uuid);
+                }, 
+                'flags' => function($query) {
+                    $query->orderBy('order', 'asc');
+                }, 
+                'flags.solvedBy' => function($query) {
+                    $query->where('user_uuid', Auth::user()->uuid);
+                },
+                'submissions' => function($query) {
+                    $query->where('user_uuid', Auth::user()->uuid);
+                }
+            ])
+            ->first();
+
+        if (!$challenge) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Challenge noasdast found'
+            ], 404);
+        }
+
+        $isSolved = $challenge->solvedBy->isNotEmpty();
+        
+        // Handle different flag types
+        $flagData = [];
+        
+        if ($challenge->flag_type === 'single') {
+            $flagData = [
+                'type' => 'single',
+                'solved' => $isSolved,
+                'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
+                'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0,
+                'submissions' => $challenge->submissions->map(function($submission) {
+                    return [
+                        'submission' => $submission->submission,
+                        'solved' => $submission->solved,
+                        'solved_at' => $submission->solved ? $this->formatInUserTimezone($submission->solved_at) : null,
+                        'attempts' => $submission->attempts,
+                        'created_at' => $this->formatInUserTimezone($submission->created_at)
+                    ];
+                })
+            ];
+        } else {
+            // For multiple flags
+            $solvedFlags = $challenge->flags()
+                ->whereHas('solvedBy', function($query) {
+                    $query->where('user_uuid', Auth::user()->uuid);
+                })
+                ->get();
+            
+            $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
+            
+            $flagData = [
+                'type' => $challenge->flag_type,
+                'total_flags' => $challenge->flags->count(),
+                'solved_flags' => $solvedFlags->count(),
+                'all_solved' => $allFlagsSolved,
+                'flags' => $challenge->flags->map(function($flag) use ($solvedFlags) {
+                    $isFlagSolved = $solvedFlags->contains('id', $flag->id);
+                    $solvedByUser = $flag->solvedBy->isNotEmpty();
+                    
+                    // Get flag submissions
+                    $flagSubmissions = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                        ->where('user_uuid', Auth::user()->uuid)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+                    
+                    return [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                        'solved' => $isFlagSolved,
+                        'solved_at' => $solvedByUser ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null,
+                        'attempts' => $solvedByUser ? $flag->solvedBy->first()->pivot->attempts : 0,
+                        'submissions' => $flagSubmissions->map(function($submission) {
+                            return [
+                                'submission' => $submission->submission,
+                                'solved' => $submission->solved,
+                                'solved_at' => $submission->solved ? $this->formatInUserTimezone($submission->solved_at) : null,
+                                'attempts' => $submission->attempts,
+                                'created_at' => $this->formatInUserTimezone($submission->created_at)
+                            ];
+                        })
+                    ];
+                })
+            ];
+        }
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $challenge->id,
+                'title' => $challenge->title,
+                'description' => $challenge->description,
+                'category' => [
+                    'title' => $challenge->category->name,
+                    'icon_url' => $challenge->category_icon_url
+                ],
+                'difficulty' => $challenge->difficulty,
+                'bytes' => $challenge->bytes,
+                'first_blood_bytes' => $challenge->firstBloodBytes,
+                'file' => $challenge->file,
+                'link' => $challenge->link,
+                'solved' => $isSolved,
+                'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
+                'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0,
+                'flag_data' => $flagData
             ]
         ]);
     }
