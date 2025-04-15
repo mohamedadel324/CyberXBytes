@@ -887,6 +887,7 @@ class LabController extends Controller
                         'flag_type' => $challenge->flag_type,
                         'data' => [
                             'is_first_blood' => $firstBloodPoints > 0
+                        
                         ]
                     ], 200);
                 }
