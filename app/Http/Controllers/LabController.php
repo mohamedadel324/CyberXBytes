@@ -885,6 +885,7 @@ class LabController extends Controller
                     return response()->json([
                         'status' => 'success',
                         'flag_type' => $challenge->flag_type,
+                        'is_first_blood' => $firstBloodPoints > 0,
 
                         'message' => 'The flag is correct. Keep going!'
                     ], 200);
