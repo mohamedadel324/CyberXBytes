@@ -59,6 +59,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/challenges/{uuid}/check-solved-flags', [LabController::class, 'checkUserSolvedFlags']);
     Route::get('/challenges/{uuid}/status', [LabController::class, 'getChallengeStatusAndFlags']);
     Route::get('/last-Three-challenges', [LabController::class, 'lastThreeChallenges']);
+    Route::get('/challenges/{uuid}/leaderboard', [LabController::class, 'getChallengeLeaderboard']);
 
     Route::post('/submit-challenge', [LabController::class, 'SubmitChallange']);
     Route::post('/check-if-solved', [LabController::class, 'checkIfSolved']);
@@ -102,7 +103,10 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         Route::get('challenges/{eventChallengeUuid}/solved-flags', [EventChallengeController::class, 'getSolvedFlags']);
         Route::get('challenges/{eventChallengeUuid}/check', [EventChallengeController::class, 'checkIfSolved']);
         Route::post('challenges/{eventChallengeUuid}/submit', [EventChallengeController::class, 'submit']);
+        Route::get('/leaderboard-of-team-of-event/{eventUuid}', [EventChallengeController::class, 'getTeamLeaderboard']);
         Route::get('{eventUuid}/scoreboard', [EventChallengeController::class, 'scoreboard']);
+        Route::get('{eventUuid}/team-leaderboard', [EventChallengeController::class, 'getTeamLeaderboard']);
+        Route::get('challenges/{challengeUuid}/team-leaderboard', [EventChallengeController::class, 'getTeamChallengeLeaderboard']);
         Route::get('{eventUuid}/team-stats', [EventChallengeController::class, 'teamStats']);
 
     // Challenge Categories
