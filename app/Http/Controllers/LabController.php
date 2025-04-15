@@ -803,9 +803,6 @@ class LabController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'You have already solved this flag',
-                    'data' => [
-                        'is_first_blood' => false
-                    ]
                 ], 400);
             }
 
@@ -1090,10 +1087,6 @@ class LabController extends Controller
                 'all_flags_solved' => $allFlagsSolved,
                 'points' => $points,
                 'first_blood_points' => $firstBloodPoints,
-                'debug' => $challenge->flag_type === 'multiple_all' ? [
-                    'solved_flags_by_user' => $solvedFlags->pluck('flag')->toArray(),
-                    'all_flags_available' => $allFlags->pluck('flag')->toArray()
-                ] : null,
                 'solved_flags_data' => $solvedFlags->map(function($solvedFlag) use ($user, $challenge) {
                     $solvedAt = $challenge->submissions()
                         ->where('user_uuid', $user->uuid)
@@ -1118,6 +1111,7 @@ class LabController extends Controller
                         'id' => $solvedFlag->id,
                         'name' => $solvedFlag->name,
                         'bytes' => $solvedFlag->bytes,
+                        'description' => $solvedFlag->description,
                         'first_blood_bytes' => $solvedFlag->firstBloodBytes,
                         'solved_at' => $solvedAt,
                         'attempts' => $attempts,
