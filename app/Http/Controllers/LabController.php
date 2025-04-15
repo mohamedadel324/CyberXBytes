@@ -702,7 +702,10 @@ class LabController extends Controller
             $challenge->submissions()->where('user_uuid', auth('api')->user()->uuid)->where('solved', true)->exists()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'You have already solved this challenge'
+                'message' => 'You have already solved this challenge',
+                'data' => [
+                    'is_first_blood' => false
+                ]
             ], 400);
         }
         
@@ -753,7 +756,10 @@ class LabController extends Controller
             ]);
             return response()->json([
                 'status' => 'error',
-                'message' => 'The flag is incorrect'
+                'message' => 'The flag is incorrect',
+                'data' => [
+                    'is_first_blood' => false
+                ]
             ], 400);
         } 
         // Handle multiple flag types
@@ -780,7 +786,8 @@ class LabController extends Controller
                     'status' => 'error',
                     'message' => 'The flag is incorrect',
                     'data' => [
-                        'flag_type' => $challenge->flag_type
+                        'flag_type' => $challenge->flag_type,
+                        'is_first_blood' => false
                     ]
                 ], 400);
             }
@@ -795,7 +802,10 @@ class LabController extends Controller
             if ($flagSubmission) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'You have already solved this flag'
+                    'message' => 'You have already solved this flag',
+                    'data' => [
+                        'is_first_blood' => false
+                    ]
                 ], 400);
             }
 
@@ -811,6 +821,7 @@ class LabController extends Controller
             $allFlagsSolved = false;
             $points = 0;
             $firstBloodPoints = 0;
+            $isFirstBlood = false;  // Initialize the flag for all cases
             
             if ($challenge->flag_type === 'multiple_all') {
                 // Get all flags available for this challenge
@@ -877,6 +888,7 @@ class LabController extends Controller
                             'flag_type' => $challenge->flag_type,
                             'flag_name' => $matchedFlag->name,
                             'all_flags_solved' => false,
+                            'is_first_blood' => false
                         ]
                     ], 200);
                 }
@@ -949,6 +961,7 @@ class LabController extends Controller
                 'data' => [
                     'flag_type' => $challenge->flag_type,
                     'flag_name' => $matchedFlag->name,
+                    'is_first_blood' => false,  // Add is_first_blood in the fallback case
                 ]
             ], 200);
         }
