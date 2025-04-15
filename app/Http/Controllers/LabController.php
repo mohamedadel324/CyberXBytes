@@ -880,15 +880,12 @@ class LabController extends Controller
                         ]
                     ], 200);
                 } else {
-                    // If not all flags are solved, just return a message without points
+                    // If not all flags are solved, just return a message without data array
                     return response()->json([
                         'status' => 'success',
                         'message' => 'The flag is correct',
                         'data' => [
-                            'flag_type' => $challenge->flag_type,
-                            'flag_name' => $matchedFlag->name,
-                            'all_flags_solved' => false,
-                            'is_first_blood' => false
+                            'is_first_blood' => $firstBloodPoints > 0
                         ]
                     ], 200);
                 }
