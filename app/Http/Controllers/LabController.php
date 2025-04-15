@@ -785,7 +785,6 @@ class LabController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'The flag is incorrect',
-                    
                     'data' => [
                         'flag_type' => $challenge->flag_type,
                         'is_first_blood' => false
@@ -870,7 +869,7 @@ class LabController extends Controller
                     
                     return response()->json([
                         'status' => 'success',
-                        'message' => 'The flag is correct. All flags solved!',
+                        'message' => 'The flag is correct',
                         'data' => [
                             'flag_type' => $challenge->flag_type,
                             'flag_name' => $matchedFlag->name,
@@ -881,13 +880,16 @@ class LabController extends Controller
                         ]
                     ], 200);
                 } else {
-                    // If not all flags are solved, just return a message without data
+                    // If not all flags are solved, just return a message without points
                     return response()->json([
                         'status' => 'success',
-                        'flag_type' => $challenge->flag_type,
-                        'is_first_blood' => $firstBloodPoints > 0,
-
-                        'message' => 'The flag is correct. Keep going!'
+                        'message' => 'The flag is correct',
+                        'data' => [
+                            'flag_type' => $challenge->flag_type,
+                            'flag_name' => $matchedFlag->name,
+                            'all_flags_solved' => false,
+                            'is_first_blood' => false
+                        ]
                     ], 200);
                 }
             } else if ($challenge->flag_type === 'multiple_individual') {
