@@ -885,10 +885,7 @@ class LabController extends Controller
                         'status' => 'success',
                         'message' => 'The flag is correct',
                         'flag_type' => $challenge->flag_type,
-                        'data' => [
-                            'is_first_blood' => $firstBloodPoints > 0
-                        
-                        ]
+
                     ], 200);
                 }
             } else if ($challenge->flag_type === 'multiple_individual') {
