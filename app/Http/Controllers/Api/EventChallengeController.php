@@ -124,7 +124,7 @@ class EventChallengeController extends Controller
                 foreach ($challenge->flags as $flag) {
                     // Get solved count for this flag
                     $flagSolvedCount = $challenge->submissions()
-                        ->where('flag', $flag->flag)
+                        ->where('submission', $flag->flag)
                         ->where('solved', true)
                         ->count();
                     
@@ -132,7 +132,7 @@ class EventChallengeController extends Controller
                     $flagFirstBlood = null;
                     if ($flagSolvedCount > 0) {
                         $flagFirstSolver = $challenge->submissions()
-                            ->where('flag', $flag->flag)
+                            ->where('submission', $flag->flag)
                             ->where('solved', true)
                             ->orderBy('created_at', 'asc')
                             ->first();
@@ -975,7 +975,7 @@ class EventChallengeController extends Controller
             foreach ($challenge->flags as $flag) {
                 // Get solved count for this flag
                 $flagSolvedCount = $challenge->submissions()
-                    ->where('flag', $flag->flag)
+                    ->where('submission', $flag->flag)
                     ->where('solved', true)
                     ->count();
                 
@@ -983,7 +983,7 @@ class EventChallengeController extends Controller
                 $flagFirstBlood = null;
                 if ($flagSolvedCount > 0) {
                     $flagFirstSolver = $challenge->submissions()
-                        ->where('flag', $flag->flag)
+                        ->where('submission', $flag->flag)
                         ->where('solved', true)
                         ->orderBy('created_at', 'asc')
                         ->first();
