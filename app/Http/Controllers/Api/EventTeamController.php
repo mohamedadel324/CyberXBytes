@@ -42,46 +42,46 @@ class EventTeamController extends Controller
             ], 404);
         }
 
-        // Check if team formation is open using strict timestamp comparison
-        $currentServerTime = time(); // Current server Unix timestamp
-        $startDateObj = new \DateTime($event->team_formation_start_date);
-        $endDateObj = new \DateTime($event->team_formation_end_date);
-        $startTimestamp = $startDateObj->getTimestamp();
-        $endTimestamp = $endDateObj->getTimestamp();
+        // DIRECT SERVER-SIDE TIME CHECK
+        $currentTime = time(); // Current server Unix timestamp
+        $startTime = strtotime($event->team_formation_start_date);
+        $endTime = strtotime($event->team_formation_end_date);
         
-        // Log team creation attempt
-        Log::info('Team Creation Attempt', [
+        // Hard debug output - always log every date check
+        \Illuminate\Support\Facades\Log::critical('TEAM TIME CHECK', [
             'event_uuid' => $eventUuid,
-            'event_title' => $event->title,
-            'user_uuid' => Auth::user()->uuid,
-            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-            'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-            'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp),
-            'time_diff_seconds' => $startTimestamp - $currentServerTime
+            'current_time' => date('Y-m-d H:i:s', $currentTime),
+            'current_timestamp' => $currentTime,
+            'formation_start' => date('Y-m-d H:i:s', $startTime),
+            'formation_start_timestamp' => $startTime,
+            'formation_end' => date('Y-m-d H:i:s', $endTime),
+            'formation_end_timestamp' => $endTime,
+            'time_diff' => $startTime - $currentTime,
+            'raw_start_date' => $event->team_formation_start_date,
+            'raw_end_date' => $event->team_formation_end_date,
+            'allowed' => ($currentTime >= $startTime && $currentTime <= $endTime) ? 'YES' : 'NO'
         ]);
         
-        if ($currentServerTime < $startTimestamp) {
-            $secondsRemaining = $startTimestamp - $currentServerTime;
-            $minutesRemaining = ceil($secondsRemaining / 60);
-            
+        // Only proceed if current time is between start and end times
+        if ($currentTime < $startTime) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation has not started yet. Try again in ' . $minutesRemaining . ' minutes.',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-                    'seconds_remaining' => $secondsRemaining
+                'message' => 'Team formation has not started yet',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'start_time' => date('Y-m-d H:i:s', $startTime),
+                    'seconds_remaining' => $startTime - $currentTime
                 ]
             ], 400);
         }
 
-        if ($currentServerTime > $endTimestamp) {
+        if ($currentTime > $endTime) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Team formation period has ended',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'end_time' => date('Y-m-d H:i:s', $endTime)
                 ]
             ], 400);
         }
@@ -137,45 +137,47 @@ class EventTeamController extends Controller
             ], 400);
         }
 
-        // Check if team formation period is active using strict timestamp comparison
-        $currentServerTime = time(); // Current server Unix timestamp
-        $startDateObj = new \DateTime($team->event->team_formation_start_date);
-        $endDateObj = new \DateTime($team->event->team_formation_end_date);
-        $startTimestamp = $startDateObj->getTimestamp();
-        $endTimestamp = $endDateObj->getTimestamp();
+        // DIRECT SERVER-SIDE TIME CHECK
+        $currentTime = time(); // Current server Unix timestamp
+        $startTime = strtotime($team->event->team_formation_start_date);
+        $endTime = strtotime($team->event->team_formation_end_date);
         
-        // Log team join attempt
-        Log::info('Team Join Attempt', [
+        // Hard debug output - always log every date check
+        \Illuminate\Support\Facades\Log::critical('TEAM JOIN TIME CHECK', [
             'team_uuid' => $teamUuid,
             'team_name' => $team->name,
-            'user_uuid' => Auth::user()->uuid,
-            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-            'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-            'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+            'current_time' => date('Y-m-d H:i:s', $currentTime),
+            'current_timestamp' => $currentTime,
+            'formation_start' => date('Y-m-d H:i:s', $startTime),
+            'formation_start_timestamp' => $startTime,
+            'formation_end' => date('Y-m-d H:i:s', $endTime),
+            'formation_end_timestamp' => $endTime,
+            'time_diff' => $startTime - $currentTime,
+            'raw_start_date' => $team->event->team_formation_start_date,
+            'raw_end_date' => $team->event->team_formation_end_date,
+            'allowed' => ($currentTime >= $startTime && $currentTime <= $endTime) ? 'YES' : 'NO'
         ]);
         
-        if ($currentServerTime < $startTimestamp) {
-            $secondsRemaining = $startTimestamp - $currentServerTime;
-            $minutesRemaining = ceil($secondsRemaining / 60);
-            
+        // Only proceed if current time is between start and end times
+        if ($currentTime < $startTime) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation has not started yet. Try again in ' . $minutesRemaining . ' minutes.',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-                    'seconds_remaining' => $secondsRemaining
+                'message' => 'Team formation has not started yet',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'start_time' => date('Y-m-d H:i:s', $startTime),
+                    'seconds_remaining' => $startTime - $currentTime
                 ]
             ], 400);
         }
 
-        if ($currentServerTime > $endTimestamp) {
+        if ($currentTime > $endTime) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Team formation period has ended',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'end_time' => date('Y-m-d H:i:s', $endTime)
                 ]
             ], 400);
         }
@@ -523,45 +525,48 @@ class EventTeamController extends Controller
 
         $team = $joinSecret->team;
 
-        // Check if team formation period is active using strict timestamp comparison
-        $currentServerTime = time(); // Current server Unix timestamp
-        $startDateObj = new \DateTime($team->event->team_formation_start_date);
-        $endDateObj = new \DateTime($team->event->team_formation_end_date);
-        $startTimestamp = $startDateObj->getTimestamp();
-        $endTimestamp = $endDateObj->getTimestamp();
+        // DIRECT SERVER-SIDE TIME CHECK
+        $currentTime = time(); // Current server Unix timestamp
+        $startTime = strtotime($team->event->team_formation_start_date);
+        $endTime = strtotime($team->event->team_formation_end_date);
         
-        // Log join with secret attempt
-        Log::info('Team Join With Secret Attempt', [
+        // Hard debug output - always log every date check
+        \Illuminate\Support\Facades\Log::critical('JOIN WITH SECRET TIME CHECK', [
             'team_uuid' => $team->id,
             'team_name' => $team->name,
             'user_uuid' => Auth::user()->uuid,
-            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-            'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-            'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+            'current_time' => date('Y-m-d H:i:s', $currentTime),
+            'current_timestamp' => $currentTime,
+            'formation_start' => date('Y-m-d H:i:s', $startTime),
+            'formation_start_timestamp' => $startTime,
+            'formation_end' => date('Y-m-d H:i:s', $endTime),
+            'formation_end_timestamp' => $endTime,
+            'time_diff' => $startTime - $currentTime,
+            'raw_start_date' => $team->event->team_formation_start_date,
+            'raw_end_date' => $team->event->team_formation_end_date,
+            'allowed' => ($currentTime >= $startTime && $currentTime <= $endTime) ? 'YES' : 'NO'
         ]);
         
-        if ($currentServerTime < $startTimestamp) {
-            $secondsRemaining = $startTimestamp - $currentServerTime;
-            $minutesRemaining = ceil($secondsRemaining / 60);
-            
+        // Only proceed if current time is between start and end times
+        if ($currentTime < $startTime) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation has not started yet. Try again in ' . $minutesRemaining . ' minutes.',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-                    'seconds_remaining' => $secondsRemaining
+                'message' => 'Team formation has not started yet',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'start_time' => date('Y-m-d H:i:s', $startTime),
+                    'seconds_remaining' => $startTime - $currentTime
                 ]
             ], 400);
         }
 
-        if ($currentServerTime > $endTimestamp) {
+        if ($currentTime > $endTime) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Team formation period has ended',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'end_time' => date('Y-m-d H:i:s', $endTime)
                 ]
             ], 400);
         }

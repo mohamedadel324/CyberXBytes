@@ -39,46 +39,48 @@ class EventChallengeController extends Controller
             ], 404);
         }
         
-        // Check if event has started using strict timestamp comparison
-        $currentServerTime = time(); // Current server Unix timestamp
-        $startDateObj = new \DateTime($event->start_date);
-        $endDateObj = new \DateTime($event->end_date);
-        $startTimestamp = $startDateObj->getTimestamp();
-        $endTimestamp = $endDateObj->getTimestamp();
+        // DIRECT SERVER-SIDE TIME CHECK
+        $currentTime = time(); // Current server Unix timestamp
+        $startTime = strtotime($event->start_date);
+        $endTime = strtotime($event->end_date);
         
-        // Log event access attempt
-        Log::info('Event Challenge Access Attempt', [
+        // Hard debug output - always log every date check
+        \Illuminate\Support\Facades\Log::critical('EVENT CHALLENGE ACCESS TIME CHECK', [
             'event_uuid' => $eventUuid,
             'event_title' => $event->title,
             'user_uuid' => $user->uuid,
-            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-            'event_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-            'event_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+            'current_time' => date('Y-m-d H:i:s', $currentTime),
+            'current_timestamp' => $currentTime,
+            'event_start' => date('Y-m-d H:i:s', $startTime),
+            'event_start_timestamp' => $startTime,
+            'event_end' => date('Y-m-d H:i:s', $endTime),
+            'event_end_timestamp' => $endTime,
+            'time_diff' => $startTime - $currentTime,
+            'raw_start_date' => $event->start_date,
+            'raw_end_date' => $event->end_date,
+            'allowed' => ($currentTime >= $startTime && $currentTime <= $endTime) ? 'YES' : 'NO'
         ]);
         
-        if ($currentServerTime < $startTimestamp) {
-            $secondsRemaining = $startTimestamp - $currentServerTime;
-            $minutesRemaining = ceil($secondsRemaining / 60);
-            
+        // Only proceed if current time is between start and end times
+        if ($currentTime < $startTime) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Event has not started yet. Access denied.',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'event_start_time' => date('Y-m-d H:i:s', $startTimestamp),
-                    'seconds_until_start' => $secondsRemaining,
-                    'minutes_until_start' => $minutesRemaining
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'start_time' => date('Y-m-d H:i:s', $startTime),
+                    'seconds_remaining' => $startTime - $currentTime
                 ]
             ], 403);
         }
         
-        if ($currentServerTime > $endTimestamp) {
+        if ($currentTime > $endTime) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Event has ended. Access denied.',
-                'time_check_details' => [
-                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
-                    'event_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'end_time' => date('Y-m-d H:i:s', $endTime)
                 ]
             ], 403);
         }
