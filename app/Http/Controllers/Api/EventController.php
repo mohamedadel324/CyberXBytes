@@ -115,6 +115,28 @@ class EventController extends Controller
             ], 404);
         }
 
+        // Check if event has ended
+        if ($event->end_date < now()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Event has ended'
+            ], 404);
+        }
+
+        // If registration period has ended, return limited information
+        if ($event->registration_end_date < now()) {
+            return response()->json([
+                'event' => [
+                    'uuid' => $event->uuid,
+                    'title' => $event->title,
+                    'description' => $event->description,
+                    'image' => url('storage/' . $event->image) ?: $event->image,
+                    'status' => 'under_working',
+                ]
+            ]);
+        }
+
+        // Otherwise return full event details
         return response()->json([
             'event' => [
                 'uuid' => $event->uuid,
