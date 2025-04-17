@@ -25,20 +25,18 @@ class EventRegistrationController extends Controller
         }
 
         // Check if registration is open
-        if (!$this->isNowBetween($event->registration_start_date, $event->registration_end_date)) {
-            if (now() < $event->registration_start_date) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Registration has not started yet'
-                ], 400);
-            }
+        if (now() < $event->registration_start_date) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Registration has not started yet'
+            ], 400);
+        }
 
-            if (now() > $event->registration_end_date) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Registration period has ended'
-                ], 400);
-            }
+        if (now() > $event->registration_end_date) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Registration period has ended'
+            ], 400);
         }
 
         // Check if user is already registered
