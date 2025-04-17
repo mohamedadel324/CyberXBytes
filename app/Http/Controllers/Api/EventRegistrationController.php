@@ -25,33 +25,38 @@ class EventRegistrationController extends Controller
             ], 404);
         }
 
-        // Check if registration is open using timezone-aware method
-        $now = now();
-        $startDate = $event->registration_start_date;
-        $endDate = $event->registration_end_date;
+        // Check if registration is open
+        $userTimezone = Auth::user()->time_zone ?? 'UTC';
+        $now = now()->setTimezone($userTimezone);
+        $startDate = $this->toUserTimezone($event->registration_start_date);
+        $endDate = $this->toUserTimezone($event->registration_end_date);
         
-        // Debug information to troubleshoot timezone issues
+        // Debug information
         Log::info('Registration check', [
             'event_uuid' => $eventUuid,
             'now' => $now->toIso8601String(),
-            'registration_start' => $startDate,
-            'registration_end' => $endDate,
-            'user_timezone' => Auth::user()->time_zone ?? 'UTC'
+            'registration_start' => $startDate ? $startDate->toIso8601String() : null,
+            'registration_end' => $endDate ? $endDate->toIso8601String() : null,
+            'user_timezone' => $userTimezone
         ]);
         
-        if ($now < $startDate) {
+        if ($startDate && $now < $startDate) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Registration has not started yet',
                 'now' => $now->toIso8601String(),
-                'start_date' => $startDate
+                'start_date' => $startDate->toIso8601String(),
+                'timezone' => $userTimezone
             ], 400);
         }
 
-        if ($now > $endDate) {
+        if ($endDate && $now > $endDate) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Registration period has ended'
+                'message' => 'Registration period has ended',
+                'now' => $now->toIso8601String(),
+                'end_date' => $endDate->toIso8601String(),
+                'timezone' => $userTimezone
             ], 400);
         }
 
