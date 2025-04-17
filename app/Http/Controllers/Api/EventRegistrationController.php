@@ -8,6 +8,7 @@ use App\Models\EventRegistration;
 use App\Traits\HandlesTimezones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class EventRegistrationController extends Controller
 {
@@ -24,15 +25,30 @@ class EventRegistrationController extends Controller
             ], 404);
         }
 
-        // Check if registration is open
-        if (now() < $event->registration_start_date) {
+        // Check if registration is open using timezone-aware method
+        $now = now();
+        $startDate = $event->registration_start_date;
+        $endDate = $event->registration_end_date;
+        
+        // Debug information to troubleshoot timezone issues
+        Log::info('Registration check', [
+            'event_uuid' => $eventUuid,
+            'now' => $now->toIso8601String(),
+            'registration_start' => $startDate,
+            'registration_end' => $endDate,
+            'user_timezone' => Auth::user()->time_zone ?? 'UTC'
+        ]);
+        
+        if ($now < $startDate) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Registration has not started yet'
+                'message' => 'Registration has not started yet',
+                'now' => $now->toIso8601String(),
+                'start_date' => $startDate
             ], 400);
         }
 
-        if (now() > $event->registration_end_date) {
+        if ($now > $endDate) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Registration period has ended'
