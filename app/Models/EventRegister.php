@@ -10,4 +10,6 @@ class EventRegister extends Model
         'event_uuid',
         'user_uuid',
     ];
+
+    
 }

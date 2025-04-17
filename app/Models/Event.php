@@ -98,7 +98,7 @@ class Event extends Model
 
     public function registrations()
     {
-        return $this->hasMany(EventRegistration::class);
+        return $this->hasMany(EventRegistration::class , 'event_uuid', 'uuid');
     }
 
     public function teams()
