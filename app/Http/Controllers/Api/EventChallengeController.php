@@ -49,7 +49,7 @@ class EventChallengeController extends Controller
             ->where(function($query) use ($user) {
                 $query->where('leader_uuid', $user->uuid)
                     ->orWhereHas('members', function($q) use ($user) {
-                        $q->where('user_uuid', $user->uuid);
+                        $q->where('uuid', $user->uuid);
                     });
             })
             ->first();
