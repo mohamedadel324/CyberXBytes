@@ -26,59 +26,56 @@ class EventRegistrationController extends Controller
             ], 404);
         }
 
-        // Debug information about the event dates
+        // Setup timezone handling
         $userTimezone = Auth::user()->time_zone ?? 'UTC';
         $now = now();
         $nowInUserTz = $now->copy()->setTimezone($userTimezone);
         
-        // Get raw dates from database
-        $rawStartDate = $event->registration_start_date;
-        $rawEndDate = $event->registration_end_date;
+        // Get dates from database
+        $startDate = $event->registration_start_date;
+        $endDate = $event->registration_end_date;
         
-        // Parse dates with timezone
-        $startDate = $rawStartDate ? Carbon::parse($rawStartDate)->setTimezone($userTimezone) : null;
-        $endDate = $rawEndDate ? Carbon::parse($rawEndDate)->setTimezone($userTimezone) : null;
+        // Ensure dates are Carbon instances with correct timezone
+        $startDateInUserTz = $startDate instanceof Carbon ? 
+            $startDate->copy()->setTimezone($userTimezone) : 
+            Carbon::parse($startDate)->setTimezone($userTimezone);
+            
+        $endDateInUserTz = $endDate instanceof Carbon ? 
+            $endDate->copy()->setTimezone($userTimezone) : 
+            Carbon::parse($endDate)->setTimezone($userTimezone);
         
-        // Log registration attempt
+        // Log registration attempt with exact timestamps
         Log::info('Event Registration Attempt', [
             'event_uuid' => $eventUuid,
-            'event_title' => $event->title,
-            'now' => $nowInUserTz->toIso8601String(),
-            'start_date' => $startDate ? $startDate->toIso8601String() : null,
-            'end_date' => $endDate ? $endDate->toIso8601String() : null,
-            'user_timezone' => $userTimezone
+            'now_exact' => $nowInUserTz->toDateTimeString(),
+            'start_exact' => $startDateInUserTz->toDateTimeString(),
+            'end_exact' => $endDateInUserTz->toDateTimeString(),
+            'now_timestamp' => $nowInUserTz->timestamp,
+            'start_timestamp' => $startDateInUserTz->timestamp,
+            'timezone' => $userTimezone
         ]);
         
-        // Add a 5 minute buffer before the start time to account for minor time discrepancies
-        $bufferMinutes = 5;
-        $startDateWithBuffer = $startDate ? $startDate->copy()->subMinutes($bufferMinutes) : null;
-        
-        // Check if registration is open (with buffer)
-        if ($startDateWithBuffer && $nowInUserTz < $startDateWithBuffer) {
-            $minutesUntilStart = $nowInUserTz->diffInMinutes($startDate, false);
+        // STRICT TIME CHECK: Check if current time is before registration start time
+        if ($nowInUserTz->timestamp < $startDateInUserTz->timestamp) {
+            $secondsUntilStart = $startDateInUserTz->timestamp - $nowInUserTz->timestamp;
+            $minutesUntilStart = ceil($secondsUntilStart / 60);
+            
             return response()->json([
                 'status' => 'error',
-                'message' => 'Registration has not started yet. Registration opens in ' . abs($minutesUntilStart) . ' minutes.',
-                'debug_info' => [
-                    'now' => $nowInUserTz->toIso8601String(),
-                    'start_date' => $startDate->toIso8601String(),
-                    'start_with_buffer' => $startDateWithBuffer->toIso8601String(),
-                    'buffer_minutes' => $bufferMinutes,
-                    'minutes_until_start' => abs($minutesUntilStart),
-                    'timezone' => $userTimezone
-                ]
+                'message' => 'Registration has not started yet. Please try again in ' . $minutesUntilStart . ' minutes.',
+                'current_time' => $nowInUserTz->toDateTimeString(),
+                'start_time' => $startDateInUserTz->toDateTimeString(),
+                'seconds_remaining' => $secondsUntilStart
             ], 400);
         }
 
-        if ($endDate && $nowInUserTz > $endDate) {
+        // STRICT TIME CHECK: Check if current time is after registration end time
+        if ($nowInUserTz->timestamp > $endDateInUserTz->timestamp) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Registration period has ended',
-                'debug_info' => [
-                    'now' => $nowInUserTz->toIso8601String(),
-                    'end_date' => $endDate->toIso8601String(),
-                    'timezone' => $userTimezone
-                ]
+                'current_time' => $nowInUserTz->toDateTimeString(),
+                'end_time' => $endDateInUserTz->toDateTimeString()
             ], 400);
         }
 
