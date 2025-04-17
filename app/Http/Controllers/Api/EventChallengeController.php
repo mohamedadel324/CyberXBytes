@@ -12,6 +12,7 @@ use App\Traits\HandlesTimezones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class EventChallengeController extends Controller
 {
@@ -38,19 +39,47 @@ class EventChallengeController extends Controller
             ], 404);
         }
         
-        // Check if event has started
-        if (now() < $event->start_date) {
+        // Check if event has started using strict timestamp comparison
+        $currentServerTime = time(); // Current server Unix timestamp
+        $startDateObj = new \DateTime($event->start_date);
+        $endDateObj = new \DateTime($event->end_date);
+        $startTimestamp = $startDateObj->getTimestamp();
+        $endTimestamp = $endDateObj->getTimestamp();
+        
+        // Log event access attempt
+        Log::info('Event Challenge Access Attempt', [
+            'event_uuid' => $eventUuid,
+            'event_title' => $event->title,
+            'user_uuid' => $user->uuid,
+            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+            'event_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+            'event_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+        ]);
+        
+        if ($currentServerTime < $startTimestamp) {
+            $secondsRemaining = $startTimestamp - $currentServerTime;
+            $minutesRemaining = ceil($secondsRemaining / 60);
+            
             return response()->json([
                 'status' => 'error',
-                'message' => 'Event has not started yet. Access denied.'
+                'message' => 'Event has not started yet. Access denied.',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'event_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+                    'seconds_until_start' => $secondsRemaining,
+                    'minutes_until_start' => $minutesRemaining
+                ]
             ], 403);
         }
         
-        // Check if event has ended
-        if (now() > $event->end_date) {
+        if ($currentServerTime > $endTimestamp) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Event has ended. Access denied.'
+                'message' => 'Event has ended. Access denied.',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'event_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                ]
             ], 403);
         }
         

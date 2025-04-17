@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class EventTeamController extends Controller
 {
@@ -41,21 +42,48 @@ class EventTeamController extends Controller
             ], 404);
         }
 
-        // Check if team formation is open
-        if (!$this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date)) {
-            if (now() < $event->team_formation_start_date) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Team formation has not started yet'
-                ], 400);
-            }
+        // Check if team formation is open using strict timestamp comparison
+        $currentServerTime = time(); // Current server Unix timestamp
+        $startDateObj = new \DateTime($event->team_formation_start_date);
+        $endDateObj = new \DateTime($event->team_formation_end_date);
+        $startTimestamp = $startDateObj->getTimestamp();
+        $endTimestamp = $endDateObj->getTimestamp();
+        
+        // Log team creation attempt
+        Log::info('Team Creation Attempt', [
+            'event_uuid' => $eventUuid,
+            'event_title' => $event->title,
+            'user_uuid' => Auth::user()->uuid,
+            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+            'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+            'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp),
+            'time_diff_seconds' => $startTimestamp - $currentServerTime
+        ]);
+        
+        if ($currentServerTime < $startTimestamp) {
+            $secondsRemaining = $startTimestamp - $currentServerTime;
+            $minutesRemaining = ceil($secondsRemaining / 60);
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Team formation has not started yet. Try again in ' . $minutesRemaining . ' minutes.',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+                    'seconds_remaining' => $secondsRemaining
+                ]
+            ], 400);
+        }
 
-            if (now() > $event->team_formation_end_date) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Team formation period has ended'
-                ], 400);
-            }
+        if ($currentServerTime > $endTimestamp) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Team formation period has ended',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                ]
+            ], 400);
         }
 
         // Check if user is already in a team for this event
@@ -109,18 +137,46 @@ class EventTeamController extends Controller
             ], 400);
         }
 
-        // Check if team formation period is active
-        if (now() < $team->event->team_formation_start_date) {
+        // Check if team formation period is active using strict timestamp comparison
+        $currentServerTime = time(); // Current server Unix timestamp
+        $startDateObj = new \DateTime($team->event->team_formation_start_date);
+        $endDateObj = new \DateTime($team->event->team_formation_end_date);
+        $startTimestamp = $startDateObj->getTimestamp();
+        $endTimestamp = $endDateObj->getTimestamp();
+        
+        // Log team join attempt
+        Log::info('Team Join Attempt', [
+            'team_uuid' => $teamUuid,
+            'team_name' => $team->name,
+            'user_uuid' => Auth::user()->uuid,
+            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+            'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+            'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+        ]);
+        
+        if ($currentServerTime < $startTimestamp) {
+            $secondsRemaining = $startTimestamp - $currentServerTime;
+            $minutesRemaining = ceil($secondsRemaining / 60);
+            
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation has not started yet'
+                'message' => 'Team formation has not started yet. Try again in ' . $minutesRemaining . ' minutes.',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+                    'seconds_remaining' => $secondsRemaining
+                ]
             ], 400);
         }
 
-        if (now() > $team->event->team_formation_end_date) {
+        if ($currentServerTime > $endTimestamp) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation period has ended'
+                'message' => 'Team formation period has ended',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                ]
             ], 400);
         }
 
@@ -467,18 +523,46 @@ class EventTeamController extends Controller
 
         $team = $joinSecret->team;
 
-        // Check if team formation period is active
-        if (now() < $team->event->team_formation_start_date) {
+        // Check if team formation period is active using strict timestamp comparison
+        $currentServerTime = time(); // Current server Unix timestamp
+        $startDateObj = new \DateTime($team->event->team_formation_start_date);
+        $endDateObj = new \DateTime($team->event->team_formation_end_date);
+        $startTimestamp = $startDateObj->getTimestamp();
+        $endTimestamp = $endDateObj->getTimestamp();
+        
+        // Log join with secret attempt
+        Log::info('Team Join With Secret Attempt', [
+            'team_uuid' => $team->id,
+            'team_name' => $team->name,
+            'user_uuid' => Auth::user()->uuid,
+            'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+            'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+            'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+        ]);
+        
+        if ($currentServerTime < $startTimestamp) {
+            $secondsRemaining = $startTimestamp - $currentServerTime;
+            $minutesRemaining = ceil($secondsRemaining / 60);
+            
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation has not started yet'
+                'message' => 'Team formation has not started yet. Try again in ' . $minutesRemaining . ' minutes.',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'formation_start_time' => date('Y-m-d H:i:s', $startTimestamp),
+                    'seconds_remaining' => $secondsRemaining
+                ]
             ], 400);
         }
 
-        if (now() > $team->event->team_formation_end_date) {
+        if ($currentServerTime > $endTimestamp) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team formation period has ended'
+                'message' => 'Team formation period has ended',
+                'time_check_details' => [
+                    'current_server_time' => date('Y-m-d H:i:s', $currentServerTime),
+                    'formation_end_time' => date('Y-m-d H:i:s', $endTimestamp)
+                ]
             ], 400);
         }
 
