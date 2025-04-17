@@ -9,6 +9,7 @@ use App\Traits\HandlesTimezones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class EventRegistrationController extends Controller
 {
@@ -25,38 +26,58 @@ class EventRegistrationController extends Controller
             ], 404);
         }
 
-        // Check if registration is open
+        // Enhanced debug information
         $userTimezone = Auth::user()->time_zone ?? 'UTC';
         $now = now()->setTimezone($userTimezone);
-        $startDate = $this->toUserTimezone($event->registration_start_date);
-        $endDate = $this->toUserTimezone($event->registration_end_date);
+        $rawStartDate = $event->registration_start_date;
+        $rawEndDate = $event->registration_end_date;
         
-        // Debug information
-        Log::info('Registration check', [
+        // Convert to Carbon instances explicitly
+        $startDate = $rawStartDate ? Carbon::parse($rawStartDate)->setTimezone($userTimezone) : null;
+        $endDate = $rawEndDate ? Carbon::parse($rawEndDate)->setTimezone($userTimezone) : null;
+        
+        // Extensive debug information
+        Log::info('Event Registration Debug', [
             'event_uuid' => $eventUuid,
+            'event_title' => $event->title,
             'now' => $now->toIso8601String(),
-            'registration_start' => $startDate ? $startDate->toIso8601String() : null,
-            'registration_end' => $endDate ? $endDate->toIso8601String() : null,
-            'user_timezone' => $userTimezone
+            'now_formatted' => $now->format('Y-m-d H:i:s'),
+            'raw_start_date' => $rawStartDate,
+            'raw_end_date' => $rawEndDate,
+            'parsed_start_date' => $startDate ? $startDate->toIso8601String() : null,
+            'parsed_start_date_formatted' => $startDate ? $startDate->format('Y-m-d H:i:s') : null,
+            'parsed_end_date' => $endDate ? $endDate->toIso8601String() : null,
+            'user_timezone' => $userTimezone,
+            'now_timestamp' => $now->timestamp,
+            'start_timestamp' => $startDate ? $startDate->timestamp : null,
+            'comparison_result' => $startDate ? ($now->timestamp < $startDate->timestamp ? 'now is before start' : 'now is after start') : 'no start date'
         ]);
         
-        if ($startDate && $now < $startDate) {
+        // Use timestamp comparison for more reliable results
+        if ($startDate && $now->timestamp < $startDate->timestamp) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Registration has not started yet',
-                'now' => $now->toIso8601String(),
-                'start_date' => $startDate->toIso8601String(),
-                'timezone' => $userTimezone
+                'debug_info' => [
+                    'now' => $now->format('Y-m-d H:i:s'),
+                    'start_date' => $startDate->format('Y-m-d H:i:s'),
+                    'now_timestamp' => $now->timestamp,
+                    'start_timestamp' => $startDate->timestamp,
+                    'timezone' => $userTimezone,
+                    'raw_start_date' => $rawStartDate
+                ]
             ], 400);
         }
 
-        if ($endDate && $now > $endDate) {
+        if ($endDate && $now->timestamp > $endDate->timestamp) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Registration period has ended',
-                'now' => $now->toIso8601String(),
-                'end_date' => $endDate->toIso8601String(),
-                'timezone' => $userTimezone
+                'debug_info' => [
+                    'now' => $now->format('Y-m-d H:i:s'),
+                    'end_date' => $endDate->format('Y-m-d H:i:s'),
+                    'timezone' => $userTimezone
+                ]
             ], 400);
         }
 

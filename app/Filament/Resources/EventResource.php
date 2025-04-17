@@ -69,11 +69,11 @@ class EventResource extends Resource
                                 ->schema([
                                     Forms\Components\DateTimePicker::make('registration_start_date')
                                         ->required()
-                                        ->timezone('UTC')
+                                        ->timezone('Africa/Cairo')
                                         ->helperText('Users can start registering from this date'),
                                     Forms\Components\DateTimePicker::make('registration_end_date')
                                         ->required()
-                                        ->timezone('UTC')
+                                        ->timezone('Africa/Cairo')
                                         ->helperText('Registration closes at this date')
                                         ->afterOrEqual('registration_start_date'),
                                 ])->columns(2),
@@ -83,12 +83,12 @@ class EventResource extends Resource
                                 ->schema([
                                     Forms\Components\DateTimePicker::make('team_formation_start_date')
                                         ->required()
-                                        ->timezone('UTC')
+                                        ->timezone('Africa/Cairo')
                                         ->helperText('Users can start creating/joining teams from this date')
                                         ->afterOrEqual('registration_start_date'),
                                     Forms\Components\DateTimePicker::make('team_formation_end_date')
                                         ->required()
-                                        ->timezone('UTC')
+                                        ->timezone('Africa/Cairo')
                                         ->helperText('Team formation closes at this date')
                                         ->afterOrEqual('team_formation_start_date'),
                                 ])->columns(2),
@@ -97,12 +97,12 @@ class EventResource extends Resource
                                 ->schema([
                                     Forms\Components\DateTimePicker::make('start_date')
                                         ->required()
-                                        ->timezone('UTC')
+                                        ->timezone('Africa/Cairo')
                                         ->helperText('When the event/challenge actually starts')
                                         ->afterOrEqual('team_formation_end_date'),
                                     Forms\Components\DateTimePicker::make('end_date')
                                         ->required()
-                                        ->timezone('UTC')
+                                        ->timezone('Africa/Cairo')
                                         ->helperText('When the event/challenge ends')
                                         ->afterOrEqual('start_date'),
                                 ])->columns(2),
