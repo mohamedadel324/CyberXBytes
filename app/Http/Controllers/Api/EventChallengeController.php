@@ -44,8 +44,9 @@ class EventChallengeController extends Controller
             ], 401);
         }
 
+        // Check if user is part of any team in this event
         $team = Team::where('event_uuid', $eventUuid)
-            ->whereHas('members', function ($query) use ($user) {
+            ->whereHas('users', function ($query) use ($user) {
                 $query->where('user_uuid', $user->uuid);
             })
             ->first();
@@ -204,7 +205,7 @@ class EventChallengeController extends Controller
 
         // Get user's team for this event - already verified in validateEventAndTeamRequirements
         $team = EventTeam::where('event_uuid', $challenge->event_uuid)
-            ->whereHas('members', function($query) {
+            ->whereHas('users', function($query) {
                 $query->where('user_uuid', Auth::user()->uuid);
             })
             ->first();
@@ -487,21 +488,21 @@ class EventChallengeController extends Controller
         }
 
         $teams = EventTeam::where('event_uuid', $eventUuid)
-            ->with(['members.submissions' => function($query) use ($eventUuid) {
+            ->with(['users.submissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
-            }, 'members.flagSubmissions' => function($query) use ($eventUuid) {
+            }, 'users.flagSubmissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallangeFlag.eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
-            }, 'members:uuid,user_name,profile_image'])
+            }, 'users:uuid,user_name,profile_image'])
             ->get()
             ->map(function($team) {
                 $totalPoints = 0;
                 $solvedChallenges = collect();
 
-                foreach ($team->members as $member) {
+                foreach ($team->users as $member) {
                     // Handle single flag challenges
                     foreach ($member->submissions as $submission) {
                         $challenge = $submission->eventChallange;
@@ -621,13 +622,13 @@ class EventChallengeController extends Controller
                     'team_icon_url' => $team->icon ? url('storage/team-icons/' . $team->icon) : null,
                     'total_points' => $totalPoints,
                     'solved_challenges' => $solvedChallenges->sortByDesc('solved_at')->values(),
-                    'members' => $team->members->map(function($member) {
+                    'members' => $team->users->map(function($member) {
                         return [
                             'username' => $member->user_name,
                             'profile_image' => $member->profile_image ? url('storage/profile_images/' . $member->profile_image) : null
                         ];
                     }),
-                    'member_count' => $team->members->count()
+                    'member_count' => $team->users->count()
                 ];
             })
             ->sortByDesc('total_points')
@@ -1219,10 +1220,10 @@ class EventChallengeController extends Controller
         // Get the current user's team
         $user = Auth::user();
         $team = EventTeam::where('event_uuid', $eventUuid)
-            ->whereHas('members', function($query) use ($user) {
+            ->whereHas('users', function($query) use ($user) {
                 $query->where('user_uuid', $user->uuid);
             })
-            ->with(['members'])
+            ->with(['users'])
             ->first();
             
         if (!$team) {
@@ -1238,7 +1239,7 @@ class EventChallengeController extends Controller
             ->get();
             
         // Get members' data with their solved challenges and flags
-        $teamMembers = User::whereIn('uuid', $team->members->pluck('user_uuid'))
+        $teamMembers = User::whereIn('uuid', $team->users->pluck('user_uuid'))
             ->with(['solvedChallenges' => function($query) use ($eventUuid) {
                 $query->where('event_uuid', $eventUuid);
             }, 'solvedFlags' => function($query) use ($challenges) {
@@ -1421,7 +1422,7 @@ class EventChallengeController extends Controller
                 'team' => [
                     'name' => $team->name,
                     'icon' => $team->icon ? url('storage/team-icons/' . $team->icon) : null,
-                    'member_count' => $team->members->count()
+                    'member_count' => $team->users->count()
                 ],
                 'members' => $teamMembers,
                 'total_team_points' => $teamMembers->sum('total_points'),
@@ -1457,10 +1458,10 @@ class EventChallengeController extends Controller
         // Get the current user's team
         $user = Auth::user();
         $team = EventTeam::where('event_uuid', $challenge->event_uuid)
-            ->whereHas('members', function($query) use ($user) {
+            ->whereHas('users', function($query) use ($user) {
                 $query->where('user_uuid', $user->uuid);
             })
-            ->with(['members'])
+            ->with(['users'])
             ->first();
             
         if (!$team) {
@@ -1473,7 +1474,7 @@ class EventChallengeController extends Controller
         // Get team members who solved this challenge
         $teamMembers = collect();
         
-        foreach ($team->members as $member) {
+        foreach ($team->users as $member) {
             // Get if the user solved the challenge (for single flag type)
             $solvedChallenge = null;
             $solvedFlags = collect();
@@ -1618,7 +1619,7 @@ class EventChallengeController extends Controller
                 'team' => [
                     'name' => $team->name,
                     'icon' => $team->icon ? url('storage/team-icons/' . $team->icon) : null,
-                    'member_count' => $team->members->count()
+                    'member_count' => $team->users->count()
                 ],
                 'challenge' => [
                     'id' => $challenge->id,
