@@ -123,8 +123,11 @@ class EventController extends Controller
             ], 404);
         }
 
-        // If registration period has ended, return limited information
-        if ($event->registration_end_date < now()) {
+        // Calculate can_register status
+        $canRegister = $this->isNowBetween($event->registration_start_date, $event->registration_end_date);
+
+        // If registration is not possible (either not started yet or already ended)
+        if (!$canRegister) {
             return response()->json([
                 'event' => [
                     'uuid' => $event->uuid,
@@ -153,7 +156,7 @@ class EventController extends Controller
                 'requires_team' => $event->requires_team,
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
-                'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
+                'can_register' => $canRegister,
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
             ]
         ]);
