@@ -20,8 +20,7 @@ class EventController extends Controller
             ->where(function($query) use ($user) {
                 $query->where('is_private', 0)
                     ->orWhereHas('invitations', function($q) use ($user) {
-                        $q->where('email', $user->email)
-                          ->where('status', 'accepted');
+                        $q->where('email', $user->email);
                     });
             })
             ->where(function($query) use ($user) {
@@ -30,8 +29,7 @@ class EventController extends Controller
                         $q->where('user_id', $user->id);
                     })
                     ->orWhereHas('invitations', function($q) use ($user) {
-                        $q->where('email', $user->email)
-                          ->where('status', 'accepted');
+                        $q->where('email', $user->email);
                     });
             })
             ->where('end_date', '>', now())
