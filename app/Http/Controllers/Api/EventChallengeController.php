@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use App\Models\Event;
+use App\Models\Team;
 
 class EventChallengeController extends Controller
 {
@@ -26,183 +28,149 @@ class EventChallengeController extends Controller
      */
     private function validateEventAndTeamRequirements($eventUuid)
     {
-        // Get the current user
-        $user = Auth::user();
-        
-        // Get the event
-        $event = \App\Models\Event::where('uuid', $eventUuid)->first();
-        
+        $event = Event::where('uuid', $eventUuid)->first();
         if (!$event) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Event not found'
             ], 404);
         }
-        
-        // DIRECT SERVER-SIDE TIME CHECK
-        $currentTime = time(); // Current server Unix timestamp
-        $startTime = strtotime($event->start_date);
-        $endTime = strtotime($event->end_date);
-        
-        // Hard debug output - always log every date check
-        \Illuminate\Support\Facades\Log::critical('EVENT CHALLENGE ACCESS TIME CHECK', [
-            'event_uuid' => $eventUuid,
-            'event_title' => $event->title,
-            'user_uuid' => $user->uuid,
-            'current_time' => date('Y-m-d H:i:s', $currentTime),
-            'current_timestamp' => $currentTime,
-            'event_start' => date('Y-m-d H:i:s', $startTime),
-            'event_start_timestamp' => $startTime,
-            'event_end' => date('Y-m-d H:i:s', $endTime),
-            'event_end_timestamp' => $endTime,
-            'time_diff' => $startTime - $currentTime,
-            'raw_start_date' => $event->start_date,
-            'raw_end_date' => $event->end_date,
-            'allowed' => ($currentTime >= $startTime && $currentTime <= $endTime) ? 'YES' : 'NO'
-        ]);
-        
-        // Only proceed if current time is between start and end times
-        if ($currentTime < $startTime) {
+
+        $user = Auth::user();
+        if (!$user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Event has not started yet. Access denied.',
-                'debug_info' => [
-                    'current_time' => date('Y-m-d H:i:s', $currentTime),
-                    'start_time' => date('Y-m-d H:i:s', $startTime),
-                    'seconds_remaining' => $startTime - $currentTime
-                ]
-            ], 403);
+                'message' => 'Unauthorized'
+            ], 401);
         }
-        
-        if ($currentTime > $endTime) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Event has ended. Access denied.',
-                'debug_info' => [
-                    'current_time' => date('Y-m-d H:i:s', $currentTime),
-                    'end_time' => date('Y-m-d H:i:s', $endTime)
-                ]
-            ], 403);
-        }
-        
-        // Get user's team for this event
-        $team = EventTeam::where('event_uuid', $eventUuid)
-            ->whereHas('members', function($query) use ($user) {
+
+        $team = Team::where('event_uuid', $eventUuid)
+            ->whereHas('members', function ($query) use ($user) {
                 $query->where('user_uuid', $user->uuid);
             })
             ->first();
-        
-        // If no team found and event requires team
-        if (!$team && $event->requires_team) {
+
+        if (!$team) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'You must be part of a team to access this event'
+                'message' => 'You are not part of any team in this event'
             ], 403);
         }
-        
-        // If team exists, check if it meets minimum member requirements
-        if ($team && $event->team_minimum_members > 0) {
-            $memberCount = $team->members()->count();
-            
-            if ($memberCount < $event->team_minimum_members) {
-                // Delete team registration if they don't meet requirements
-                $team->delete();
-                
-                // Delete user's registration for this event
-                \App\Models\EventRegistration::where('event_uuid', $eventUuid)
-                    ->where('user_uuid', $user->uuid)
-                    ->delete();
-                
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "Your team doesn't meet the minimum requirement of {$event->team_minimum_members} members. Your team and registration have been removed."
-                ], 403);
-            }
-        }
-        
+
         return null;
     }
 
     public function listChallenges($eventUuid)
     {
-        // Validate event and team requirements
         $validationResponse = $this->validateEventAndTeamRequirements($eventUuid);
         if ($validationResponse) {
             return $validationResponse;
         }
 
-        $challenges = EventChallange::where('event_uuid', $eventUuid)
-            ->with(['category:uuid,name,icon', 'solvedBy' => function($query) {
-                $query->where('user_uuid', Auth::user()->uuid);
-            }, 'flags' => function($query) {
-                $query->orderBy('order', 'asc');
-            }, 'flags.solvedBy' => function($query) {
-                $query->where('user_uuid', Auth::user()->uuid);
-            }])
-            ->get()
-            ->map(function ($challenge) {
-                $isSolved = $challenge->solvedBy->isNotEmpty();
+        $challenges = EventChallange::with(['category:uuid,icon', 'flags'])
+            ->where('event_uuid', $eventUuid)
+            ->get();
+
+        $challenges->each(function ($challenge) {
+            $challenge->category_icon = $challenge->category->icon ?? null;
+            unset($challenge->category);
+            $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
+            
+            // Add flag information
+            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+            
+            // Get solved count for the challenge
+            $solvedCount = $challenge->submissions()->where('solved', true)->count();
+            $challenge->solved_count = $solvedCount;
+            
+            // Get first blood information
+            $firstBlood = null;
+            if ($solvedCount > 0) {
+                $firstSolver = $challenge->submissions()
+                    ->where('solved', true)
+                    ->orderBy('created_at', 'asc')
+                    ->first();
                 
-                // Handle different flag types
-                $flagData = [];
+                if ($firstSolver) {
+                    $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
+                    if ($firstBloodUser) {
+                        $firstBlood = [
+                            'user_name' => $firstBloodUser->user_name,
+                            'profile_image' => $firstBloodUser->profile_image ? asset('storage/' . $firstBloodUser->profile_image) : null,
+                            'solved_at' => $firstSolver->created_at,
+                        ];
+                    }
+                }
+            }
+            $challenge->first_blood = $firstBlood;
+            
+            // For single flag type
+            if ($challenge->flag_type === 'single') {
+                $challenge->flag_data = [
+                    'flag' => $challenge->flag,
+                    'bytes' => $challenge->bytes,
+                    'first_blood_bytes' => $challenge->firstBloodBytes,
+                    'solved_count' => $solvedCount,
+                ];
+            }
+            // For multiple flag types
+            else if ($challenge->flags) {
+                $flagsData = [];
                 
-                if ($challenge->flag_type === 'single') {
-                    $flagData = [
-                        'type' => 'single',
-                        'solved' => $isSolved,
-                        'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
-                        'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0
-                    ];
-                } else {
-                    // For multiple flags
-                    $solvedFlags = $challenge->flags()
-                        ->whereHas('solvedBy', function($query) {
-                            $query->where('user_uuid', Auth::user()->uuid);
-                        })
-                        ->get();
+                foreach ($challenge->flags as $flag) {
+                    // Get solved count for this flag
+                    $flagSolvedCount = $challenge->submissions()
+                        ->where('flag', $flag->flag)
+                        ->where('solved', true)
+                        ->count();
                     
-                    $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
+                    // Get first blood for this flag
+                    $flagFirstBlood = null;
+                    if ($flagSolvedCount > 0) {
+                        $flagFirstSolver = $challenge->submissions()
+                            ->where('flag', $flag->flag)
+                            ->where('solved', true)
+                            ->orderBy('created_at', 'asc')
+                            ->first();
+                        
+                        if ($flagFirstSolver) {
+                            $flagFirstBloodUser = User::where('uuid', $flagFirstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
+                            if ($flagFirstBloodUser) {
+                                $flagFirstBlood = [
+                                    'user_name' => $flagFirstBloodUser->user_name,
+                                    'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
+                                    'solved_at' => $flagFirstSolver->created_at,
+                                ];
+                            }
+                        }
+                    }
                     
-                    $flagData = [
-                        'type' => $challenge->flag_type,
-                        'total_flags' => $challenge->flags->count(),
-                        'solved_flags' => $solvedFlags->count(),
-                        'all_solved' => $allFlagsSolved,
-                        'flags' => $challenge->flags->map(function($flag) use ($solvedFlags) {
-                            $isFlagSolved = $solvedFlags->contains('id', $flag->id);
-                            $solvedByUser = $flag->solvedBy->isNotEmpty();
-                            
-                            return [
-                                'id' => $flag->id,
-                                'name' => $flag->name,
-                                'description' => $flag->description,
-                                'bytes' => $flag->bytes,
-                                'first_blood_bytes' => $flag->firstBloodBytes,
-                                'solved' => $isFlagSolved,
-                                'solved_at' => $solvedByUser ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null,
-                                'attempts' => $solvedByUser ? $flag->solvedBy->first()->pivot->attempts : 0
-                            ];
-                        })
+                    $flagsData[] = [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                        'solved_count' => $flagSolvedCount,
+                        'first_blood' => $flagFirstBlood,
                     ];
                 }
                 
-                return [
-                    'id' => $challenge->id,
-                    'title' => $challenge->title,
-                    'category' => [
-                        'title' => $challenge->category->name,
-                        'icon_url' => $challenge->category_icon_url
-                    ],
-                    'difficulty' => $challenge->difficulty,
-                    'bytes' => $challenge->bytes,
-                    'first_blood_bytes' => $challenge->firstBloodBytes,
-                    'solved' => $isSolved,
-                ];
-            });
+                $challenge->flags_data = $flagsData;
+                $challenge->flags_count = $challenge->flags->count();
+                
+                // For multiple_all, add total bytes and first blood bytes
+                if ($challenge->flag_type === 'multiple_all') {
+                    $challenge->total_bytes = $challenge->bytes;
+                    $challenge->total_first_blood_bytes = $challenge->firstBloodBytes;
+                }
+            }
+        });
 
         return response()->json([
             'status' => 'success',
-            'data' => $challenges
+            'data' => $challenges,
+            'count' => $challenges->count()
         ]);
     }
 
@@ -917,7 +885,8 @@ class EventChallengeController extends Controller
     }
 
 
-    public function showChallenge($challengeUuid) {
+    public function showChallenge($challengeUuid)
+    {
         $challenge = EventChallange::with(['category:uuid,icon', 'flags'])
             ->where('id', $challengeUuid)
             ->first();
@@ -937,6 +906,7 @@ class EventChallengeController extends Controller
 
         $challenge->category_icon = $challenge->category->icon ?? null;
         unset($challenge->category);
+        $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
 
         // Get solved count for the challenge
         $solvedCount = $challenge->submissions()->where('solved', true)->count();
@@ -957,7 +927,7 @@ class EventChallengeController extends Controller
                 if ($firstBloodUser) {
                     $firstBlood = [
                         'user_name' => $firstBloodUser->user_name,
-                        'profile_image' => $firstBloodUser->profile_image ? asset('storage/profile_images/' . $firstBloodUser->profile_image) : null,
+                        'profile_image' => $firstBloodUser->profile_image ? asset('storage/' . $firstBloodUser->profile_image) : null,
                         'solved_at' => $firstSolver->created_at,
                     ];
                 }
@@ -1001,7 +971,7 @@ class EventChallengeController extends Controller
             foreach ($challenge->flags as $flag) {
                 // Get solved count for this flag
                 $flagSolvedCount = $challenge->submissions()
-                    ->where('submission', $flag->flag)
+                    ->where('flag', $flag->flag)
                     ->where('solved', true)
                     ->count();
                 
@@ -1009,7 +979,7 @@ class EventChallengeController extends Controller
                 $flagFirstBlood = null;
                 if ($flagSolvedCount > 0) {
                     $flagFirstSolver = $challenge->submissions()
-                        ->where('submission', $flag->flag)
+                        ->where('flag', $flag->flag)
                         ->where('solved', true)
                         ->orderBy('created_at', 'asc')
                         ->first();
@@ -1019,7 +989,7 @@ class EventChallengeController extends Controller
                         if ($flagFirstBloodUser) {
                             $flagFirstBlood = [
                                 'user_name' => $flagFirstBloodUser->user_name,
-                                'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/profile_images/' . $flagFirstBloodUser->profile_image) : null,
+                                'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
                                 'solved_at' => $flagFirstSolver->created_at,
                             ];
                         }
@@ -1681,5 +1651,17 @@ class EventChallengeController extends Controller
         ];
         
         return $descriptions[$flagType] ?? 'Unknown flag type';
+    }
+
+    private function translateDifficulty($difficulty)
+    {
+        $translations = [
+            'easy' => 'سهل',
+            'medium' => 'متوسط',
+            'hard' => 'صعب',
+            'very_hard' => 'صعب جدا'
+        ];
+
+        return $translations[$difficulty] ?? $difficulty;
     }
 }
