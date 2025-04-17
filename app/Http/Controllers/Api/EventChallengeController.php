@@ -134,7 +134,7 @@ class EventChallengeController extends Controller
                         $flagFirstSolver = $challenge->submissions()
                             ->where('submission', $flag->flag)
                             ->where('solved', true)
-                            ->orderBy('created_at', 'asc')
+                            ->orderBy('solved_at', 'asc')
                             ->first();
                         
                         if ($flagFirstSolver) {
@@ -143,7 +143,7 @@ class EventChallengeController extends Controller
                                 $flagFirstBlood = [
                                     'user_name' => $flagFirstBloodUser->user_name,
                                     'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
-                                    'solved_at' => $flagFirstSolver->created_at,
+                                    'solved_at' => $flagFirstSolver->solved_at,
                                 ];
                             }
                         }
@@ -985,7 +985,7 @@ class EventChallengeController extends Controller
                     $flagFirstSolver = $challenge->submissions()
                         ->where('submission', $flag->flag)
                         ->where('solved', true)
-                        ->orderBy('created_at', 'asc')
+                        ->orderBy('solved_at', 'asc')
                         ->first();
                     
                     if ($flagFirstSolver) {
@@ -994,7 +994,7 @@ class EventChallengeController extends Controller
                             $flagFirstBlood = [
                                 'user_name' => $flagFirstBloodUser->user_name,
                                 'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
-                                'solved_at' => $flagFirstSolver->created_at,
+                                'solved_at' => $flagFirstSolver->solved_at,
                             ];
                         }
                     }
