@@ -46,8 +46,9 @@ class EventChallengeController extends Controller
 
         // Check if user is part of any team in this event
         $team = Team::where('event_uuid', $eventUuid)
-            ->whereHas('users', function ($query) use ($user) {
-                $query->where('user_uuid', $user->uuid);
+            ->where(function($query) use ($user) {
+                $query->where('users_uuid', $user->uuid)
+                    ->orWhere('team_leader_uuid', $user->uuid);
             })
             ->first();
 
