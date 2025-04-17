@@ -62,6 +62,10 @@ class EventResource extends Resource
                                         ->label('Private Event')
                                         ->helperText('If enabled, only invited users can register')
                                         ->reactive(),
+                                    Forms\Components\Toggle::make('is_main')
+                                        ->label('Main Event')
+                                        ->helperText('If enabled, this will be the main featured event. Only one event can be the main event.')
+                                        ->reactive(),
                                 ]),
 
                             Forms\Components\Section::make('Registration Period')
@@ -319,11 +323,15 @@ class EventResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('title')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('description')
+                    ->limit(50)
+                    ->searchable(),
                 Tables\Columns\IconColumn::make('is_private')
+                    ->boolean(),
+                Tables\Columns\IconColumn::make('is_main')
                     ->boolean()
-                    ->label('Private'),
+                    ->label('Main Event'),
                 Tables\Columns\TextColumn::make('registration_start_date')
                     ->dateTime()
                     ->sortable(),
@@ -385,6 +393,15 @@ class EventResource extends Resource
             'index' => Pages\ListEvents::route('/'),
             'create' => Pages\CreateEvent::route('/create'),
             'edit' => Pages\EditEvent::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            EventResource\Widgets\EventRegistrationsWidget::class,
+            EventResource\Widgets\TeamsWidget::class,
+            EventResource\Widgets\ChallengesSolvedWidget::class,
         ];
     }
 }

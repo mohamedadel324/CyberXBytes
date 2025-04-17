@@ -31,6 +31,7 @@ class EventController extends Controller
                     'title' => $event->title,
                     'description' => $event->description,
                     'image' => url('storage/' . $event->image) ?: $event->image,
+                    'is_main' => $event->is_main,
                     'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
                     'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
                     'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
@@ -65,6 +66,7 @@ class EventController extends Controller
                 'title' => $event->title,
                 'description' => $event->description,
                 'image' => url('storage/' . $event->image) ?: $event->image,
+                'is_main' => $event->is_main,
                 'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
                 'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
                 'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
@@ -100,5 +102,38 @@ class EventController extends Controller
             'status' => 'success',
             'message' => 'Event has started'
         ], 200);
+    }
+
+    public function mainEvent(Request $request)
+    {
+        $event = Event::main()->first();
+        
+        if (!$event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No main event found'
+            ], 404);
+        }
+
+        return response()->json([
+            'event' => [
+                'uuid' => $event->uuid,
+                'title' => $event->title,
+                'description' => $event->description,
+                'image' => url('storage/' . $event->image) ?: $event->image,
+                'is_main' => $event->is_main,
+                'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
+                'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
+                'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
+                'team_formation_end_date' => $this->formatInUserTimezone($event->team_formation_end_date),
+                'start_date' => $this->formatInUserTimezone($event->start_date),
+                'end_date' => $this->formatInUserTimezone($event->end_date),
+                'requires_team' => $event->requires_team,
+                'team_minimum_members' => $event->team_minimum_members,
+                'team_maximum_members' => $event->team_maximum_members,
+                'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
+                'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
+            ]
+        ]);
     }
 }

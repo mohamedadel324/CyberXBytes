@@ -14,6 +14,7 @@ class Event extends Model
         'background_image',
         'image',
         'is_private',
+        'is_main',
         'registration_start_date',
         'registration_end_date',
         'team_formation_start_date',
@@ -28,6 +29,7 @@ class Event extends Model
 
     protected $casts = [
         'is_private' => 'boolean',
+        'is_main' => 'boolean',
         'requires_team' => 'boolean',
         'registration_start_date' => 'datetime',
         'registration_end_date' => 'datetime',
@@ -63,6 +65,13 @@ class Event extends Model
                 }
                 // Clear the pending invitations
                 session()->forget('pending_invitations');
+            }
+        });
+
+        // Ensure only one event can be marked as main
+        static::saved(function ($event) {
+            if ($event->is_main) {
+                static::where('id', '!=', $event->id)->update(['is_main' => false]);
             }
         });
     }
@@ -105,5 +114,20 @@ class Event extends Model
     public function registeredUsers()
     {
         return $this->belongsToMany(User::class, 'event_registrations');
+    }
+
+    public function scopeMain($query)
+    {
+        return $query->where('is_main', true);
+    }
+
+    /**
+     * Get the main event
+     * 
+     * @return Event|null
+     */
+    public static function getMainEvent()
+    {
+        return static::main()->first();
     }
 }

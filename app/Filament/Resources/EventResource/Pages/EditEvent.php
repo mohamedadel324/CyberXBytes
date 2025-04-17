@@ -8,6 +8,9 @@ use App\Models\EventInvitation;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Log;
+use App\Filament\Resources\EventResource\Widgets\EventRegistrationsWidget;
+use App\Filament\Resources\EventResource\Widgets\TeamsWidget;
+use App\Filament\Resources\EventResource\Widgets\ChallengesSolvedWidget;
 
 class EditEvent extends EditRecord
 {
@@ -18,6 +21,20 @@ class EditEvent extends EditRecord
         return [
             Actions\DeleteAction::make(),
         ];
+    }
+    
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            EventRegistrationsWidget::class,
+            TeamsWidget::class,
+            ChallengesSolvedWidget::class,
+        ];
+    }
+    
+    public function getHeaderWidgetsColumns(): int | string | array
+    {
+        return 3;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
