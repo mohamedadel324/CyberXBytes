@@ -20,10 +20,21 @@ class EventController extends Controller
             ->where(function($query) use ($user) {
                 $query->where('is_private', 0)
                     ->orWhereHas('invitations', function($q) use ($user) {
-                        $q->where('email', $user->email);
+                        $q->where('email', $user->email)
+                          ->where('status', 'accepted');
                     });
             })
-            ->where('registration_start_date', '<=', now())
+            ->where(function($query) use ($user) {
+                $query->where('registration_start_date', '<=', now())
+                    ->orWhereHas('registrations', function($q) use ($user) {
+                        $q->where('user_id', $user->id);
+                    })
+                    ->orWhereHas('invitations', function($q) use ($user) {
+                        $q->where('email', $user->email)
+                          ->where('status', 'accepted');
+                    });
+            })
+            ->where('end_date', '>', now())
             ->get()
             ->map(function ($event) {
                 return [
