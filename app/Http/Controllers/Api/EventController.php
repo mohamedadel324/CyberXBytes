@@ -26,7 +26,7 @@ class EventController extends Controller
             ->where(function($query) use ($user) {
                 $query->where('registration_start_date', '<=', now())
                     ->orWhereHas('registrations', function($q) use ($user) {
-                        $q->where('user_id', $user->id)
+                        $q->where('user_uuid', $user->uuid)
                           ->whereColumn('event_uuid', 'events.uuid');
                     })
                     ->orWhereHas('invitations', function($q) use ($user) {
