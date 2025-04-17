@@ -31,59 +31,57 @@ class EventRegistrationController extends Controller
         $now = now();
         $nowInUserTz = $now->copy()->setTimezone($userTimezone);
         
-        // Get raw dates from database without automatic timezone conversion
-        $rawStartDate = $event->getRawOriginal('registration_start_date');
-        $rawEndDate = $event->getRawOriginal('registration_end_date');
+        // Get raw dates from database
+        $rawStartDate = $event->registration_start_date;
+        $rawEndDate = $event->registration_end_date;
         
-        // Parse dates assuming they're stored in UTC
+        // Parse dates with timezone
         $startDate = $rawStartDate ? Carbon::parse($rawStartDate)->setTimezone($userTimezone) : null;
         $endDate = $rawEndDate ? Carbon::parse($rawEndDate)->setTimezone($userTimezone) : null;
         
-        // Try an alternative approach - parse as user timezone without conversion
-        $directStartDate = $rawStartDate ? Carbon::parse($rawStartDate, $userTimezone) : null;
-        $directEndDate = $rawEndDate ? Carbon::parse($rawEndDate, $userTimezone) : null;
-        
-        // Log extensive debug information
-        Log::info('Event Registration Timezone Debug', [
+        // Log registration attempt
+        Log::info('Event Registration Attempt', [
             'event_uuid' => $eventUuid,
             'event_title' => $event->title,
-            'now_utc' => $now->toIso8601String(),
-            'now_user_timezone' => $nowInUserTz->toIso8601String(),
-            'user_timezone' => $userTimezone,
-            'raw_registration_start' => $rawStartDate,
-            'raw_registration_end' => $rawEndDate,
-            'parsed_start_with_tz_conversion' => $startDate ? $startDate->toIso8601String() : null,
-            'parsed_end_with_tz_conversion' => $endDate ? $endDate->toIso8601String() : null,
-            'direct_parsed_start' => $directStartDate ? $directStartDate->toIso8601String() : null,
-            'direct_parsed_end' => $directEndDate ? $directEndDate->toIso8601String() : null,
-            'computed_event_timezone' => $event->timezone ?? 'Not specified'
+            'now' => $nowInUserTz->toIso8601String(),
+            'start_date' => $startDate ? $startDate->toIso8601String() : null,
+            'end_date' => $endDate ? $endDate->toIso8601String() : null,
+            'user_timezone' => $userTimezone
         ]);
         
-        // MODIFIED LOGIC: Try both approaches to determine if registration is open
-        $registrationStarted = false;
-        $registrationEnded = false;
+        // Add a 5 minute buffer before the start time to account for minor time discrepancies
+        $bufferMinutes = 5;
+        $startDateWithBuffer = $startDate ? $startDate->copy()->subMinutes($bufferMinutes) : null;
         
-        // Approach 1: Using standard timezone conversion
-        if ($startDate && $now < $startDate) {
-            // NOT YET STARTED (standard approach)
-        } else if ($endDate && $now > $endDate) {
-            // ENDED (standard approach)
-        } else {
-            $registrationStarted = true;
+        // Check if registration is open (with buffer)
+        if ($startDateWithBuffer && $nowInUserTz < $startDateWithBuffer) {
+            $minutesUntilStart = $nowInUserTz->diffInMinutes($startDate, false);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Registration has not started yet. Registration opens in ' . abs($minutesUntilStart) . ' minutes.',
+                'debug_info' => [
+                    'now' => $nowInUserTz->toIso8601String(),
+                    'start_date' => $startDate->toIso8601String(),
+                    'start_with_buffer' => $startDateWithBuffer->toIso8601String(),
+                    'buffer_minutes' => $bufferMinutes,
+                    'minutes_until_start' => abs($minutesUntilStart),
+                    'timezone' => $userTimezone
+                ]
+            ], 400);
         }
-        
-        // Approach 2: Direct timezone parsing
-        if ($directStartDate && $now < $directStartDate) {
-            // NOT YET STARTED (direct approach)
-        } else if ($directEndDate && $now > $directEndDate) {
-            // ENDED (direct approach)
-        } else {
-            $registrationStarted = true;
+
+        if ($endDate && $nowInUserTz > $endDate) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Registration period has ended',
+                'debug_info' => [
+                    'now' => $nowInUserTz->toIso8601String(),
+                    'end_date' => $endDate->toIso8601String(),
+                    'timezone' => $userTimezone
+                ]
+            ], 400);
         }
-        
-        // WORKAROUND: FOR NOW, ASSUME REGISTRATION IS OPEN REGARDLESS OF TIMES
-        $registrationStarted = true;
-        
+
         // Check if user is already registered
         $existingRegistration = EventRegistration::where('event_uuid', $event->uuid)
             ->where('user_uuid', Auth::user()->uuid)
@@ -96,7 +94,7 @@ class EventRegistrationController extends Controller
             ], 400);
         }
 
-        // Create registration (even if time checks would normally prevent it)
+        // Create registration
         $registration = EventRegistration::create([
             'event_uuid' => $event->uuid,
             'user_uuid' => Auth::user()->uuid,
@@ -106,14 +104,7 @@ class EventRegistrationController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Successfully registered for the event',
-            'data' => $registration,
-            'debug_info' => [
-                'registration_normally_allowed' => $registrationStarted,
-                'workaround_applied' => true,
-                'now' => $now->toIso8601String(),
-                'start_date' => $startDate ? $startDate->toIso8601String() : 'Not set',
-                'timezone' => $userTimezone
-            ]
+            'data' => $registration
         ]);
     }
     public function checkRegistration($eventUuid)
