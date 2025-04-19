@@ -267,7 +267,11 @@ class EventTeamController extends Controller
     }
     public function myTeam($eventUuid)
     {
-        $team = EventTeam::with(['members.solvedFlags.eventChallange', 'event'])
+        $team = EventTeam::with([
+            'members.solvedFlags.eventChallangeFlag.eventChallange',
+            'members.solvedChallenges',
+            'event'
+        ])
             ->where('event_uuid', $eventUuid)
             ->whereHas('members', function ($query) {
                 $query->where('user_uuid', Auth::user()->uuid);
@@ -288,7 +292,10 @@ class EventTeamController extends Controller
 
         // Get team rank
         $allTeams = EventTeam::where('event_uuid', $eventUuid)
-            ->with(['members.solvedFlags.eventChallange'])
+            ->with([
+                'members.solvedFlags.eventChallangeFlag.eventChallange',
+                'members.solvedChallenges'
+            ])
             ->get()
             ->map(function($team) use ($challenges) {
                 $points = 0;
@@ -317,10 +324,10 @@ class EventTeamController extends Controller
                     // Process flag submissions
                     foreach ($member->solvedFlags as $flagSubmission) {
                         $flag = $flagSubmission->eventChallangeFlag;
-                        if (!$flag) continue; // Skip if flag doesn't exist
+                        if (!$flag) continue;
                         
                         $challenge = $flag->eventChallange;
-                        if (!$challenge) continue; // Skip if challenge doesn't exist
+                        if (!$challenge) continue;
                         
                         if ($challenge->flag_type === 'multiple_individual') {
                             // Check if this was first blood for this flag
@@ -464,8 +471,9 @@ class EventTeamController extends Controller
                     // For individual flags, each flag gives points
                     foreach ($member->solvedFlags as $flagSubmission) {
                         $flag = $flagSubmission->eventChallangeFlag;
+                        if (!$flag) continue;
                         
-                        if ($flag && $flag->eventChallange->id === $challenge->id) {
+                        if ($flag->eventChallange->id === $challenge->id) {
                             // Check if this was first blood for this flag
                             $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
                                 ->where('solved', true)
