@@ -610,7 +610,7 @@ class EventChallengeController extends Controller
             'flags.solvedBy' => function($query) {
                 $query->where('user_uuid', Auth::user()->uuid);
             }
-        ])->where('uuid', $eventChallengeUuid)->first();
+        ])->where('id', $eventChallengeUuid)->first();
         
         if (!$challenge) {
             return response()->json([
