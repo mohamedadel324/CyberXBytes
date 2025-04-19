@@ -317,7 +317,10 @@ class EventTeamController extends Controller
                     // Process flag submissions
                     foreach ($member->solvedFlags as $flagSubmission) {
                         $flag = $flagSubmission->eventChallangeFlag;
+                        if (!$flag) continue; // Skip if flag doesn't exist
+                        
                         $challenge = $flag->eventChallange;
+                        if (!$challenge) continue; // Skip if challenge doesn't exist
                         
                         if ($challenge->flag_type === 'multiple_individual') {
                             // Check if this was first blood for this flag
