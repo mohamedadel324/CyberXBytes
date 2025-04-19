@@ -529,7 +529,27 @@ class EventTeamController extends Controller
                     'profile_image' => $team->leader->profile_image ? url('storage/' . $team->leader->profile_image) : null
                 ],
                 'members' => $membersData,
-                'first_blood_times' => $firstBloodTimes
+                'first_blood_times' => $firstBloodTimes,
+                'statistics' => [
+                    'total_bytes' => $membersData->sum('total_bytes'),
+                    'total_first_blood_count' => collect($firstBloodTimes)->filter(function($item) use ($team) {
+                        return $team->members->pluck('uuid')->contains($item['user_uuid']);
+                    })->count(),
+                    'total_challenges_solved' => collect($membersData)->flatMap(function($member) {
+                        return collect($member['challenge_completions'])->pluck('challenge_uuid')->unique();
+                    })->unique()->count(),
+                    'member_stats' => $membersData->map(function($member) {
+                        return [
+                            'username' => $member['username'],
+                            'total_bytes' => $member['total_bytes'],
+                            'challenges_solved' => count($member['challenge_completions']),
+                            'first_blood_count' => collect($member['challenge_completions'])->where('is_first_blood', true)->count(),
+                            'normal_bytes' => collect($member['challenge_completions'])->sum('normal_bytes'),
+                            'first_blood_bytes' => collect($member['challenge_completions'])->sum('first_blood_bytes')
+                        ];
+                    }),
+                    'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
+                ]
             ]
         ]);
     }
