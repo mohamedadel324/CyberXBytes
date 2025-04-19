@@ -340,9 +340,6 @@ class EventTeamController extends Controller
                     ->first();
                     
                 if ($submission) {
-                    $points = $challenge->bytes;
-                    $firstBloodPoints = 0;
-                    
                     // Check if this was first blood
                     $firstSolver = EventChallangeSubmission::where('event_challange_id', $challenge->id)
                         ->where('solved', true)
@@ -350,19 +347,19 @@ class EventTeamController extends Controller
                         ->first();
                         
                     if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
-                        $firstBloodPoints = $challenge->firstBloodBytes;
-                        $points += $firstBloodPoints;
+                        $points = $challenge->firstBloodBytes;
+                        $totalFirstBloodBytes += $points;
+                    } else {
+                        $points = $challenge->bytes;
+                        $totalBytes += $points;
                     }
-                    
-                    $totalBytes += $points;
-                    $totalFirstBloodBytes += $firstBloodPoints;
                     
                     $solvedChallenges[] = [
                         'id' => $challenge->id,
                         'title' => $challenge->title,
                         'points' => $points,
-                        'first_blood_points' => $firstBloodPoints,
-                        'is_first_blood' => $firstBloodPoints > 0,
+                        'first_blood_points' => $firstSolver && $firstSolver->user_uuid === $member->uuid ? $points : 0,
+                        'is_first_blood' => $firstSolver && $firstSolver->user_uuid === $member->uuid,
                         'solved_at' => $submission->pivot->solved_at
                     ];
                 }
@@ -380,9 +377,6 @@ class EventTeamController extends Controller
                         $solvedFlagsCount = $solvedFlags->count();
                         
                         if ($allFlags === $solvedFlagsCount) {
-                            $points = $challenge->bytes;
-                            $firstBloodPoints = 0;
-                            
                             // Check if this was first blood for all flags
                             $isFirstBlood = true;
                             foreach ($challenge->flags as $flag) {
@@ -398,18 +392,18 @@ class EventTeamController extends Controller
                             }
                             
                             if ($isFirstBlood) {
-                                $firstBloodPoints = $challenge->firstBloodBytes;
-                                $points += $firstBloodPoints;
+                                $points = $challenge->firstBloodBytes;
+                                $totalFirstBloodBytes += $points;
+                            } else {
+                                $points = $challenge->bytes;
+                                $totalBytes += $points;
                             }
-                            
-                            $totalBytes += $points;
-                            $totalFirstBloodBytes += $firstBloodPoints;
                             
                             $solvedChallenges[] = [
                                 'id' => $challenge->id,
                                 'title' => $challenge->title,
                                 'points' => $points,
-                                'first_blood_points' => $firstBloodPoints,
+                                'first_blood_points' => $isFirstBlood ? $points : 0,
                                 'is_first_blood' => $isFirstBlood,
                                 'solved_at' => $solvedFlags->min('solved_at')
                             ];
@@ -420,9 +414,6 @@ class EventTeamController extends Controller
                             $flag = $challenge->flags->firstWhere('id', $flagSubmission->event_challange_flag_id);
                             
                             if ($flag) {
-                                $points = $flag->bytes;
-                                $firstBloodPoints = 0;
-                                
                                 // Check if this was first blood for this flag
                                 $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
                                     ->where('solved', true)
@@ -430,20 +421,20 @@ class EventTeamController extends Controller
                                     ->first();
                                     
                                 if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
-                                    $firstBloodPoints = $flag->firstBloodBytes;
-                                    $points += $firstBloodPoints;
+                                    $points = $flag->firstBloodBytes;
+                                    $totalFirstBloodBytes += $points;
+                                } else {
+                                    $points = $flag->bytes;
+                                    $totalBytes += $points;
                                 }
-                                
-                                $totalBytes += $points;
-                                $totalFirstBloodBytes += $firstBloodPoints;
                                 
                                 $solvedChallenges[] = [
                                     'id' => $challenge->id,
                                     'title' => $challenge->title,
                                     'flag_name' => $flag->name,
                                     'points' => $points,
-                                    'first_blood_points' => $firstBloodPoints,
-                                    'is_first_blood' => $firstBloodPoints > 0,
+                                    'first_blood_points' => $firstSolver && $firstSolver->user_uuid === $member->uuid ? $points : 0,
+                                    'is_first_blood' => $firstSolver && $firstSolver->user_uuid === $member->uuid,
                                     'solved_at' => $flagSubmission->solved_at
                                 ];
                             }
