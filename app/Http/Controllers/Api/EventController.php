@@ -110,7 +110,16 @@ class EventController extends Controller
                 'phase' => 'pre_registration',
                 'message' => 'Registration has not started yet',
                 'next_phase' => 'registration',
-                'next_phase_starts_in' => $event->registration_start_date,
+                'next_phase_starts_in' => $this->formatInUserTimezone($event->registration_start_date),
+                'seconds_until_next_phase' => $now->diffInSeconds($event->registration_start_date),
+                'current_phase_times' => [
+                    'registration_start' => $this->formatInUserTimezone($event->registration_start_date),
+                    'registration_end' => $this->formatInUserTimezone($event->registration_end_date),
+                    'team_formation_start' => $this->formatInUserTimezone($event->team_formation_start_date),
+                    'team_formation_end' => $this->formatInUserTimezone($event->team_formation_end_date),
+                    'event_start' => $this->formatInUserTimezone($event->start_date),
+                    'event_end' => $this->formatInUserTimezone($event->end_date)
+                ]
             ];
         }
         // Check if in registration period
@@ -119,7 +128,16 @@ class EventController extends Controller
                 'phase' => 'registration',
                 'message' => 'Registration is open',
                 'next_phase' => 'team_formation',
-                'next_phase_starts_in' => $event->team_formation_start_date,
+                'next_phase_starts_in' => $this->formatInUserTimezone($event->team_formation_start_date),
+                'seconds_until_next_phase' => $now->diffInSeconds($event->team_formation_start_date),
+                'current_phase_times' => [
+                    'registration_start' => $this->formatInUserTimezone($event->registration_start_date),
+                    'registration_end' => $this->formatInUserTimezone($event->registration_end_date),
+                    'team_formation_start' => $this->formatInUserTimezone($event->team_formation_start_date),
+                    'team_formation_end' => $this->formatInUserTimezone($event->team_formation_end_date),
+                    'event_start' => $this->formatInUserTimezone($event->start_date),
+                    'event_end' => $this->formatInUserTimezone($event->end_date)
+                ]
             ];
         }
         // Check if in team formation period
@@ -128,7 +146,16 @@ class EventController extends Controller
                 'phase' => 'team_formation',
                 'message' => 'Team formation is open',
                 'next_phase' => 'event_start',
-                'next_phase_starts_in' => $event->start_date,
+                'next_phase_starts_in' => $this->formatInUserTimezone($event->start_date),
+                'seconds_until_next_phase' => $now->diffInSeconds($event->start_date),
+                'current_phase_times' => [
+                    'registration_start' => $this->formatInUserTimezone($event->registration_start_date),
+                    'registration_end' => $this->formatInUserTimezone($event->registration_end_date),
+                    'team_formation_start' => $this->formatInUserTimezone($event->team_formation_start_date),
+                    'team_formation_end' => $this->formatInUserTimezone($event->team_formation_end_date),
+                    'event_start' => $this->formatInUserTimezone($event->start_date),
+                    'event_end' => $this->formatInUserTimezone($event->end_date)
+                ]
             ];
         }
         // Check if event has started but not ended
@@ -137,7 +164,16 @@ class EventController extends Controller
                 'phase' => 'event_active',
                 'message' => 'Event is currently running',
                 'next_phase' => 'event_end',
-                'next_phase_starts_in' => $event->end_date,
+                'next_phase_starts_in' => $this->formatInUserTimezone($event->end_date),
+                'seconds_until_next_phase' => $now->diffInSeconds($event->end_date),
+                'current_phase_times' => [
+                    'registration_start' => $this->formatInUserTimezone($event->registration_start_date),
+                    'registration_end' => $this->formatInUserTimezone($event->registration_end_date),
+                    'team_formation_start' => $this->formatInUserTimezone($event->team_formation_start_date),
+                    'team_formation_end' => $this->formatInUserTimezone($event->team_formation_end_date),
+                    'event_start' => $this->formatInUserTimezone($event->start_date),
+                    'event_end' => $this->formatInUserTimezone($event->end_date)
+                ]
             ];
         }
         // Event has ended
@@ -147,6 +183,15 @@ class EventController extends Controller
                 'message' => 'Event has ended',
                 'next_phase' => null,
                 'next_phase_starts_in' => null,
+                'seconds_until_next_phase' => null,
+                'current_phase_times' => [
+                    'registration_start' => $this->formatInUserTimezone($event->registration_start_date),
+                    'registration_end' => $this->formatInUserTimezone($event->registration_end_date),
+                    'team_formation_start' => $this->formatInUserTimezone($event->team_formation_start_date),
+                    'team_formation_end' => $this->formatInUserTimezone($event->team_formation_end_date),
+                    'event_start' => $this->formatInUserTimezone($event->start_date),
+                    'event_end' => $this->formatInUserTimezone($event->end_date)
+                ]
             ];
         }
 
