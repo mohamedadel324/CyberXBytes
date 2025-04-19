@@ -101,17 +101,59 @@ class EventController extends Controller
             ], 404);
         }
 
-        if ($event->start_date > now()) {
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Event has not started yet'
-            ], 403);
+        $now = now();
+        $status = [];
+
+        // Check if before registration
+        if ($now < $event->registration_start_date) {
+            $status = [
+                'phase' => 'pre_registration',
+                'message' => 'Registration has not started yet',
+                'next_phase' => 'registration',
+                'next_phase_starts_in' => $event->registration_start_date,
+            ];
+        }
+        // Check if in registration period
+        else if ($now >= $event->registration_start_date && $now <= $event->registration_end_date) {
+            $status = [
+                'phase' => 'registration',
+                'message' => 'Registration is open',
+                'next_phase' => 'team_formation',
+                'next_phase_starts_in' => $event->team_formation_start_date,
+            ];
+        }
+        // Check if in team formation period
+        else if ($now >= $event->team_formation_start_date && $now <= $event->team_formation_end_date) {
+            $status = [
+                'phase' => 'team_formation',
+                'message' => 'Team formation is open',
+                'next_phase' => 'event_start',
+                'next_phase_starts_in' => $event->start_date,
+            ];
+        }
+        // Check if event has started but not ended
+        else if ($now >= $event->start_date && $now <= $event->end_date) {
+            $status = [
+                'phase' => 'event_active',
+                'message' => 'Event is currently running',
+                'next_phase' => 'event_end',
+                'next_phase_starts_in' => $event->end_date,
+            ];
+        }
+        // Event has ended
+        else if ($now > $event->end_date) {
+            $status = [
+                'phase' => 'ended',
+                'message' => 'Event has ended',
+                'next_phase' => null,
+                'next_phase_starts_in' => null,
+            ];
         }
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Event has started'
-        ], 200);
+            'data' => $status
+        ]);
     }
 
     public function mainEvent(Request $request)
