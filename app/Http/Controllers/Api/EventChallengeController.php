@@ -56,7 +56,6 @@ class EventChallengeController extends Controller
                 'message' => 'Event has not started yet',
                 'data' => [
                     'start_date' => $eventStartDate->format('Y-m-d H:i:s'),
-                    'end_date' => $eventEndDate->format('Y-m-d H:i:s'),
                 ]
             ], 403);
         }
@@ -611,7 +610,7 @@ class EventChallengeController extends Controller
             'flags.solvedBy' => function($query) {
                 $query->where('user_uuid', Auth::user()->uuid);
             }
-        ])->find($eventChallengeUuid);
+        ])->where('uuid', $eventChallengeUuid)->first();
         
         if (!$challenge) {
             return response()->json([
@@ -637,36 +636,38 @@ class EventChallengeController extends Controller
                     'challenge_title' => $challenge->title,
                     'flag_type' => 'single',
                     'solved' => $isSolved,
-                    'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null,
-                    'attempts' => $isSolved ? $challenge->solvedBy->first()->pivot->attempts : 0
+                    'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null
                 ]
             ]);
         }
         
         // For multiple flag challenges
-        $solvedFlags = $challenge->flags()
-            ->whereHas('solvedBy', function($query) {
-                $query->where('user_uuid', Auth::user()->uuid);
-            })
-            ->get();
-        
-        $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
-        
-        $flags = $challenge->flags->map(function($flag) use ($solvedFlags) {
-            $isFlagSolved = $solvedFlags->contains('id', $flag->id);
-            $solvedByUser = $flag->solvedBy->isNotEmpty();
+        $flags = $challenge->flags->map(function($flag) {
+            $isFlagSolved = $flag->solvedBy->isNotEmpty();
+            $solvedAt = $isFlagSolved ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null;
             
-            return [
+            // Base flag data
+            $flagData = [
                 'id' => $flag->id,
-                'name' => $flag->name,
-                'description' => $flag->description,
-                'bytes' => $flag->bytes,
-                'first_blood_bytes' => $flag->firstBloodBytes,
                 'solved' => $isFlagSolved,
-                'solved_at' => $solvedByUser ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null,
-                'attempts' => $solvedByUser ? $flag->solvedBy->first()->pivot->attempts : 0
+                'solved_at' => $solvedAt
             ];
+
+            // For multiple_all type, include name and description
+            if ($flag->eventChallange->flag_type === 'multiple_all') {
+                $flagData['name'] = $flag->name;
+                $flagData['description'] = $flag->description;
+            }
+            // For multiple_individual type, include only name
+            else if ($flag->eventChallange->flag_type === 'multiple_individual') {
+                $flagData['name'] = $flag->name;
+            }
+            
+            return $flagData;
         });
+        
+        $solvedCount = $flags->where('solved', true)->count();
+        $allFlagsSolved = $solvedCount === $challenge->flags->count();
         
         return response()->json([
             'status' => 'success',
@@ -675,7 +676,7 @@ class EventChallengeController extends Controller
                 'challenge_title' => $challenge->title,
                 'flag_type' => $challenge->flag_type,
                 'total_flags' => $challenge->flags->count(),
-                'solved_flags' => $solvedFlags->count(),
+                'solved_flags' => $solvedCount,
                 'all_flags_solved' => $allFlagsSolved,
                 'flags' => $flags
             ]
