@@ -20,9 +20,9 @@ class UserChallangeController extends Controller
             'description' => 'required|string',
             'category_uuid' => 'required|uuid|exists:challange_categories,uuid',
             'difficulty' => 'required|string',
-            'flag' => 'required|string',
-            'challange_file' => 'required|file|max:10240', // Max 10MB
-            'answer_file' => 'required|file|max:10240', // Max 10MB
+            'flag' => 'required|array',
+            'challange_file' => 'required|file|max:30240', // Max 30MB
+            'answer_file' => 'required|file|max:30240', // Max 30MB
             'notes' => 'required|string',
         ]);
 
