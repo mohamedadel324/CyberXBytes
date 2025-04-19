@@ -8,42 +8,40 @@ use Illuminate\Support\Facades\Auth;
 trait HandlesTimezones
 {
     /**
-     * Convert a date to the user's timezone
+     * Convert a datetime to user's timezone
      *
-     * @param mixed $date The date to convert
-     * @return Carbon|null
+     * @param mixed $datetime The datetime to convert (string, Carbon instance, or null)
+     * @return \Carbon\Carbon|null
      */
-    protected function toUserTimezone($date)
+    protected function convertToUserTimezone($datetime)
     {
-        if (!$date) {
+        if (!$datetime) {
             return null;
         }
 
-        $userTimezone = Auth::user()->time_zone ?? 'UTC';
-        
-        if ($date instanceof Carbon) {
-            return $date->copy()->setTimezone($userTimezone);
+        // Convert to Carbon if not already
+        if (!($datetime instanceof Carbon)) {
+            $datetime = Carbon::parse($datetime);
         }
-        
-        return Carbon::parse($date)->setTimezone($userTimezone);
+
+        // Get user's timezone, default to UTC if not set
+        $userTimezone = Auth::user()->timezone ?? 'UTC';
+
+        // Convert to user's timezone
+        return $datetime->setTimezone($userTimezone);
     }
 
     /**
-     * Format a date in the user's timezone
+     * Format a datetime in user's timezone
      *
-     * @param mixed $date The date to format
-     * @param string $format The format to use
+     * @param mixed $datetime The datetime to format (string, Carbon instance, or null)
+     * @param string $format The format to use (default: Y-m-d H:i:s)
      * @return string|null
      */
-    protected function formatInUserTimezone($date, $format = 'c')
+    protected function formatInUserTimezone($datetime, $format = 'Y-m-d H:i:s')
     {
-        $convertedDate = $this->toUserTimezone($date);
-        
-        if (!$convertedDate) {
-            return null;
-        }
-        
-        return $convertedDate->format($format);
+        $converted = $this->convertToUserTimezone($datetime);
+        return $converted ? $converted->format($format) : null;
     }
 
     /**

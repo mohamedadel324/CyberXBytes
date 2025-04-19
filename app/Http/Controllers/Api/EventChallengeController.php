@@ -44,6 +44,35 @@ class EventChallengeController extends Controller
             ], 401);
         }
 
+        // Convert event dates to user timezone
+        $userNow = $this->convertToUserTimezone(now());
+        $eventStartDate = $this->convertToUserTimezone($event->start_date);
+        $eventEndDate = $this->convertToUserTimezone($event->end_date);
+
+        // Check if event has started
+        if ($userNow->lt($eventStartDate)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Event has not started yet',
+                'data' => [
+                    'starts_in' => $userNow->diffForHumans($eventStartDate),
+                    'start_date' => $eventStartDate->format('Y-m-d H:i:s')
+                ]
+            ], 403);
+        }
+
+        // Check if event has ended
+        if ($userNow->gt($eventEndDate)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Event has ended',
+                'data' => [
+                    'ended' => $userNow->diffForHumans($eventEndDate),
+                    'end_date' => $eventEndDate->format('Y-m-d H:i:s')
+                ]
+            ], 403);
+        }
+
         // Check if user is part of any team in this event
         $team = EventTeam::where('event_uuid', $eventUuid)
             ->where(function($query) use ($user) {
