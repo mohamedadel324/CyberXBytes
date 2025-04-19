@@ -543,7 +543,7 @@ class EventChallengeController extends Controller
                             // For multiple_all, only count if all flags are solved
                             if (!in_array($challenge->id, $solvedChallenges)) {
                                 $allFlags = $challenge->flags->count();
-                                $solvedFlags = $challenge->flagSubmissions()
+                                $solvedFlags = EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $challenge->flags->pluck('id'))
                                     ->where('user_uuid', $member->uuid)
                                     ->where('solved', true)
                                     ->count();
