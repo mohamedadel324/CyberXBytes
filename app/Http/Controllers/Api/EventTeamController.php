@@ -267,7 +267,7 @@ class EventTeamController extends Controller
     }
     public function myTeam($eventUuid)
     {
-        $team = EventTeam::with(['members.solvedFlags.eventChallangeFlag.eventChallange', 'event'])
+        $team = EventTeam::with(['members.solvedFlags.eventChallange', 'event'])
             ->where('event_uuid', $eventUuid)
             ->whereHas('members', function ($query) {
                 $query->where('user_uuid', Auth::user()->uuid);
@@ -288,7 +288,7 @@ class EventTeamController extends Controller
 
         // Get team rank
         $allTeams = EventTeam::where('event_uuid', $eventUuid)
-            ->with(['members.solvedFlags.eventChallangeFlag.eventChallange'])
+            ->with(['members.solvedFlags.eventChallange'])
             ->get()
             ->map(function($team) use ($challenges) {
                 $points = 0;
