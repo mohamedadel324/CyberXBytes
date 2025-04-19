@@ -486,7 +486,7 @@ class EventChallengeController extends Controller
         }
 
         $teams = EventTeam::where('event_uuid', $eventUuid)
-            ->with(['members.submissions' => function($query) use ($eventUuid) {
+            ->with(['members.eventSubmissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
@@ -503,7 +503,7 @@ class EventChallengeController extends Controller
 
                 foreach ($team->members as $member) {
                     // Process challenge submissions
-                    foreach ($member->submissions as $submission) {
+                    foreach ($member->eventSubmissions as $submission) {
                         if (!in_array($submission->event_challange_id, $solvedChallenges)) {
                             $solvedChallenges[] = $submission->event_challange_id;
                             
@@ -514,10 +514,10 @@ class EventChallengeController extends Controller
                                 ->first();
                                 
                             if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
-                                $points += $submission->event_challange->firstBloodBytes ?? 0;
+                                $points += $submission->eventChallange->firstBloodBytes ?? 0;
                                 $firstBloodCount++;
                             } else {
-                                $points += $submission->event_challange->bytes ?? 0;
+                                $points += $submission->eventChallange->bytes ?? 0;
                             }
                         }
                     }
