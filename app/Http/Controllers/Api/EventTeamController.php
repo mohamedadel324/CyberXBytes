@@ -21,6 +21,20 @@ class EventTeamController extends Controller
 
     public function create(Request $request, $eventUuid)
     {
+        // Check if user is already in a team for this event
+        $existingTeam = EventTeam::where('event_uuid', $eventUuid)
+            ->whereHas('members', function ($query) {
+                $query->where('user_uuid', Auth::user()->uuid);
+            })
+            ->first();
+
+        if ($existingTeam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are already in a team for this event'
+            ], 400);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:event_teams,name',
             'description' => 'nullable|string'
@@ -83,20 +97,6 @@ class EventTeamController extends Controller
                     'current_time' => date('Y-m-d H:i:s', $currentTime),
                     'end_time' => date('Y-m-d H:i:s', $endTime)
                 ]
-            ], 400);
-        }
-
-        // Check if user is already in a team for this event
-        $existingTeam = EventTeam::where('event_uuid', $event->uuid)
-            ->whereHas('members', function ($query) {
-                $query->where('user_uuid', Auth::user()->uuid);
-            })
-            ->first();
-
-        if ($existingTeam) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You are already in a team for this event'
             ], 400);
         }
 
@@ -525,6 +525,20 @@ class EventTeamController extends Controller
 
         $team = $joinSecret->team;
 
+        // Check if user is already in a team for this event
+        $existingTeam = EventTeam::where('event_uuid', $team->event_uuid)
+            ->whereHas('members', function ($query) {
+                $query->where('user_uuid', Auth::user()->uuid);
+            })
+            ->first();
+
+        if ($existingTeam) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You are already in a team for this event'
+            ], 400);
+        }
+
         // DIRECT SERVER-SIDE TIME CHECK
         $currentTime = time(); // Current server Unix timestamp
         $startTime = strtotime($team->event->team_formation_start_date);
@@ -575,20 +589,6 @@ class EventTeamController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'This team is locked'
-            ], 400);
-        }
-
-        // Check if user is already in a team
-        $existingTeam = EventTeam::where('event_uuid', $team->event_uuid)
-            ->whereHas('members', function ($query) {
-                $query->where('user_uuid', Auth::user()->uuid);
-            })
-            ->first();
-
-        if ($existingTeam) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You are already in a team for this event'
             ], 400);
         }
 
