@@ -215,6 +215,7 @@ class LabController extends Controller
                 // For multiple_all, count users who solved all flags
                 $totalFlags = $challenge->flags->count();
                 $challenge->solved_count = $challenge->submissions()
+                    ->select('user_uuid')
                     ->where('solved', true)
                     ->groupBy('user_uuid')
                     ->havingRaw('COUNT(DISTINCT flag) = ?', [$totalFlags])
