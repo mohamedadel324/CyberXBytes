@@ -106,8 +106,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         Route::post('challenges/{eventChallengeUuid}/submit', [EventChallengeController::class, 'submit']);
         Route::get('/leaderboard-of-team-of-event/{eventUuid}', [EventChallengeController::class, 'getTeamLeaderboard']);
         Route::get('{eventUuid}/scoreboard', [EventChallengeController::class, 'scoreboard']);
-        Route::get('{eventUuid}/team-leaderboard', [EventChallengeController::class, 'getTeamLeaderboard']);
-        Route::get('challenges/{challengeUuid}/team-leaderboard', [EventChallengeController::class, 'getTeamChallengeLeaderboard']);
+        Route::get('challenges/{challengeUuid}/team-    ', [EventChallengeController::class, 'getTeamChallengeLeaderboard']);
         Route::get('{eventUuid}/team-stats', [EventChallengeController::class, 'teamStats']);
 
     // Challenge Categories

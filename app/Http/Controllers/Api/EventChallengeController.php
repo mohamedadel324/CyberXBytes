@@ -514,10 +514,10 @@ class EventChallengeController extends Controller
                                 ->first();
                                 
                             if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
-                                $points += $submission->eventChallange->firstBloodBytes ?? 0;
+                                $points += $submission->event_challange->firstBloodBytes ?? 0;
                                 $firstBloodCount++;
                             } else {
-                                $points += $submission->eventChallange->bytes ?? 0;
+                                $points += $submission->event_challange->bytes ?? 0;
                             }
                         }
                     }

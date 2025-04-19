@@ -19,6 +19,7 @@ class Submission extends Model
         return $this->belongsTo(Challange::class, 'challange_uuid', 'uuid');
     }
 
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_uuid', 'uuid');
