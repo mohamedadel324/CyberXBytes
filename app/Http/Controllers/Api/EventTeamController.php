@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Models\EventChallange;
+use App\Models\EventChallangeSubmission;
+use App\Models\EventChallangeFlagSubmission;
 
 class EventTeamController extends Controller
 {
@@ -278,6 +281,189 @@ class EventTeamController extends Controller
             ], 404);
         }
 
+        // Get all challenges for this event
+        $challenges = EventChallange::where('event_uuid', $eventUuid)
+            ->with(['flags'])
+            ->get();
+
+        // Get team rank
+        $allTeams = EventTeam::where('event_uuid', $eventUuid)
+            ->with(['members'])
+            ->get()
+            ->map(function($team) use ($challenges) {
+                $points = 0;
+                $solvedChallenges = [];
+
+                foreach ($team->members as $member) {
+                    // Process challenge submissions
+                    foreach ($member->solvedChallenges as $submission) {
+                        if (!in_array($submission->id, $solvedChallenges)) {
+                            $solvedChallenges[] = $submission->id;
+                            
+                            // Check if this was first blood
+                            $firstSolver = EventChallangeSubmission::where('event_challange_id', $submission->id)
+                                ->where('solved', true)
+                                ->orderBy('solved_at')
+                                ->first();
+                                
+                            if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                                $points += $submission->firstBloodBytes ?? 0;
+                            } else {
+                                $points += $submission->bytes ?? 0;
+                            }
+                        }
+                    }
+                }
+
+                return [
+                    'team_uuid' => $team->id,
+                    'points' => $points
+                ];
+            })
+            ->sortByDesc('points')
+            ->values();
+
+        $teamRank = $allTeams->search(function($item) use ($team) {
+            return $item['team_uuid'] === $team->id;
+        }) + 1;
+
+        // Get member statistics
+        $membersWithStats = $team->members->map(function($member) use ($challenges) {
+            $totalBytes = 0;
+            $totalFirstBloodBytes = 0;
+            $solvedChallenges = [];
+
+            // Process single flag type challenges
+            foreach ($challenges->where('flag_type', 'single') as $challenge) {
+                $submission = $member->solvedChallenges
+                    ->where('id', $challenge->id)
+                    ->first();
+                    
+                if ($submission) {
+                    $points = $challenge->bytes;
+                    $firstBloodPoints = 0;
+                    
+                    // Check if this was first blood
+                    $firstSolver = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                        ->where('solved', true)
+                        ->orderBy('solved_at')
+                        ->first();
+                        
+                    if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                        $firstBloodPoints = $challenge->firstBloodBytes;
+                        $points += $firstBloodPoints;
+                    }
+                    
+                    $totalBytes += $points;
+                    $totalFirstBloodBytes += $firstBloodPoints;
+                    
+                    $solvedChallenges[] = [
+                        'id' => $challenge->id,
+                        'title' => $challenge->title,
+                        'points' => $points,
+                        'first_blood_points' => $firstBloodPoints,
+                        'is_first_blood' => $firstBloodPoints > 0,
+                        'solved_at' => $submission->pivot->solved_at
+                    ];
+                }
+            }
+
+            // Process multiple flags challenges
+            foreach ($challenges->whereIn('flag_type', ['multiple_all', 'multiple_individual']) as $challenge) {
+                $solvedFlags = $member->solvedFlags
+                    ->whereIn('event_challange_id', $challenge->flags->pluck('id'));
+                    
+                if ($solvedFlags->isNotEmpty()) {
+                    if ($challenge->flag_type === 'multiple_all') {
+                        // For multiple_all, only count if all flags are solved
+                        $allFlags = $challenge->flags->count();
+                        $solvedFlagsCount = $solvedFlags->count();
+                        
+                        if ($allFlags === $solvedFlagsCount) {
+                            $points = $challenge->bytes;
+                            $firstBloodPoints = 0;
+                            
+                            // Check if this was first blood for all flags
+                            $isFirstBlood = true;
+                            foreach ($challenge->flags as $flag) {
+                                $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                                    ->where('solved', true)
+                                    ->orderBy('solved_at')
+                                    ->first();
+                                    
+                                if (!$firstSolver || $firstSolver->user_uuid !== $member->uuid) {
+                                    $isFirstBlood = false;
+                                    break;
+                                }
+                            }
+                            
+                            if ($isFirstBlood) {
+                                $firstBloodPoints = $challenge->firstBloodBytes;
+                                $points += $firstBloodPoints;
+                            }
+                            
+                            $totalBytes += $points;
+                            $totalFirstBloodBytes += $firstBloodPoints;
+                            
+                            $solvedChallenges[] = [
+                                'id' => $challenge->id,
+                                'title' => $challenge->title,
+                                'points' => $points,
+                                'first_blood_points' => $firstBloodPoints,
+                                'is_first_blood' => $isFirstBlood,
+                                'solved_at' => $solvedFlags->min('solved_at')
+                            ];
+                        }
+                    } else if ($challenge->flag_type === 'multiple_individual') {
+                        // For individual flags, each flag gives points
+                        foreach ($solvedFlags as $flagSubmission) {
+                            $flag = $challenge->flags->firstWhere('id', $flagSubmission->event_challange_flag_id);
+                            
+                            if ($flag) {
+                                $points = $flag->bytes;
+                                $firstBloodPoints = 0;
+                                
+                                // Check if this was first blood for this flag
+                                $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                                    ->where('solved', true)
+                                    ->orderBy('solved_at')
+                                    ->first();
+                                    
+                                if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                                    $firstBloodPoints = $flag->firstBloodBytes;
+                                    $points += $firstBloodPoints;
+                                }
+                                
+                                $totalBytes += $points;
+                                $totalFirstBloodBytes += $firstBloodPoints;
+                                
+                                $solvedChallenges[] = [
+                                    'id' => $challenge->id,
+                                    'title' => $challenge->title,
+                                    'flag_name' => $flag->name,
+                                    'points' => $points,
+                                    'first_blood_points' => $firstBloodPoints,
+                                    'is_first_blood' => $firstBloodPoints > 0,
+                                    'solved_at' => $flagSubmission->solved_at
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return [
+                'uuid' => $member->uuid,
+                'username' => $member->user_name,
+                'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
+                'role' => $member->pivot->role,
+                'total_bytes' => $totalBytes,
+                'total_first_blood_bytes' => $totalFirstBloodBytes,
+                'total_points' => $totalBytes + $totalFirstBloodBytes,
+                'solved_challenges' => collect($solvedChallenges)->sortBy('solved_at')->values()
+            ];
+        });
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -285,19 +471,21 @@ class EventTeamController extends Controller
                 'name' => $team->name,
                 'description' => $team->description,
                 'is_locked' => $team->is_locked,
+                'team_rank' => $teamRank,
+                'total_teams' => $allTeams->count(),
+                'event' => [
+                    'min_team_members' => $team->event->team_minimum_members,
+                    'max_team_members' => $team->event->team_maximum_members
+                ],
                 'leader' => [
                     'uuid' => $team->leader->uuid,
                     'user_name' => $team->leader->user_name,
                     'profile_image' => $team->leader->profile_image ? url('storage/' . $team->leader->profile_image) : null
                 ],
-                'members' => $team->members->map(function ($member) {
-                    return [
-                        'uuid' => $member->uuid,
-                        'username' => $member->user_name,
-                        'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
-                        'role' => $member->pivot->role
-                    ];
-                })
+                'members' => $membersWithStats,
+                'total_team_bytes' => $membersWithStats->sum('total_bytes'),
+                'total_team_first_blood_bytes' => $membersWithStats->sum('total_first_blood_bytes'),
+                'total_team_points' => $membersWithStats->sum('total_points')
             ]
         ]);
     }
