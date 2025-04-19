@@ -55,7 +55,6 @@ class EventChallengeController extends Controller
                 'status' => 'error',
                 'message' => 'Event has not started yet',
                 'data' => [
-                    'starts_in' => $userNow->diffForHumans($eventStartDate),
                     'start_date' => $eventStartDate->format('Y-m-d H:i:s')
                 ]
             ], 403);
@@ -67,7 +66,6 @@ class EventChallengeController extends Controller
                 'status' => 'error',
                 'message' => 'Event has ended',
                 'data' => [
-                    'ended' => $userNow->diffForHumans($eventEndDate),
                     'end_date' => $eventEndDate->format('Y-m-d H:i:s')
                 ]
             ], 403);
