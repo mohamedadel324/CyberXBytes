@@ -21,8 +21,8 @@ class UserChallangeController extends Controller
             'category_uuid' => 'required|uuid|exists:challange_categories,uuid',
             'difficulty' => 'required|string',
             'flag' => 'required|array',
-            'challange_file' => 'required|file|max:30240', // Max 30MB
-            'answer_file' => 'required|file|max:30240', // Max 30MB
+            'challange_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
+            'answer_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
             'notes' => 'required|string',
         ]);
 
@@ -45,7 +45,7 @@ class UserChallangeController extends Controller
         $userChallange->description = $request->description;
         $userChallange->category_uuid = $request->category_uuid;
         $userChallange->difficulty = $request->difficulty;
-        $userChallange->flag = $request->flag;
+        $userChallange->flag = json_encode($request->flag);
         $userChallange->challange_file = $challengeFilePath;
         $userChallange->answer_file = $answerFilePath;
         $userChallange->notes = $request->notes;
