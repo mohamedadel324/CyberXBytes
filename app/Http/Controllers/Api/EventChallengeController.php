@@ -55,7 +55,8 @@ class EventChallengeController extends Controller
                 'status' => 'error',
                 'message' => 'Event has not started yet',
                 'data' => [
-                    'start_date' => $eventStartDate->format('Y-m-d H:i:s')
+                    'start_date' => $eventStartDate->format('Y-m-d H:i:s'),
+                    'end_date' => $eventEndDate->format('Y-m-d H:i:s'),
                 ]
             ], 403);
         }
