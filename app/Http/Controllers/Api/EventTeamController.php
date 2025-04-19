@@ -331,6 +331,34 @@ class EventTeamController extends Controller
                             } else {
                                 $points += $flag->bytes ?? 0;
                             }
+                        } else if ($challenge->flag_type === 'multiple_all') {
+                            // For multiple_all, only count if all flags are solved
+                            $allFlags = $challenge->flags->count();
+                            $solvedFlags = $member->solvedFlags
+                                ->whereIn('event_challange_flag_id', $challenge->flags->pluck('id'))
+                                ->count();
+                                
+                            if ($allFlags === $solvedFlags) {
+                                // Check if this was first blood for all flags
+                                $isFirstBlood = true;
+                                foreach ($challenge->flags as $challengeFlag) {
+                                    $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $challengeFlag->id)
+                                        ->where('solved', true)
+                                        ->orderBy('solved_at')
+                                        ->first();
+                                        
+                                    if (!$firstSolver || $firstSolver->user_uuid !== $member->uuid) {
+                                        $isFirstBlood = false;
+                                        break;
+                                    }
+                                }
+                                
+                                if ($isFirstBlood) {
+                                    $points += $challenge->firstBloodBytes ?? 0;
+                                } else {
+                                    $points += $challenge->bytes ?? 0;
+                                }
+                            }
                         }
                     }
                 }
