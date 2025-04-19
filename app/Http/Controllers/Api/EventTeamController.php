@@ -383,7 +383,8 @@ class EventTeamController extends Controller
                     ->orderBy('solved_at')
                     ->first()->user_uuid === $member->uuid;
                     
-                $bytes = $completion->normal_bytes;
+                // If it's first blood, use first_blood_bytes, otherwise use normal_bytes
+                $bytes = $isFirstBlood ? 0 : $completion->normal_bytes;
                 $firstBloodBytes = $isFirstBlood ? $completion->first_blood_bytes : 0;
                 
                 $solvedChallenges[] = [
@@ -391,7 +392,7 @@ class EventTeamController extends Controller
                     'challenge_name' => $completion->challenge_name,
                     'completed_at' => $completion->completed_at,
                     'is_first_blood' => $isFirstBlood,
-                    'bytes' => $bytes + $firstBloodBytes,
+                    'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
                     'normal_bytes' => $bytes,
                     'first_blood_bytes' => $firstBloodBytes
                 ];
@@ -425,7 +426,8 @@ class EventTeamController extends Controller
                     ->orderBy('solved_at')
                     ->first()->user_uuid === $member->uuid;
                     
-                $bytes = $completion->normal_bytes;
+                // If it's first blood, use first_blood_bytes, otherwise use normal_bytes
+                $bytes = $isFirstBlood ? 0 : $completion->normal_bytes;
                 $firstBloodBytes = $isFirstBlood ? $completion->first_blood_bytes : 0;
                 
                 $solvedChallenges[] = [
@@ -433,7 +435,7 @@ class EventTeamController extends Controller
                     'challenge_name' => $completion->challenge_name . ' - ' . $completion->flag_name,
                     'completed_at' => $completion->completed_at,
                     'is_first_blood' => $isFirstBlood,
-                    'bytes' => $bytes + $firstBloodBytes,
+                    'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
                     'normal_bytes' => $bytes,
                     'first_blood_bytes' => $firstBloodBytes
                 ];
@@ -544,8 +546,8 @@ class EventTeamController extends Controller
                             'total_bytes' => $member['total_bytes'],
                             'challenges_solved' => count($member['challenge_completions']),
                             'first_blood_count' => collect($member['challenge_completions'])->where('is_first_blood', true)->count(),
-                            'normal_bytes' => collect($member['challenge_completions'])->sum('normal_bytes'),
-                            'first_blood_bytes' => collect($member['challenge_completions'])->sum('first_blood_bytes')
+                            'normal_bytes' => collect($member['challenge_completions'])->where('is_first_blood', false)->sum('bytes'),
+                            'first_blood_bytes' => collect($member['challenge_completions'])->where('is_first_blood', true)->sum('bytes')
                         ];
                     }),
                     'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
