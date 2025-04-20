@@ -744,7 +744,7 @@ class EventTeamController extends Controller
         }
 
         // Find the team and verify the current user is the leader
-        $team = EventTeam::where('id', $teamUuid)
+        $team = EventTeam::with('event')->where('id', $teamUuid)
             ->where('leader_uuid', Auth::user()->uuid)
             ->first();
 
@@ -753,6 +753,23 @@ class EventTeamController extends Controller
                 'status' => 'error',
                 'message' => 'Team not found or you are not the leader'
             ], 404);
+        }
+
+        // Check if the event has already started
+        $currentTime = time(); // Current server Unix timestamp
+        $eventStartTime = strtotime($team->event->start_date);
+
+        
+        // Prevent removing members after the event has started
+        if ($currentTime >= $eventStartTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot remove team members after the event has started',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'event_start_time' => date('Y-m-d H:i:s', $eventStartTime)
+                ]
+            ], 400);
         }
 
         // Find the user to remove
