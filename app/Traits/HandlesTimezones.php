@@ -53,7 +53,7 @@ trait HandlesTimezones
      */
     protected function isNowBetween($startDate, $endDate)
     {
-        $userTimezone = Auth::user()->timezone ?? 'UTC';
+        $userTimezone = Auth::user()->time_zone ?? 'UTC';
         $now = Carbon::now($userTimezone);
         
         $start = $this->convertToUserTimezone($startDate);
