@@ -25,7 +25,7 @@ trait HandlesTimezones
         }
 
         // Get user's timezone, default to UTC if not set
-        $userTimezone = Auth::user()->timezone ?? 'UTC';
+        $userTimezone = Auth::user()->time_zone ?? 'UTC';
 
         // Convert to user's timezone
         return $datetime->setTimezone($userTimezone);
