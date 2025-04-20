@@ -525,11 +525,6 @@ class EventTeamController extends Controller
                     'team_minimum_members' => $event->team_minimum_members,
                     'team_maximum_members' => $event->team_maximum_members,
                 ],
-                'leader' => [
-                    'uuid' => $team->leader->uuid,
-                    'user_name' => $team->leader->user_name,
-                    'profile_image' => $team->leader->profile_image ? url('storage/' . $team->leader->profile_image) : null
-                ],
                 'members' => $membersData,
                 'first_blood_times' => $firstBloodTimes,
                 'statistics' => [
