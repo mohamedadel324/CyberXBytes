@@ -25,6 +25,7 @@ class EventController extends Controller
             })
             ->where(function($query) use ($user) {
                 $query->where('registration_start_date', '<=', now())
+                    ->where('registration_end_date', '>=', now())
                     ->orWhereHas('registrations', function($q) use ($user) {
                         $q->where('user_uuid', $user->uuid)
                           ->whereColumn('event_uuid', 'events.uuid');
@@ -61,11 +62,19 @@ class EventController extends Controller
 
     public function show(Request $request, $uuid)
     {
+        $user = $request->user();
         $event = Event::where('uuid', $uuid)
             ->where(function($query) use ($request) {
                 $query->where('is_private', 0)
                     ->orWhereHas('invitations', function($q) use ($request) {
                         $q->where('email', $request->user()->email);
+                    });
+            })
+            ->where(function($query) use ($user) {
+                $query->where('registration_start_date', '>', now())
+                    ->orWhereHas('registrations', function($q) use ($user) {
+                        $q->where('user_uuid', $user->uuid)
+                          ->whereColumn('event_uuid', 'events.uuid');
                     });
             })
             ->firstOrFail();
