@@ -224,7 +224,7 @@ class EventController extends Controller
         $canRegister = $this->isNowBetween($event->registration_start_date, $event->registration_end_date);
 
         // Determine if the user is registered
-        $isRegistered = Auth::check() && $event->registrations()->where('user_id', Auth::id())->exists();
+        $isRegistered = Auth::check() && $event->registrations()->where('user_uuid', Auth::user()->uuid)->exists();
 
         // If registration is not possible (either not started yet or already ended)
         if (!$canRegister) {
