@@ -16,20 +16,8 @@ class EventController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $events = Event::query()
-            ->where(function($query) use ($user) {
-                $query->where('is_private', 0)
-                    ->orWhereHas('invitations', function($q) use ($user) {
-                        $q->where('email', $user->email);
-                    });
-            })
-            ->where(function($query) use ($user) {
-                $query->WhereHas('invitations', function($q) use ($user) {
-                        $q->where('email', $user->email);
-                    });
-            })
-            ->where('end_date', '>=', now())
-            ->get()
+        $events = Event::
+            all()
             ->map(function ($event) {
                 return [
                     'uuid' => $event->uuid,
