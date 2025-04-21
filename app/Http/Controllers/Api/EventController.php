@@ -28,7 +28,7 @@ class EventController extends Controller
                         $q->where('email', $user->email);
                     });
             })
-            ->where('end_date', '>', now())
+            ->where('end_date', '>=', now())
             ->get()
             ->map(function ($event) {
                 return [
