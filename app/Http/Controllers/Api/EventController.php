@@ -230,11 +230,16 @@ class EventController extends Controller
         if (!$canRegister) {
             return response()->json([
                 'event' => [
-                    'uuid' => $event->uuid,
                     'title' => $event->title,
                     'description' => $event->description,
                     'image' => url('storage/' . $event->image) ?: $event->image,
                     'status' => 'under_working',
+                    'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
+                'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
+                'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
+                'team_formation_end_date' => $this->formatInUserTimezone($event->team_formation_end_date),
+                'start_date' => $this->formatInUserTimezone($event->start_date),
+                'end_date' => $this->formatInUserTimezone($event->end_date),
                     'team_minimum_members' => $event->team_minimum_members,
                     'team_maximum_members' => $event->team_maximum_members,
                     'is_registered' => $isRegistered,
