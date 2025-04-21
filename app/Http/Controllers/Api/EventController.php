@@ -227,6 +227,7 @@ class EventController extends Controller
         if (!$canRegister) {
             return response()->json([
                 'event' => [
+                    'uuid' => $event->uuid,
                     'title' => $event->title,
                     'description' => $event->description,
                     'image' => url('storage/' . $event->image) ?: $event->image,
