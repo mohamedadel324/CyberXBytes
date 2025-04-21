@@ -235,6 +235,8 @@ class EventController extends Controller
                     'description' => $event->description,
                     'image' => url('storage/' . $event->image) ?: $event->image,
                     'status' => 'under_working',
+                    'team_minimum_members' => $event->team_minimum_members,
+                    'team_maximum_members' => $event->team_maximum_members,
                     'is_registered' => $isRegistered,
                 ]
             ]);
