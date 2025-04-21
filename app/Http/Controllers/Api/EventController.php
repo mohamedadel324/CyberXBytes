@@ -24,13 +24,7 @@ class EventController extends Controller
                     });
             })
             ->where(function($query) use ($user) {
-                $query->where('registration_start_date', '<=', now())
-                    ->where('registration_end_date', '>=', now())
-                    ->orWhereHas('registrations', function($q) use ($user) {
-                        $q->where('user_uuid', $user->uuid)
-                          ->whereColumn('event_uuid', 'events.uuid');
-                    })
-                    ->orWhereHas('invitations', function($q) use ($user) {
+                $query->WhereHas('invitations', function($q) use ($user) {
                         $q->where('email', $user->email);
                     });
             })
