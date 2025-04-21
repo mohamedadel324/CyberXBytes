@@ -223,6 +223,9 @@ class EventController extends Controller
         // Calculate can_register status
         $canRegister = $this->isNowBetween($event->registration_start_date, $event->registration_end_date);
 
+        // Determine if the user is registered
+        $isRegistered = Auth::check() && $event->registrations()->where('user_id', Auth::id())->exists();
+
         // If registration is not possible (either not started yet or already ended)
         if (!$canRegister) {
             return response()->json([
@@ -232,6 +235,7 @@ class EventController extends Controller
                     'description' => $event->description,
                     'image' => url('storage/' . $event->image) ?: $event->image,
                     'status' => 'under_working',
+                    'is_registered' => $isRegistered,
                 ]
             ]);
         }
@@ -255,6 +259,7 @@ class EventController extends Controller
                 'team_maximum_members' => $event->team_maximum_members,
                 'can_register' => $canRegister,
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
+                'is_registered' => $isRegistered,
             ]
         ]);
     }
