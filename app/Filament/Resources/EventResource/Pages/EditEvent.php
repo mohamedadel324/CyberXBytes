@@ -94,6 +94,7 @@ class EditEvent extends EditRecord
                                     $flagData['bytes'] = $flagData['bytes'] ?? 0;
                                     $flagData['firstBloodBytes'] = $flagData['firstBloodBytes'] ?? 0;
                                     $flagData['name'] = $flagData['name'] ?? '';
+                                    $flagData['ar_name'] = $flagData['ar_name'] ?? '';
                                     $flagData['description'] = $flagData['description'] ?? '';
                                     $flagData['order'] = $flagData['order'] ?? 0;
                                     
@@ -120,6 +121,7 @@ class EditEvent extends EditRecord
                                 $flagData['bytes'] = $flagData['bytes'] ?? 0;
                                 $flagData['firstBloodBytes'] = $flagData['firstBloodBytes'] ?? 0;
                                 $flagData['name'] = $flagData['name'] ?? '';
+                                $flagData['ar_name'] = $flagData['ar_name'] ?? '';
                                 $flagData['description'] = $flagData['description'] ?? '';
                                 $flagData['order'] = $flagData['order'] ?? 0;
                                 

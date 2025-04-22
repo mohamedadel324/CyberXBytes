@@ -40,7 +40,6 @@ class EventTeamController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:event_teams,name',
-            'description' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -107,7 +106,6 @@ class EventTeamController extends Controller
         $team = EventTeam::create([
             'event_uuid' => $event->uuid,
             'name' => $request->name,
-            'description' => $request->description,
             'leader_uuid' => Auth::user()->uuid,
             'is_locked' => false
         ]);
@@ -518,7 +516,6 @@ class EventTeamController extends Controller
             'data' => [
                 'uuid' => $team->id,
                 'name' => $team->name,
-                'description' => $team->description,
                 'is_locked' => $team->is_locked,
                 'rank' => $teamRank,
                 'event' => [
@@ -638,7 +635,6 @@ class EventTeamController extends Controller
                 'team' => [
                     'uuid' => $team->id,
                     'name' => $team->name,
-                    'description' => $team->description,
                     'is_locked' => $team->is_locked,
                     'rank' => $teamRank,
                 ],
@@ -663,7 +659,6 @@ class EventTeamController extends Controller
                 return [
                     'uuid' => $team->id,
                     'name' => $team->name,
-                    'description' => $team->description,
                     'is_locked' => $team->is_locked,
                     'leader' => $team->leader->only(['uuid', 'user_name']),
                     'member_count' => $team->members->count(),
@@ -822,7 +817,7 @@ class EventTeamController extends Controller
     public function generateJoinSecret($teamUuid)
     {
         // Find the team and verify the current user is the leader
-        $team = EventTeam::with('members')->where('id', $teamUuid)
+        $team = EventTeam::with(['members', 'event'])->where('id', $teamUuid)
             ->where('leader_uuid', Auth::user()->uuid)
             ->first();
 
@@ -831,6 +826,49 @@ class EventTeamController extends Controller
                 'status' => 'error',
                 'message' => 'Team not found or you are not the leader'
             ], 404);
+        }
+
+        // DIRECT SERVER-SIDE TIME CHECK
+        $currentTime = time(); // Current server Unix timestamp
+        $startTime = strtotime($team->event->team_formation_start_date);
+        $endTime = strtotime($team->event->team_formation_end_date);
+        $eventStartTime = strtotime($team->event->start_date);
+        
+        
+        // Only proceed if current time is between start and end times of team formation
+        if ($currentTime < $startTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Team formation has not started yet',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'start_time' => date('Y-m-d H:i:s', $startTime),
+                    'seconds_remaining' => $startTime - $currentTime
+                ]
+            ], 400);
+        }
+
+        if ($currentTime > $endTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Team formation period has ended',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'end_time' => date('Y-m-d H:i:s', $endTime)
+                ]
+            ], 400);
+        }
+        
+        // Check if the event has already started
+        if ($currentTime >= $eventStartTime) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cannot generate join secrets after the event has started',
+                'debug_info' => [
+                    'current_time' => date('Y-m-d H:i:s', $currentTime),
+                    'event_start_time' => date('Y-m-d H:i:s', $eventStartTime)
+                ]
+            ], 400);
         }
 
         // Check if team is full
@@ -985,7 +1023,6 @@ class EventTeamController extends Controller
             'data' => [
                 'team' => [
                     'name' => $team->name,
-                    'description' => $team->description,
                     'member_count' => $team->members()->count()
                 ]
             ]
@@ -1035,7 +1072,6 @@ class EventTeamController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'description' => 'required|string',
             'icon' => 'nullable|image|max:2048' // 2MB max
         ]);
 
@@ -1073,9 +1109,6 @@ class EventTeamController extends Controller
             $team->name = $request->name;
         }
 
-        if ($request->has('description')) {
-            $team->description = $request->description;
-        }
 
         $team->save();
 
@@ -1084,7 +1117,6 @@ class EventTeamController extends Controller
             'message' => 'Team updated successfully',
             'data' => [
                 'name' => $team->name,
-                'description' => $team->description,
                 'icon_url' => $team->icon_url
             ]
         ]);

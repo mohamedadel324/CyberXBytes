@@ -20,6 +20,7 @@ class EventChallangeFlag extends Model
         'bytes',
         'firstBloodBytes',
         'name',
+        'ar_name',
         'description',
         'order'
     ];

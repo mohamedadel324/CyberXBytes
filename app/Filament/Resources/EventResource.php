@@ -180,6 +180,9 @@ class EventResource extends Resource
                                                 ->required()
                                                 ->maxLength(255)
                                                 ->label('Flag Name'),
+                                            Forms\Components\TextInput::make('ar_name')
+                                                ->maxLength(255)
+                                                ->label('Flag Name (Arabic)'),
                                             Forms\Components\TextInput::make('flag')
                                                 ->required()
                                                 ->maxLength(255),
