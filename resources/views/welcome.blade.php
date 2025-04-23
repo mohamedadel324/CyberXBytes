@@ -57,19 +57,6 @@
             text-shadow: 0 0 20px rgba(56, 255, 229, 0.7);
         }
 
-        .letter {
-            display: inline-block;
-            opacity: 0;
-            filter: blur(10px);
-            transform: translateY(20px) scale(1.2);
-            animation: blowIn 0.8s forwards;
-        }
-        
-        .space {
-            display: inline-block;
-            width: 0.5em;
-        }
-
         .main-text {
             font-size: 2.2rem;
             line-height: 1.5;
@@ -77,6 +64,7 @@
             margin: 0 auto 3rem;
             text-align: center;
             font-weight: 500;
+            animation: fadeIn 1s ease-in-out;
         }
         
         .buttons {
@@ -101,7 +89,7 @@
             overflow: hidden;
             opacity: 0;
             animation: fadeIn 1s ease-in-out forwards;
-            animation-delay: 1s;
+            animation-delay: 0.5s;
             z-index: 1;
             letter-spacing: 1px;
         }
@@ -155,15 +143,12 @@
         @keyframes glow {
             0% {
                 text-shadow: 0 0 10px rgba(56, 255, 229, 0.7),
-                             0 0 20px rgba(56, 255, 229, 0.5),
-                             0 0 30px rgba(56, 255, 229, 0.3);
+                             0 0 20px rgba(56, 255, 229, 0.5);
                 color: var(--primary-color);
             }
             100% {
                 text-shadow: 0 0 20px rgba(56, 255, 229, 0.9),
-                             0 0 30px rgba(56, 255, 229, 0.7),
-                             0 0 40px rgba(56, 255, 229, 0.5),
-                             0 0 50px rgba(56, 255, 229, 0.3);
+                             0 0 30px rgba(56, 255, 229, 0.7);
                 color: #fff;
             }
         }
@@ -173,17 +158,30 @@
             to { opacity: 1; }
         }
         
-        @keyframes blowIn {
-            0% {
-                opacity: 0;
-                filter: blur(10px);
-                transform: translateY(20px) scale(1.2);
-            }
-            100% {
-                opacity: 1;
-                filter: blur(0);
-                transform: translateY(0) scale(1);
-            }
+        @keyframes moveParticle1 {
+            0% { transform: translate(0, 0); }
+            33% { transform: translate(50px, 50px); }
+            66% { transform: translate(-50px, 50px); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        @keyframes moveParticle2 {
+            0% { transform: translate(0, 0); }
+            33% { transform: translate(-70px, 30px); }
+            66% { transform: translate(70px, -30px); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        @keyframes moveParticle3 {
+            0% { transform: translate(0, 0); }
+            33% { transform: translate(30px, -50px); }
+            66% { transform: translate(-30px, -50px); }
+            100% { transform: translate(0, 0); }
+        }
+        
+        @keyframes fadeParticle {
+            0% { opacity: 0.5; }
+            100% { opacity: 0.2; }
         }
         
         @media (max-width: 768px) {
@@ -210,7 +208,7 @@
     <div class="container">
         <h1>Welcome to <span>CyberXbytes</span></h1>
         
-        <div class="main-text" id="blowing-text">
+        <div class="main-text">
             Join us at CyberXbytes to test your skills in the world of cybersecurity and compete with elite professionals and amateurs in an exciting gaming environment full of challenges.
         </div>
         
@@ -220,101 +218,56 @@
     </div>
     
     <script>
-        // Create particles
+        // Create particles with optimized approach
         const particlesContainer = document.getElementById('particles');
-        const particleCount = 80;
+        const particleCount = 30; // Reduced from 80
+        const animations = ['moveParticle1', 'moveParticle2', 'moveParticle3'];
         
-        for (let i = 0; i < particleCount; i++) {
-            createParticle();
-        }
-        
-        function createParticle() {
-            const particle = document.createElement('div');
-            particle.classList.add('particle');
+        // Create particles function - optimized
+        function createParticles() {
+            const fragment = document.createDocumentFragment();
             
-            // Random position
-            const posX = Math.random() * window.innerWidth;
-            const posY = Math.random() * window.innerHeight;
-            
-            // Random size
-            const size = Math.random() * 3 + 1;
-            
-            // Set styles
-            particle.style.left = `${posX}px`;
-            particle.style.top = `${posY}px`;
-            particle.style.width = `${size}px`;
-            particle.style.height = `${size}px`;
-            particle.style.opacity = Math.random() * 0.5 + 0.3;
-            
-            // Animate
-            particle.style.animation = `
-                moveParticle ${Math.random() * 20 + 20}s linear infinite,
-                fadeParticle ${Math.random() * 5 + 5}s ease-in-out infinite alternate
-            `;
-            
-            // Add keyframes dynamically
-            const keyframes = `
-                @keyframes moveParticle {
-                    0% {
-                        transform: translate(0, 0);
-                    }
-                    33% {
-                        transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px);
-                    }
-                    66% {
-                        transform: translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px);
-                    }
-                    100% {
-                        transform: translate(0, 0);
-                    }
-                }
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
                 
-                @keyframes fadeParticle {
-                    0% { opacity: ${Math.random() * 0.5 + 0.3}; }
-                    100% { opacity: ${Math.random() * 0.3 + 0.1}; }
-                }
-            `;
-            
-            const style = document.createElement('style');
-            style.textContent = keyframes;
-            document.head.appendChild(style);
-            
-            particlesContainer.appendChild(particle);
-        }
-
-        // Text animation with proper spacing
-        function animateText() {
-            const text = document.getElementById('blowing-text');
-            const textContent = text.textContent.trim();
-            text.innerHTML = '';
-            
-            // Split text into words and then characters
-            const words = textContent.split(' ');
-            
-            words.forEach((word, wordIndex) => {
-                // Process each character in the word
-                for (let i = 0; i < word.length; i++) {
-                    const letter = document.createElement('span');
-                    letter.classList.add('letter');
-                    letter.textContent = word[i];
-                    letter.style.animationDelay = `${0.03 * (i + wordIndex * word.length)}s`;
-                    text.appendChild(letter);
-                }
+                // Random position
+                const posX = Math.random() * window.innerWidth;
+                const posY = Math.random() * window.innerHeight;
                 
-                // Add a space after each word (except the last one)
-                if (wordIndex < words.length - 1) {
-                    const space = document.createElement('span');
-                    space.classList.add('space');
-                    space.innerHTML = '&nbsp;';
-                    text.appendChild(space);
-                }
-            });
+                // Random size (smaller range)
+                const size = Math.random() * 2 + 1;
+                
+                // Set styles
+                particle.style.left = `${posX}px`;
+                particle.style.top = `${posY}px`;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.opacity = Math.random() * 0.4 + 0.2;
+                
+                // Use predefined animations instead of generating unique ones
+                const animationIndex = i % animations.length;
+                const duration = (Math.random() * 10 + 20).toFixed(1);
+                const fadeDelay = (Math.random() * 5).toFixed(1);
+                
+                particle.style.animation = `
+                    ${animations[animationIndex]} ${duration}s linear infinite,
+                    fadeParticle ${fadeDelay}s ease-in-out infinite alternate
+                `;
+                
+                fragment.appendChild(particle);
+            }
+            
+            particlesContainer.appendChild(fragment);
         }
         
-        // Initialize animations
-        window.addEventListener('DOMContentLoaded', () => {
-            animateText();
-        });
+        // Use requestIdleCallback for non-critical initialization if available
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => createParticles());
+        } else {
+            // Fallback to setTimeout
+            setTimeout(createParticles, 100);
+        }
     </script>
 </body>
 </html> 
