@@ -1072,7 +1072,7 @@ class EventTeamController extends Controller
     public function updateTeam(Request $request, $teamUuid)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'name' => 'nullable|string|max:255',
             'icon' => 'nullable|image|max:2048' // 2MB max
         ]);
 
@@ -1106,10 +1106,9 @@ class EventTeamController extends Controller
             $team->icon = $path;
         }
 
-        if ($request->has('name')) {
+        if ($request->filled('name')) {
             $team->name = $request->name;
         }
-
 
         $team->save();
 
