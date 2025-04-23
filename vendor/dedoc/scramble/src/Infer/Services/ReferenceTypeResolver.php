@@ -88,7 +88,13 @@ class ReferenceTypeResolver
         }
 
         $annotatedTypeCanAcceptAnyInferredType = collect($types)
-            ->some(fn (Type $t) => $annotatedReturnType->accepts($t));
+            ->some(function (Type $t) use ($annotatedReturnType) {
+                if ($annotatedReturnType->accepts($t)) {
+                    return true;
+                }
+
+                return $t->acceptedBy($annotatedReturnType);
+            });
 
         if (! $annotatedTypeCanAcceptAnyInferredType) {
             $types = [$annotatedReturnType];
@@ -107,6 +113,10 @@ class ReferenceTypeResolver
 
     public function resolve(Scope $scope, Type $type): Type
     {
+        if ($resolvedType = $type->getAttribute('resolvedType')) {
+            return $resolvedType;
+        }
+
         if (
             $type instanceof AbstractReferenceType
             && ! $this->checkDependencies($type)
@@ -123,7 +133,7 @@ class ReferenceTypeResolver
             onInfiniteRecursion: fn () => new UnknownType('really bad self reference'),
         );
 
-        return deep_copy(RecursionGuard::run(
+        $resolvedType = deep_copy(RecursionGuard::run(
             $resultingType,// ->toString(),
             fn () => (new TypeWalker)->replace(
                 $resultingType,
@@ -133,6 +143,10 @@ class ReferenceTypeResolver
             ),
             onInfiniteRecursion: fn () => new UnknownType('really bad self reference'),
         ));
+
+        $type->setAttribute('resolvedType', $resolvedType);
+
+        return $resolvedType;
     }
 
     private function checkDependencies(AbstractReferenceType $type)
@@ -283,6 +297,13 @@ class ReferenceTypeResolver
             if ($event && $returnType = Context::getInstance()->extensionsBroker->getMethodReturnType($event)) {
                 return $returnType;
             }
+
+            if ($unwrappedType instanceof ObjectType) {
+                $calleeType = $unwrappedType;
+
+                $this->resolveUnknownClass($calleeType->name);
+            }
+
         }
 
         // (#TName).listTableDetails()
@@ -730,7 +751,7 @@ class ReferenceTypeResolver
         }, $templates)));
     }
 
-    private function resolveClassName(Scope $scope, string $name): ?string
+    public static function resolveClassName(Scope $scope, string $name): ?string
     {
         if (! in_array($name, StaticReference::KEYWORDS)) {
             return $name;

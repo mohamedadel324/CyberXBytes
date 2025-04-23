@@ -10,10 +10,12 @@ use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Extensions\OperationExtension;
 use Dedoc\Scramble\Extensions\TypeToSchemaExtension;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
+use Dedoc\Scramble\Infer\Definition\FunctionLikeDefinition;
 use Dedoc\Scramble\Infer\Extensions\ExtensionsBroker;
 use Dedoc\Scramble\Infer\Extensions\IndexBuildingBroker;
 use Dedoc\Scramble\Infer\Extensions\InferExtension;
 use Dedoc\Scramble\Infer\Scope\Index;
+use Dedoc\Scramble\Infer\Scope\LazyShallowReflectionIndex;
 use Dedoc\Scramble\Infer\Services\FileParser;
 use Dedoc\Scramble\Support\ExceptionToResponseExtensions\AuthenticationExceptionToResponseExtension;
 use Dedoc\Scramble\Support\ExceptionToResponseExtensions\AuthorizationExceptionToResponseExtension;
@@ -36,6 +38,8 @@ use Dedoc\Scramble\Support\InferExtensions\ResponseFactoryTypeInfer;
 use Dedoc\Scramble\Support\InferExtensions\ResponseMethodReturnTypeExtension;
 use Dedoc\Scramble\Support\InferExtensions\TypeTraceInfer;
 use Dedoc\Scramble\Support\InferExtensions\ValidatorTypeInfer;
+use Dedoc\Scramble\Support\Type\FunctionType;
+use Dedoc\Scramble\Support\Type\VoidType;
 use Dedoc\Scramble\Support\TypeToSchemaExtensions\AnonymousResourceCollectionTypeToSchema;
 use Dedoc\Scramble\Support\TypeToSchemaExtensions\CollectionToSchema;
 use Dedoc\Scramble\Support\TypeToSchemaExtensions\CursorPaginatorTypeToSchema;
@@ -74,6 +78,20 @@ class ScrambleServiceProvider extends PackageServiceProvider
         $this->app->singleton(FileParser::class, function () {
             return new FileParser(
                 (new ParserFactory)->createForHostVersion()
+            );
+        });
+
+        $this->app->singleton(LazyShallowReflectionIndex::class, function () {
+            return new LazyShallowReflectionIndex(
+                // Abort helpers are handled in the extension and these definitions are needed to avoid leaking the
+                // annotated exceptions to the caller's definitions.
+                functions: [
+                    'abort' => $abortType = new FunctionLikeDefinition(type: new FunctionType('abort', returnType: new VoidType)),
+                    'abort_if' => $abortType,
+                    'abort_unless' => $abortType,
+                    'throw_if' => $throwType = new FunctionLikeDefinition(type: new FunctionType('throw_if', returnType: new VoidType)),
+                    'throw_unless' => $throwType,
+                ]
             );
         });
 
@@ -159,7 +177,7 @@ class ScrambleServiceProvider extends PackageServiceProvider
             return new TypeTransformer(
                 $parameters['infer'] ?? $application->make(Infer::class),
                 $parameters['context'],
-                typeToSchemaExtensions: $parameters['typeToSchemaExtensions'] ?? array_merge([
+                typeToSchemaExtensionsClasses: $parameters['typeToSchemaExtensions'] ?? array_merge([
                     EnumToSchema::class,
                     JsonResourceTypeToSchema::class,
                     ModelToSchema::class,
@@ -173,7 +191,7 @@ class ScrambleServiceProvider extends PackageServiceProvider
                     ResourceResponseTypeToSchema::class,
                     VoidTypeToSchema::class,
                 ], $typesToSchemaExtensions),
-                exceptionToResponseExtensions: $parameters['exceptionToResponseExtensions'] ?? array_merge([
+                exceptionToResponseExtensionsClasses: $parameters['exceptionToResponseExtensions'] ?? array_merge([
                     ValidationExceptionToResponseExtension::class,
                     AuthorizationExceptionToResponseExtension::class,
                     AuthenticationExceptionToResponseExtension::class,

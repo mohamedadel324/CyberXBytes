@@ -7,11 +7,13 @@ use Dedoc\Scramble\Support\Generator\Response;
 use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Type\Generic;
 use Dedoc\Scramble\Support\Type\Literal\LiteralIntegerType;
+use Dedoc\Scramble\Support\Type\NullType;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Dedoc\Scramble\Support\Type\Type;
 use Dedoc\Scramble\Support\Type\UnknownType;
 use Illuminate\Contracts\Support\Responsable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\ResourceResponse;
 
 class ResponseTypeToSchema extends TypeToSchemaExtension
 {
@@ -38,7 +40,8 @@ class ResponseTypeToSchema extends TypeToSchemaExtension
             return null;
         }
 
-        $emptyContent = ($type->templateTypes[0]->value ?? null) === '';
+        $emptyContent = $type->templateTypes[0] instanceof NullType
+            || ($type->templateTypes[0]->value ?? null) === '';
 
         $response = Response::make($code = $type->templateTypes[1]->value)
             ->description($code === 204 ? 'No content' : '');
@@ -76,6 +79,9 @@ class ResponseTypeToSchema extends TypeToSchemaExtension
         }
 
         $response->code = $responseStatusCode;
+        if (! $data->isInstanceOf(ResourceResponse::class)) {
+            $response->setContent('application/json', $this->openApiTransformer->transform($data));
+        }
 
         return $response;
     }
