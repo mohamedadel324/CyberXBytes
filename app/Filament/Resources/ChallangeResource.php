@@ -63,9 +63,12 @@ class ChallangeResource extends Resource
                 Forms\Components\TextInput::make('firstBloodBytes')
                     ->required()
                     ->numeric(),
-                Forms\Components\TextInput::make('made_by')
-                    ->label('Made By')
-                    ->required(),
+                    Forms\Components\TextInput::make('made_by')
+                        ->label('Made By')
+                        ->required(),
+                Forms\Components\Toggle::make('available')
+                    ->label('Available')
+                    ->default(true),
                 Select::make('flag_type')
                     ->label('Flag Type')
                     ->options([
@@ -99,6 +102,9 @@ class ChallangeResource extends Resource
                             ->visible(fn (Forms\Get $get) => $get('../../flag_type') === 'multiple_individual'),
                         TextInput::make('name')
                             ->label('Name')
+                            ->required(),
+                        TextInput::make('ar_name')
+                            ->label('Arabic Name')
                             ->required(),
                         Textarea::make('description')
                             ->label('Description')

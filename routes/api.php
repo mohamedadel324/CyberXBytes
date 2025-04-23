@@ -41,6 +41,14 @@ Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     // Email change routes
     Route::post('request-email-change', [UserController::class, 'requestEmailChange']);
     Route::post('verify-email-change', [UserController::class, 'verifyEmailChange']);
+    
+    // User stats
+    Route::get('stats/{user_name}', [UserController::class, 'userStats']);
+    Route::get('my-stats', [UserController::class, 'myStats']);
+    
+    // User activities
+    Route::get('activities/{user_name}', [UserController::class, 'userActivities']);
+    Route::get('my-activities', [UserController::class, 'myActivities']);
 });
 
 Route::middleware(['auth:api', 'verified'])->group(function () {

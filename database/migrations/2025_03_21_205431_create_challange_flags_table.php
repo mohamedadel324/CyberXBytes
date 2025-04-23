@@ -15,6 +15,8 @@ return new class extends Migration
             $table->integer('bytes')->default(0);
             $table->integer('firstBloodBytes')->default(0);
             $table->string('name')->nullable();
+            $table->string('ar_name')->nullable();
+
             $table->text('description')->nullable();
             $table->timestamps();
         });

@@ -18,13 +18,15 @@ class Challange extends Model
         'firstBloodBytes',
         'flag',
         'flag_type',
-        'made_by'
+        'made_by',
+        'available'
     ];
 
     protected $casts = [
         'bytes' => 'integer',
         'firstBloodBytes' => 'integer',
-        'flag_type' => 'string'
+        'flag_type' => 'string',
+        'available' => 'boolean'
     ];
 
     protected $appends = ['category_icon_url'];

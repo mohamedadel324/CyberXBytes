@@ -26,7 +26,7 @@ return new class extends Migration
             $table->longText('file')->nullable();
             $table->longText('link')->nullable();
             $table->string('made_by')->nullable();
-
+            $table->boolean('available')->default(true);
             $table->timestamps();
         });
     }
