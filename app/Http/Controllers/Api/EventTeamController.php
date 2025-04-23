@@ -1118,7 +1118,7 @@ class EventTeamController extends Controller
             'message' => 'Team updated successfully',
             'data' => [
                 'name' => $team->name,
-                'icon_url' => url('storage/team-icons/' . $team->icon)
+                'icon_url' => $team->icon_url
             ]
         ]);
     }

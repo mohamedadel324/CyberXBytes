@@ -31,7 +31,7 @@ class EventTeam extends Model
 
     public function getIconUrlAttribute()
     {
-        return $this->icon ? Storage::url($this->icon) : null;
+        return $this->icon ? url('storage/' . $this->icon) : null;
     }
 
     public function event()
