@@ -45,7 +45,7 @@ class EventResource extends Resource
                                         ->required()
                                         ->maxLength(255)
                                         ->columnSpanFull(),
-                                    Forms\Components\TextArea::make('description')
+                                    Forms\Components\Textarea::make('description')
                                         ->required()
                                         ->columnSpanFull(),
                                     Forms\Components\FileUpload::make('image')
