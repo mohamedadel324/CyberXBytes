@@ -61,6 +61,15 @@ class PlayerTitleResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('title_ranges')
                     ->formatStateUsing(function ($state) {
+                        // Handle case where $state is a JSON string
+                        if (is_string($state)) {
+                            $state = json_decode($state, true);
+                        }
+                        
+                        if (!is_array($state)) {
+                            return '';
+                        }
+                        
                         return collect($state)->map(function ($range) {
                             return "{$range['title']} ({$range['from']}% - {$range['to']}%)";
                         })->join(', ');
