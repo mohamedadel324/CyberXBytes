@@ -532,8 +532,7 @@ class UserController extends Controller
             ];
         }
         
-        // Get stats for Lab 3 (assuming there's a lab with id or uuid representing Lab 3)
-        $lab3 = Lab::where('name', 'Lab 3')->first();
+        $lab3 = Lab::where('id', 3)->first();
         $lab3Stats = null;
         
         if ($lab3) {
@@ -674,7 +673,7 @@ class UserController extends Controller
             ];
         }
         
-        // Get bytes per month (current year)
+        // Get maximum and minimum bytes per month (current year)
         $bytesByMonth = [];
         $currentYear = date('Y');
         
@@ -687,7 +686,7 @@ class UserController extends Controller
                 ->get();
                 
             $processedMonthFlags = collect(); // Track processed flags to avoid duplicates
-            $monthBytes = 0;
+            $monthBytes = collect(); // Collect bytes for each submission
             
             foreach ($monthlySubmissions as $submission) {
                 if (!$submission->challange) {
@@ -713,10 +712,10 @@ class UserController extends Controller
                     
                     if ($isFirstBlood) {
                         // User gets firstblood bytes only
-                        $monthBytes += $challange->firstBloodBytes;
+                        $monthBytes->push($challange->firstBloodBytes);
                     } else {
                         // User gets regular bytes
-                        $monthBytes += $challange->bytes;
+                        $monthBytes->push($challange->bytes);
                     }
                 }
                 // For multiple_individual challenges, we need to count each flag's bytes separately
@@ -740,10 +739,10 @@ class UserController extends Controller
                             
                             if ($isFirstBlood) {
                                 // User gets firstblood bytes only
-                                $monthBytes += $flag->firstBloodBytes;
+                                $monthBytes->push($flag->firstBloodBytes);
                             } else {
                                 // User gets regular bytes
-                                $monthBytes += $flag->bytes;
+                                $monthBytes->push($flag->bytes);
                             }
                         }
                     }
@@ -765,21 +764,25 @@ class UserController extends Controller
                     
                     if ($isFirstBlood) {
                         // User gets firstblood bytes only
-                        $monthBytes += $challange->firstBloodBytes;
+                        $monthBytes->push($challange->firstBloodBytes);
                     } else {
                         // User gets regular bytes
-                        $monthBytes += $challange->bytes;
+                        $monthBytes->push($challange->bytes);
                     }
                 }
             }
             
-            $bytesByMonth[$month] = $monthBytes;
+            $bytesByMonth[$month] = [
+                'max' => $monthBytes->max() ?? 0,
+                'min' => $monthBytes->min() ?? 0
+            ];
         }
         
         // Compile and return the statistics
         return response()->json([
             'user' => [
                 'user_name' => $user->user_name,
+                'user_profile_image' => $user->profile_image ? url('storage/profile_images/' . $user->profile_image) : null,
                 'title' => $currentTitle,
                 'next_title' => $nextTitle,
                 'percentage_for_next_title' => $percentageForNextTitle,
