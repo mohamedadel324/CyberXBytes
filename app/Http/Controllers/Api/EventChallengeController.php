@@ -579,7 +579,7 @@ class EventChallengeController extends Controller
 
                 return [
                     'team_name' => $team->name,
-                    'team_icon' => url('storage/team-icons/' . $team->icon),
+                    'team_icon' => $team->icon_url,
                     'points' => $points,
                     'challenges_solved' => count($solvedChallenges),
                     'first_blood_count' => $firstBloodCount,

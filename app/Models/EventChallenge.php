@@ -21,6 +21,7 @@ class EventChallenge extends Model
         'description',
         'difficulty',
         'bytes',
+        'keywords',
         'firstBloodBytes',
         'flag',
         'file',
@@ -29,7 +30,8 @@ class EventChallenge extends Model
 
     protected $casts = [
         'bytes' => 'integer',
-        'firstBloodBytes' => 'integer'
+        'firstBloodBytes' => 'integer',
+        'keywords' => 'array'
     ];
 
     public function event()
