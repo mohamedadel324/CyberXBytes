@@ -268,4 +268,67 @@ class EventController extends Controller
             ]
         ]);
     }
+
+    public function userEvents(Request $request)
+    {
+        $user = $request->user();
+        
+        // Get all events the user has registered for or has been invited to (private events)
+        $events = Event::where(function($query) use ($user) {
+            // Events the user has registered for
+            $query->whereHas('registrations', function($q) use ($user) {
+                $q->where('user_uuid', $user->uuid);
+            })
+            // OR private events they've been invited to
+            ->orWhere(function($q) use ($user) {
+                $q->where('is_private', 1)
+                  ->whereHas('invitations', function($subQ) use ($user) {
+                      $subQ->where('email', $user->email);
+                  });
+            });
+        })->get();
+        
+        // Categorize events
+        $activeEvents = [];
+        $endedEvents = [];
+        $upcomingEvents = [];
+        
+        foreach ($events as $event) {
+            $data = [
+                'uuid' => $event->uuid,
+                'title' => $event->title,
+                'description' => $event->description,
+                'image' => url('storage/' . $event->image) ?: $event->image,
+                'is_main' => $event->is_main,
+                'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
+                'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
+                'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
+                'team_formation_end_date' => $this->formatInUserTimezone($event->team_formation_end_date),
+                'start_date' => $this->formatInUserTimezone($event->start_date),
+                'end_date' => $this->formatInUserTimezone($event->end_date),
+                'requires_team' => $event->requires_team,
+                'team_minimum_members' => $event->team_minimum_members,
+                'team_maximum_members' => $event->team_maximum_members,
+            ];
+            
+            $now = now();
+            
+            if ($now > $event->end_date) {
+                // Event has ended
+                $endedEvents[] = $data;
+            } elseif ($now >= $event->start_date) {
+                // Event is currently active
+                $activeEvents[] = $data;
+            } else {
+                // Event is upcoming
+                $upcomingEvents[] = $data;
+            }
+        }
+        
+        return response()->json([
+            'active_events' => $activeEvents,
+            'upcoming_events' => $upcomingEvents,
+            'ended_events' => $endedEvents
+        ]);
+    }
 }
