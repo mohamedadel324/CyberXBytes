@@ -18,6 +18,7 @@ class Challange extends Model
         'firstBloodBytes',
         'flag',
         'flag_type',
+        'keywords',
         'made_by',
         'available'
     ];
@@ -26,7 +27,8 @@ class Challange extends Model
         'bytes' => 'integer',
         'firstBloodBytes' => 'integer',
         'flag_type' => 'string',
-        'available' => 'boolean'
+        'available' => 'boolean',
+        'keywords' => 'array'
     ];
 
     protected $appends = ['category_icon_url'];

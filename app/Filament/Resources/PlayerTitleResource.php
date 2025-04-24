@@ -30,6 +30,9 @@ class PlayerTitleResource extends Resource
                         Forms\Components\TextInput::make('title')
                             ->required()
                             ->maxLength(255),
+                        Forms\Components\TextInput::make('arabic_title')
+                            ->required()
+                            ->maxLength(255),  
                         Forms\Components\TextInput::make('from')
                             ->required()
                             ->numeric()
@@ -71,7 +74,7 @@ class PlayerTitleResource extends Resource
                         }
                         
                         return collect($state)->map(function ($range) {
-                            return "{$range['title']} ({$range['from']}% - {$range['to']}%)";
+                            return "{$range['title']} ({$range['from']}% - {$range['to']}%) - {$range['arabic_title']}";
                         })->join(', ');
                     })
                     ->wrap()
