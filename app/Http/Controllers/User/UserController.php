@@ -769,7 +769,7 @@ class UserController extends Controller
             }
         }
 
-        $bytesSummary = [
+        $bytesByMonth = [
             'max' => $allBytes->max() ?? 0,
             'min' => $allBytes->min() ?? 0
         ];
