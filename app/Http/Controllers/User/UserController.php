@@ -355,6 +355,7 @@ class UserController extends Controller
             
             if ($currentRange && $nextRange) {
                 $nextTitle = $nextRange['title'];
+                $nextTitleArabic = $nextRange['arabic_title'];
                 // Calculate the percentage needed within the current range
                 $currentRangeSize = $nextRange['from'] - $currentRange['from'];
                 $progressInRange = $percentageSolved - $currentRange['from'];
@@ -801,6 +802,7 @@ class UserController extends Controller
                 'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                 'title' => $currentTitle,
                 'next_title' => $nextTitle,
+                'next_title_arabic' => $nextTitleArabic,
                 'percentage_for_next_title' => $percentageForNextTitle,
                 'total_bytes' => $totalBytes,
                 'total_firstblood_bytes' => $totalFirstBloodBytes,
