@@ -516,7 +516,7 @@ class EventTeamController extends Controller
             'data' => [
                 'uuid' => $team->id,
                 'name' => $team->name,
-                'icon_url' => $team->icon ? url('storage/' . $team->icon) : null,
+                'icon_url' => $team->icon ? url('storage' . $team->icon) : null,
                 'is_locked' => $team->is_locked,
                 'rank' => $teamRank,
                 'event' => [
