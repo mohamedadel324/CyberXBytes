@@ -782,7 +782,7 @@ class UserController extends Controller
         return response()->json([
             'user' => [
                 'user_name' => $user->user_name,
-                'user_profile_image' => $user->profile_image ? url('storage/profile_images/' . $user->profile_image) : null,
+                'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                 'title' => $currentTitle,
                 'next_title' => $nextTitle,
                 'percentage_for_next_title' => $percentageForNextTitle,
