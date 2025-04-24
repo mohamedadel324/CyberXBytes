@@ -673,110 +673,106 @@ class UserController extends Controller
             ];
         }
         
-        // Get maximum and minimum bytes per month (current year)
-        $bytesByMonth = [];
+        // Get maximum and minimum bytes for the current year
+        $allBytes = collect();
         $currentYear = date('Y');
-        
-        for ($month = 1; $month <= 12; $month++) {
-            $monthlySubmissions = Submission::where('user_uuid', $user->uuid)
-                ->where('solved', true)
-                ->whereYear('created_at', $currentYear)
-                ->whereMonth('created_at', $month)
-                ->with(['challange', 'challange.flags'])
-                ->get();
-                
-            $processedMonthFlags = collect(); // Track processed flags to avoid duplicates
-            $monthBytes = collect(); // Collect bytes for each submission
-            
-            foreach ($monthlySubmissions as $submission) {
-                if (!$submission->challange) {
+
+        $yearlySubmissions = Submission::where('user_uuid', $user->uuid)
+            ->where('solved', true)
+            ->whereYear('created_at', $currentYear)
+            ->with(['challange', 'challange.flags'])
+            ->get();
+
+        $processedFlags = collect(); // Track processed flags to avoid duplicates
+
+        foreach ($yearlySubmissions as $submission) {
+            if (!$submission->challange) {
+                continue;
+            }
+
+            $challange = $submission->challange;
+
+            // For single-flag challenges (default, simple)
+            if (!$challange->usesMultipleFlags()) {
+                // Skip if we've already processed this challenge
+                if ($processedFlags->contains($submission->id)) {
                     continue;
                 }
-                
-                $challange = $submission->challange;
-                
-                // For single-flag challenges (default, simple)
-                if (!$challange->usesMultipleFlags()) {
-                    // Skip if we've already processed this challenge
-                    if ($processedMonthFlags->contains($submission->id)) {
-                        continue;
-                    }
-                    $processedMonthFlags->push($submission->id);
-                    
-                    // Check if this is a first blood
-                    $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                        ->where('solved', true)
-                        ->orderBy('created_at')
-                        ->first()
-                        ->user_uuid === $user->uuid;
-                    
-                    if ($isFirstBlood) {
-                        // User gets firstblood bytes only
-                        $monthBytes->push($challange->firstBloodBytes);
-                    } else {
-                        // User gets regular bytes
-                        $monthBytes->push($challange->bytes);
-                    }
+                $processedFlags->push($submission->id);
+
+                // Check if this is a first blood
+                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first()
+                    ->user_uuid === $user->uuid;
+
+                if ($isFirstBlood) {
+                    // User gets firstblood bytes only
+                    $allBytes->push($challange->firstBloodBytes);
+                } else {
+                    // User gets regular bytes
+                    $allBytes->push($challange->bytes);
                 }
-                // For multiple_individual challenges, we need to count each flag's bytes separately
-                else if ($challange->usesIndividualFlagPoints()) {
-                    // Find which flag this submission corresponds to
-                    $submissionFlag = $submission->flag;
-                    
-                    // For each flag in the challenge
-                    foreach ($challange->flags as $flag) {
-                        // If this submission solves this flag (and we haven't counted it yet)
-                        if ($flag->flag === $submissionFlag && !$processedMonthFlags->contains("flag_{$flag->id}_{$month}")) {
-                            $processedMonthFlags->push("flag_{$flag->id}_{$month}");
-                            
-                            // Check if this is a first blood for this specific flag
-                            $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                                ->where('flag', $flag->flag)
-                                ->where('solved', true)
-                                ->orderBy('created_at')
-                                ->first()
-                                ->user_uuid === $user->uuid;
-                            
-                            if ($isFirstBlood) {
-                                // User gets firstblood bytes only
-                                $monthBytes->push($flag->firstBloodBytes);
-                            } else {
-                                // User gets regular bytes
-                                $monthBytes->push($flag->bytes);
-                            }
+            }
+            // For multiple_individual challenges, we need to count each flag's bytes separately
+            else if ($challange->usesIndividualFlagPoints()) {
+                // Find which flag this submission corresponds to
+                $submissionFlag = $submission->flag;
+
+                // For each flag in the challenge
+                foreach ($challange->flags as $flag) {
+                    // If this submission solves this flag (and we haven't counted it yet)
+                    if ($flag->flag === $submissionFlag && !$processedFlags->contains("flag_{$flag->id}")) {
+                        $processedFlags->push("flag_{$flag->id}");
+
+                        // Check if this is a first blood for this specific flag
+                        $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                            ->where('flag', $flag->flag)
+                            ->where('solved', true)
+                            ->orderBy('created_at')
+                            ->first()
+                            ->user_uuid === $user->uuid;
+
+                        if ($isFirstBlood) {
+                            // User gets firstblood bytes only
+                            $allBytes->push($flag->firstBloodBytes);
+                        } else {
+                            // User gets regular bytes
+                            $allBytes->push($flag->bytes);
                         }
                     }
                 }
-                // For multiple_all challenges, we count the challenge's bytes only once
-                else {
-                    // Skip if we've already processed this challenge
-                    if ($processedMonthFlags->contains("challenge_{$challange->id}_{$month}")) {
-                        continue;
-                    }
-                    $processedMonthFlags->push("challenge_{$challange->id}_{$month}");
-                    
-                    // Check if this is a first blood (for the whole challenge)
-                    $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                        ->where('solved', true)
-                        ->orderBy('created_at')
-                        ->first()
-                        ->user_uuid === $user->uuid;
-                    
-                    if ($isFirstBlood) {
-                        // User gets firstblood bytes only
-                        $monthBytes->push($challange->firstBloodBytes);
-                    } else {
-                        // User gets regular bytes
-                        $monthBytes->push($challange->bytes);
-                    }
+            }
+            // For multiple_all challenges, we count the challenge's bytes only once
+            else {
+                // Skip if we've already processed this challenge
+                if ($processedFlags->contains("challenge_{$challange->id}")) {
+                    continue;
+                }
+                $processedFlags->push("challenge_{$challange->id}");
+
+                // Check if this is a first blood (for the whole challenge)
+                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first()
+                    ->user_uuid === $user->uuid;
+
+                if ($isFirstBlood) {
+                    // User gets firstblood bytes only
+                    $allBytes->push($challange->firstBloodBytes);
+                } else {
+                    // User gets regular bytes
+                    $allBytes->push($challange->bytes);
                 }
             }
-            
-            $bytesByMonth[$month] = [
-                'max' => $monthBytes->max() ?? 0,
-                'min' => $monthBytes->min() ?? 0
-            ];
         }
+
+        $bytesSummary = [
+            'max' => $allBytes->max() ?? 0,
+            'min' => $allBytes->min() ?? 0
+        ];
         
         // Compile and return the statistics
         return response()->json([
