@@ -282,13 +282,10 @@ class EventController extends Controller
             });
         })->get();
         
-        // Categorize events
-        $activeEvents = [];
-        $endedEvents = [];
-        $upcomingEvents = [];
+        $userEvents = [];
         
         foreach ($events as $event) {
-            $data = [
+            $userEvents[] = [
                 'uuid' => $event->uuid,
                 'title' => $event->title,
                 'description' => $event->description,
@@ -304,25 +301,10 @@ class EventController extends Controller
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
             ];
-            
-            $now = now();
-            
-            if ($now > $event->end_date) {
-                // Event has ended
-                $endedEvents[] = $data;
-            } elseif ($now >= $event->start_date) {
-                // Event is currently active
-                $activeEvents[] = $data;
-            } else {
-                // Event is upcoming
-                $upcomingEvents[] = $data;
-            }
         }
         
         return response()->json([
-            'active_events' => $activeEvents,
-            'upcoming_events' => $upcomingEvents,
-            'ended_events' => $endedEvents
+            'events' => $userEvents
         ]);
     }
 }
