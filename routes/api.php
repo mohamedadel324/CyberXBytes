@@ -83,6 +83,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{uuid}', [EventController::class, 'show']);
     Route::get('/main-event', [EventController::class, 'mainEvent']);
+    Route::get('/user-events', [EventController::class, 'userEvents']);
 
     // Event routes
         // Event registration
