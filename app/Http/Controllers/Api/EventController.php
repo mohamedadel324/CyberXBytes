@@ -52,17 +52,10 @@ class EventController extends Controller
     {
         $user = $request->user();
         $event = Event::where('uuid', $uuid)
-            ->where(function($query) use ($request) {
-                $query->where('is_private', 0)
-                    ->orWhereHas('invitations', function($q) use ($request) {
-                        $q->where('email', $request->user()->email);
-                    });
-            })
             ->where(function($query) use ($user) {
-                $query->where('registration_start_date', '>', now())
-                    ->orWhereHas('registrations', function($q) use ($user) {
-                        $q->where('user_uuid', $user->uuid)
-                          ->whereColumn('event_uuid', 'events.uuid');
+                $query->where('is_private', 0)
+                    ->orWhereHas('invitations', function($q) use ($user) {
+                        $q->where('email', $user->email);
                     });
             })
             ->firstOrFail();
@@ -85,6 +78,7 @@ class EventController extends Controller
                 'team_maximum_members' => $event->team_maximum_members,
                 'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
+                'is_registered' => $user ? $event->registrations()->where('user_uuid', $user->uuid)->exists() : false,
             ]
         ]);
     }
