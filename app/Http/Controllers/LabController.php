@@ -192,7 +192,7 @@ class LabController extends Controller
 
     public function getChallengesByLabCategoryUUID($categoryUUID)
     {
-        $labCategory = LabCategory::where('uuid', $categoryUUID)->first(['uuid', 'title', 'ar_title', 'lab_uuid']);
+        $labCategory = LabCategory::where('uuid', $categoryUUID)->first(['uuid', 'title', 'ar_title', 'lab_uuid', 'image']);
         
         if (!$labCategory) {
             return response()->json([
@@ -202,7 +202,7 @@ class LabController extends Controller
         }
         
         // Get lab information
-        $lab = Lab::where('uuid', $labCategory->lab_uuid)->first(['uuid', 'name', 'ar_name', 'image']);
+        $lab = Lab::where('uuid', $labCategory->lab_uuid)->first(['uuid', 'name', 'ar_name']);
         
         $challenges = Challange::with(['category:uuid,icon', 'flags'])
             ->where('lab_category_uuid', $categoryUUID)
