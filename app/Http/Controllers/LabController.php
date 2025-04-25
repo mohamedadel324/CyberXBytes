@@ -202,7 +202,7 @@ class LabController extends Controller
         }
         
         // Get lab information
-        $lab = Lab::where('uuid', $labCategory->lab_uuid)->first(['uuid', 'name', 'ar_name']);
+        $lab = Lab::where('uuid', $labCategory->lab_uuid)->first(['uuid', 'name', 'ar_name', 'image']);
         
         $challenges = Challange::with(['category:uuid,icon', 'flags'])
             ->where('lab_category_uuid', $categoryUUID)
