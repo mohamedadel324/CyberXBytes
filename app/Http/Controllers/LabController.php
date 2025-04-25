@@ -376,11 +376,13 @@ class LabController extends Controller
                 'name' => $lab->name,
                 'ar_name' => $lab->ar_name
             ],
-            'category' => [
+            'lab_category' => [
                 'uuid' => $labCategory->uuid,
                 'title' => $labCategory->title,
-                'ar_title' => $labCategory->ar_title
+                'ar_title' => $labCategory->ar_title,
+                'image' => $labCategory->image ? asset('storage/' . $labCategory->image) : null
             ],
+     
             'stats' => [
                 'total_challenges' => $totalChallenges,
                 'solved_challenges' => $userSolvedChallenges,
