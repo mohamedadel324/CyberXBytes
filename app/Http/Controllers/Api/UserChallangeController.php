@@ -8,7 +8,7 @@ use App\Models\TermsPrivacy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-
+use Illuminate\Support\Facades\Storage;
 class UserChallangeController extends Controller
 {
     /**
@@ -104,12 +104,22 @@ class UserChallangeController extends Controller
      */
     public function getTerms()
     {
-        $terms = TermsPrivacy::latest()->first()->terms_content ?? '';
+        $termsPrivacy = TermsPrivacy::latest()->first();
+        $terms = $termsPrivacy ? $termsPrivacy->terms_content : null;
+        
+        if (!$terms || !Storage::disk('public')->exists($terms)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terms file not found'
+            ], 404);
+        }
+        
+        $content = Storage::disk('public')->get($terms);
         
         return response()->json([
             'status' => 'success',
             'data' => [
-                'terms' => $terms
+                'terms' => $content
             ]
         ]);
     }
@@ -119,12 +129,22 @@ class UserChallangeController extends Controller
      */
     public function getPrivacy()
     {
-        $privacy = TermsPrivacy::latest()->first()->privacy_content ?? '';
+        $termsPrivacy = TermsPrivacy::latest()->first();
+        $privacy = $termsPrivacy ? $termsPrivacy->privacy_content : null;
+        
+        if (!$privacy || !Storage::disk('public')->exists($privacy)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Privacy policy file not found'
+            ], 404);
+        }
+        
+        $content = Storage::disk('public')->get($privacy);
         
         return response()->json([
             'status' => 'success',
             'data' => [
-                'privacy' => $privacy
+                'privacy' => $content
             ]
         ]);
     }

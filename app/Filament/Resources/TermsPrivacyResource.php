@@ -26,17 +26,23 @@ class TermsPrivacyResource extends Resource
                     ->tabs([
                         Forms\Components\Tabs\Tab::make('Terms')
                             ->schema([
-                                Forms\Components\Textarea::make('terms_content')
+                                Forms\Components\FileUpload::make('terms_content')
                                     ->required()
-                                    ->label('Terms Content')
-                                    ->rows(15),
+                                    ->label('Terms Document')
+                                    ->directory('terms')
+                                    ->disk('public')
+                                    ->acceptedFileTypes(['application/pdf', 'text/plain', 'text/html'])
+                                    ->helperText('Upload a PDF, text, or HTML file for the terms and conditions'),
                             ]),
                         Forms\Components\Tabs\Tab::make('Privacy')
                             ->schema([
-                                Forms\Components\Textarea::make('privacy_content')
+                                Forms\Components\FileUpload::make('privacy_content')
                                     ->required()
-                                    ->label('Privacy Content')
-                                    ->rows(15),
+                                    ->label('Privacy Policy Document')
+                                    ->directory('privacy')
+                                    ->disk('public')
+                                    ->acceptedFileTypes(['application/pdf', 'text/plain', 'text/html'])
+                                    ->helperText('Upload a PDF, text, or HTML file for the privacy policy'),
                             ]),
                     ])
                     ->columnSpanFull(),
@@ -48,13 +54,18 @@ class TermsPrivacyResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('terms_content')
-                    ->label('Terms')
-                    ->limit(100)
+                    ->label('Terms Document')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('privacy_content')
-                    ->label('Privacy')
-                    ->limit(100)
+                    ->label('Privacy Policy Document')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //

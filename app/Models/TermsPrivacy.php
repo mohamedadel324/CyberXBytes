@@ -13,4 +13,9 @@ class TermsPrivacy extends Model
         'terms_content',
         'privacy_content',
     ];
+
+    protected $casts = [
+        'terms_content' => 'string',
+        'privacy_content' => 'string',
+    ];
 } 
