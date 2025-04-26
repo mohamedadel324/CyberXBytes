@@ -114,12 +114,13 @@ class UserChallangeController extends Controller
             ], 404);
         }
         
-        $content = Storage::disk('public')->get($terms);
+        // Return the URL to the file instead of the raw content
+        $fileUrl = Storage::disk('public')->url($terms);
         
         return response()->json([
             'status' => 'success',
             'data' => [
-                'terms' => $content
+                'terms_url' => $fileUrl
             ]
         ]);
     }
@@ -139,12 +140,13 @@ class UserChallangeController extends Controller
             ], 404);
         }
         
-        $content = Storage::disk('public')->get($privacy);
+        // Return the URL to the file instead of the raw content
+        $fileUrl = Storage::disk('public')->url($privacy);
         
         return response()->json([
             'status' => 'success',
             'data' => [
-                'privacy' => $content
+                'privacy_url' => $fileUrl
             ]
         ]);
     }
