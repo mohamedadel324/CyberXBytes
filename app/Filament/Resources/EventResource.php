@@ -145,6 +145,12 @@ class EventResource extends Resource
                                         ->maxLength(255),
                                     Forms\Components\Textarea::make('description')
                                         ->required(),
+                                    Forms\Components\TextInput::make('made_by')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\TagsInput::make('keywords')
+                                        ->required()
+                                        ->maxLength(255),
                                     Forms\Components\Select::make('difficulty')
                                         ->required()
                                         ->options([

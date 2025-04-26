@@ -24,13 +24,16 @@ class EventChallange extends Model
         'flag',
         'file',
         'link',
-        'flag_type'
+        'flag_type',
+        'keywords',
+        'made_by'
     ];
 
     protected $casts = [
         'bytes' => 'integer',
         'firstBloodBytes' => 'integer',
-        'flag_type' => 'string'
+        'flag_type' => 'string',
+        'keywords' => 'array'
     ];
 
     protected $appends = ['category_icon_url'];
