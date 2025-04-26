@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+
 class UserChallangeController extends Controller
 {
     /**
@@ -114,8 +115,8 @@ class UserChallangeController extends Controller
             ], 404);
         }
         
-        // Return the URL to the file instead of the raw content
-        $fileUrl = Storage::disk('public')->url($terms);
+        // Generate a public URL for the file
+        $fileUrl = asset('storage/' . $terms);
         
         return response()->json([
             'status' => 'success',
@@ -140,8 +141,8 @@ class UserChallangeController extends Controller
             ], 404);
         }
         
-        // Return the URL to the file instead of the raw content
-        $fileUrl = Storage::disk('public')->url($privacy);
+        // Generate a public URL for the file
+        $fileUrl = asset('storage/' . $privacy);
         
         return response()->json([
             'status' => 'success',
