@@ -288,6 +288,7 @@ class EventChallengeController extends Controller
                     'message' => 'The flag is correct',
                     'data' => [
                         'flag_type' => 'single',
+                        'flag' => $challenge->flag,
                         'points' => $points,
                         'first_blood_points' => $firstBloodPoints,
                         'is_first_blood' => $isFirstBlood
@@ -420,6 +421,7 @@ class EventChallengeController extends Controller
                             'data' => [
                                 'flag_type' => $challenge->flag_type,
                                 'flag_name' => $matchedFlag->name,
+                                'flag' => $matchedFlag->flag,
                                 'all_flags_solved' => true,
                                 'points' => $points,
                                 'first_blood_points' => $firstBloodPoints,
@@ -458,6 +460,8 @@ class EventChallengeController extends Controller
                     'data' => [
                         'flag_type' => $challenge->flag_type,
                         'flag_name' => $matchedFlag->name,
+                        'flag' => $matchedFlag->flag,
+
                         'points' => $points,
                         'first_blood_points' => $firstBloodPoints,
                         'is_first_blood' => $firstBloodPoints > 0,
@@ -472,6 +476,7 @@ class EventChallengeController extends Controller
                 'data' => [
                     'flag_type' => $challenge->flag_type,
                     'flag_name' => $matchedFlag->name,
+                    'flag' => $matchedFlag->flag,
                     'is_first_blood' => false,
                 ]
             ], 200);

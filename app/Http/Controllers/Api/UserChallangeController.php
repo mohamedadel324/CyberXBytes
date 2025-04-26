@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserChallange;
+use App\Models\TermsPrivacy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -95,6 +96,36 @@ class UserChallangeController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $challenges
+        ]);
+    }
+
+    /**
+     * Get terms for user challenges.
+     */
+    public function getTerms()
+    {
+        $terms = TermsPrivacy::latest()->first()->terms_content ?? '';
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'terms' => $terms
+            ]
+        ]);
+    }
+
+    /**
+     * Get privacy policy for user challenges.
+     */
+    public function getPrivacy()
+    {
+        $privacy = TermsPrivacy::latest()->first()->privacy_content ?? '';
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'privacy' => $privacy
+            ]
         ]);
     }
 } 
