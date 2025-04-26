@@ -986,6 +986,18 @@ class EventChallengeController extends Controller
         
         // Remove flags from response
         unset($challengeData['flags']);
+        
+        // Remove the actual flag value from the response for security
+        unset($challengeData['flag']);
+        
+        // Also ensure no flag values are exposed from the flags collection
+        if (isset($challengeData['flags_data'])) {
+            foreach ($challengeData['flags_data'] as &$flagData) {
+                if (isset($flagData['flag'])) {
+                    unset($flagData['flag']);
+                }
+            }
+        }
 
         return response()->json([
             'status' => 'success',
