@@ -506,7 +506,7 @@ class EventTeamController extends Controller
                     'challenge_uuid' => $firstBlood->challenge_uuid,
                     'challenge_name' => $firstBlood->challenge_name . ' - ' . $firstBlood->flag_name,
                     'user_uuid' => $firstBlood->user_uuid,
-                    'first_blood_time' => $firstBlood->first_blood_time
+                    'solved_at' => $firstBlood->first_blood_time
                 ];
             }
         }

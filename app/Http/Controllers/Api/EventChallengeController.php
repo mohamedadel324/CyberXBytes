@@ -1560,7 +1560,7 @@ class EventChallengeController extends Controller
                                 'name' => $flag->name,
                                 'points' => $flagPoints,
                                 'is_first_blood' => $flagFirstBlood,
-                                'solved_at' => $this->formatInUserTimezone($flagSubmission->solved_at)
+                                'solved_at' => $flagSubmission->solved_at
                             ];
                         }
                     }
