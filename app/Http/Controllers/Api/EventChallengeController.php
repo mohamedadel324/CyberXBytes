@@ -24,9 +24,10 @@ class EventChallengeController extends Controller
      * Validates event and team requirements before allowing access to APIs
      *
      * @param string $eventUuid
+     * @param bool $ignoreEventEnded Whether to bypass the event end date check
      * @return \Illuminate\Http\JsonResponse|null
      */
-    private function validateEventAndTeamRequirements($eventUuid)
+    private function validateEventAndTeamRequirements($eventUuid, $ignoreEventEnded = false)
     {
         $event = Event::where('uuid', $eventUuid)->first();
         if (!$event) {
@@ -60,8 +61,8 @@ class EventChallengeController extends Controller
             ], 403);
         }
 
-        // Check if event has ended
-        if ($userNow->gt($eventEndDate)) {
+        // Check if event has ended, but only if we're not ignoring this check
+        if (!$ignoreEventEnded && $userNow->gt($eventEndDate)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Event has ended',
@@ -93,7 +94,7 @@ class EventChallengeController extends Controller
 
     public function listChallenges($eventUuid)
     {
-        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -480,7 +481,7 @@ class EventChallengeController extends Controller
     public function scoreboard($eventUuid)
     {
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -620,7 +621,7 @@ class EventChallengeController extends Controller
         }
 
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -697,7 +698,7 @@ class EventChallengeController extends Controller
         $challenge = EventChallange::with(['flags', 'solvedBy', 'flags.solvedBy'])->where('id', $eventChallengeUuid)->firstOrFail();
         
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -859,7 +860,7 @@ class EventChallengeController extends Controller
         }
 
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -1069,7 +1070,7 @@ class EventChallengeController extends Controller
         }
 
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -1171,7 +1172,7 @@ class EventChallengeController extends Controller
     public function getTeamLeaderboard($eventUuid)
     {
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
@@ -1409,7 +1410,7 @@ class EventChallengeController extends Controller
         }
 
         // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid);
+        $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid, true);
         if ($validationResponse) {
             return $validationResponse;
         }
