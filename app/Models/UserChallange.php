@@ -19,6 +19,10 @@ class UserChallange extends Model
         'status'
     ];
 
+    protected $casts = [
+        'flag' => 'array',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_uuid', 'uuid');

@@ -25,7 +25,7 @@ class UserChallangeController extends Controller
             'flag' => 'required|array',
             'challange_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
             'answer_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
-            'notes' => 'required|string',
+            'notes' => 'required|nullable',
         ]);
 
         if ($validator->fails()) {
@@ -92,7 +92,11 @@ class UserChallangeController extends Controller
         $challenges = UserChallange::where('user_uuid', $userUuid)
             ->with(['category:uuid,name,icon'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($challenge) {
+                $challenge->category->icon_url = asset('storage/' . $challenge->category->icon);
+                return $challenge;
+            });
 
         return response()->json([
             'status' => 'success',

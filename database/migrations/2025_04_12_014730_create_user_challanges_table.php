@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('flag');
             $table->longText('challange_file');
             $table->longText('answer_file');
-            $table->text('notes');
+            $table->text('notes')->nullable();
             $table->enum('status', ['pending', 'declined', 'under_review', 'approved'])->default('pending');
             $table->timestamps();
         });
