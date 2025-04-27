@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ChallangeCategory;
 use App\Models\UserChallange;
 use App\Models\TermsPrivacy;
 use Illuminate\Http\Request;
@@ -54,10 +55,15 @@ class UserChallangeController extends Controller
         $userChallange->status = 'pending';
         $userChallange->save();
 
+        // Get the category icon
+        $category = ChallangeCategory::find($request->category_uuid);
+        $categoryIconUrl = $category ? asset('storage/' . $category->icon) : null;
+
         return response()->json([
             'status' => 'success',
             'message' => 'Challenge created successfully',
-            'data' => $userChallange
+            'data' => $userChallange,
+            'category_icon_url' => $categoryIconUrl
         ], 201);
     }
 
