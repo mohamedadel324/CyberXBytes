@@ -13,7 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+            'auth.last_seen' => \App\Http\Middleware\UpdateLastSeen::class,
+        ]);
+
+        $middleware->appendToGroup('api', [
+            \App\Http\Middleware\UpdateLastSeen::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
