@@ -50,9 +50,11 @@ class UserChallangeResource extends Resource
                     ->required(),
                 Forms\Components\FileUpload::make('challange_file')
                     ->required()
+                    ->downloadable()
                     ->columnSpanFull(),
                 Forms\Components\FileUpload::make('answer_file')
                     ->required()
+                    ->downloadable()
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('notes')
                     ->required()
@@ -72,9 +74,9 @@ class UserChallangeResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('user_uuid')
+                Tables\Columns\TextColumn::make('user.user_name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('category_uuid')
+                Tables\Columns\TextColumn::make('category.name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
