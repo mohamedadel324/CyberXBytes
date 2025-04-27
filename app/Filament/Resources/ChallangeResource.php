@@ -66,6 +66,9 @@ class ChallangeResource extends Resource
                     Forms\Components\TextInput::make('made_by')
                         ->label('Made By')
                         ->required(),
+                Forms\Components\TextInput::make('made_by_url')
+                    ->label('Made By URL')
+                    ->nullable(),
                 Forms\Components\TagsInput::make('keywords')
                     ->label('Keywords')
                     ->required(),
