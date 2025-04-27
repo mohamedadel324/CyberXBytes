@@ -62,10 +62,10 @@ class UserChallangeResource extends Resource
                     ->downloadable()
                     ->columnSpanFull(),
                 Forms\Components\Textarea::make('notes')
-                    ->required()
                     ->columnSpanFull(),
                 Forms\Components\Select::make('status')
                     ->required()
+                    ->columnSpanFull()
                     ->options([
                         'pending' => 'Pending',
                         'approved' => 'Approved',
