@@ -494,7 +494,8 @@ class UserController extends Controller
             
             $percentageInCategory = $totalInCategory > 0 ? ($solvedInCategory / $totalInCategory) * 100 : 0;
             
-            $challengesByCategory[$category->name] = [
+            $challengesByCategory[] = [
+                'name' => $category->name,
                 'total' => $totalInCategory,
                 'solved' => $solvedInCategory,
                 'percentage' => $percentageInCategory,
@@ -528,7 +529,8 @@ class UserController extends Controller
             
             $median = $count > 0 ? ($percentages[$middleVal] + $percentages[$middleVal + ($count % 2 === 0 ? 1 : 0)]) / 2 : 0;
             
-            $allUsersStats[$category->name] = [
+            $allUsersStats[] = [
+                'name' => $category->name,
                 'median_percentage' => $median,
             ];
         }
@@ -542,136 +544,141 @@ class UserController extends Controller
             $lab3Challenges = Challange::whereIn('lab_category_uuid', $lab3Categories)->get();
             $lab3TotalChallenges = $lab3Challenges->count();
             
-            $lab3SolvedChallenges = Submission::where('user_uuid', $user->uuid)
-                ->where('solved', true)
-                ->whereIn('challange_uuid', $lab3Challenges->pluck('uuid'))
-                ->with(['challange', 'challange.flags'])
-                ->get();
-            
-            // Get unique challenge UUIDs for Lab 3
-            $lab3SolvedChallengeUUIDs = collect();
-            foreach ($lab3SolvedChallenges as $submission) {
-                if ($submission->challange && !$lab3SolvedChallengeUUIDs->contains($submission->challange_uuid)) {
-                    $lab3SolvedChallengeUUIDs->push($submission->challange_uuid);
+            // Set lab3Stats to null if there are no active challenges
+            if ($lab3TotalChallenges <= 0) {
+                $lab3Stats = null;
+            } else {
+                $lab3SolvedChallenges = Submission::where('user_uuid', $user->uuid)
+                    ->where('solved', true)
+                    ->whereIn('challange_uuid', $lab3Challenges->pluck('uuid'))
+                    ->with(['challange', 'challange.flags'])
+                    ->get();
+                
+                // Get unique challenge UUIDs for Lab 3
+                $lab3SolvedChallengeUUIDs = collect();
+                foreach ($lab3SolvedChallenges as $submission) {
+                    if ($submission->challange && !$lab3SolvedChallengeUUIDs->contains($submission->challange_uuid)) {
+                        $lab3SolvedChallengeUUIDs->push($submission->challange_uuid);
+                    }
                 }
-            }
-            $lab3SolvedCount = $lab3SolvedChallengeUUIDs->count();
-            $lab3PercentageSolved = $lab3TotalChallenges > 0 ? ($lab3SolvedCount / $lab3TotalChallenges) * 100 : 0;
-            
-            // Calculate Lab 3 solved challenges by difficulty
-            $lab3SolvedByDifficulty = [
-                'easy' => 0,
-                'medium' => 0,
-                'hard' => 0,
-                'very_hard' => 0
-            ];
-            
-            // Count challenges by difficulty, not flags
-            foreach ($lab3SolvedChallengeUUIDs as $challengeUuid) {
-                $challenge = $lab3Challenges->firstWhere('uuid', $challengeUuid);
-                if ($challenge) {
-                    $difficulty = $challenge->difficulty;
-                    $lab3SolvedByDifficulty[$difficulty] = ($lab3SolvedByDifficulty[$difficulty] ?? 0) + 1;
-                }
-            }
-            
-            // Calculate total bytes for Lab 3
-            $lab3Bytes = 0;
-            $lab3FirstBloodBytes = 0;
-            $processedLab3Flags = collect();
-            
-            foreach ($lab3SolvedChallenges as $submission) {
-                if (!$submission->challange) {
-                    continue;
+                $lab3SolvedCount = $lab3SolvedChallengeUUIDs->count();
+                $lab3PercentageSolved = $lab3TotalChallenges > 0 ? ($lab3SolvedCount / $lab3TotalChallenges) * 100 : 0;
+                
+                // Calculate Lab 3 solved challenges by difficulty
+                $lab3SolvedByDifficulty = [
+                    'easy' => 0,
+                    'medium' => 0,
+                    'hard' => 0,
+                    'very_hard' => 0
+                ];
+                
+                // Count challenges by difficulty, not flags
+                foreach ($lab3SolvedChallengeUUIDs as $challengeUuid) {
+                    $challenge = $lab3Challenges->firstWhere('uuid', $challengeUuid);
+                    if ($challenge) {
+                        $difficulty = $challenge->difficulty;
+                        $lab3SolvedByDifficulty[$difficulty] = ($lab3SolvedByDifficulty[$difficulty] ?? 0) + 1;
+                    }
                 }
                 
-                $challange = $submission->challange;
+                // Calculate total bytes for Lab 3
+                $lab3Bytes = 0;
+                $lab3FirstBloodBytes = 0;
+                $processedLab3Flags = collect();
                 
-                // For single-flag challenges
-                if (!$challange->usesMultipleFlags()) {
-                    // Skip if we've already processed this challenge
-                    if ($processedLab3Flags->contains($submission->id)) {
+                foreach ($lab3SolvedChallenges as $submission) {
+                    if (!$submission->challange) {
                         continue;
                     }
-                    $processedLab3Flags->push($submission->id);
                     
-                    // Check if this is a first blood
-                    $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                        ->where('solved', true)
-                        ->orderBy('created_at')
-                        ->first()
-                        ->user_uuid === $user->uuid;
+                    $challange = $submission->challange;
                     
-                    if ($isFirstBlood) {
-                        // User gets firstblood bytes only
-                        $lab3FirstBloodBytes += $challange->firstBloodBytes;
-                    } else {
-                        // User gets regular bytes
-                        $lab3Bytes += $challange->bytes;
+                    // For single-flag challenges
+                    if (!$challange->usesMultipleFlags()) {
+                        // Skip if we've already processed this challenge
+                        if ($processedLab3Flags->contains($submission->id)) {
+                            continue;
+                        }
+                        $processedLab3Flags->push($submission->id);
+                        
+                        // Check if this is a first blood
+                        $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                            ->where('solved', true)
+                            ->orderBy('created_at')
+                            ->first()
+                            ->user_uuid === $user->uuid;
+                        
+                        if ($isFirstBlood) {
+                            // User gets firstblood bytes only
+                            $lab3FirstBloodBytes += $challange->firstBloodBytes;
+                        } else {
+                            // User gets regular bytes
+                            $lab3Bytes += $challange->bytes;
+                        }
                     }
-                }
-                // For multiple_individual challenges
-                else if ($challange->usesIndividualFlagPoints()) {
-                    // Find which flag this submission corresponds to
-                    $submissionFlag = $submission->flag;
-                    
-                    // For each flag in the challenge
-                    foreach ($challange->flags as $flag) {
-                        // If this submission solves this flag (and we haven't counted it yet)
-                        if ($flag->flag === $submissionFlag && !$processedLab3Flags->contains("flag_{$flag->id}")) {
-                            $processedLab3Flags->push("flag_{$flag->id}");
-                            
-                            // Check if this is a first blood for this specific flag
-                            $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                                ->where('flag', $flag->flag)
-                                ->where('solved', true)
-                                ->orderBy('created_at')
-                                ->first()
-                                ->user_uuid === $user->uuid;
-                            
-                            if ($isFirstBlood) {
-                                // User gets firstblood bytes only
-                                $lab3FirstBloodBytes += $flag->firstBloodBytes;
-                            } else {
-                                // User gets regular bytes
-                                $lab3Bytes += $flag->bytes;
+                    // For multiple_individual challenges
+                    else if ($challange->usesIndividualFlagPoints()) {
+                        // Find which flag this submission corresponds to
+                        $submissionFlag = $submission->flag;
+                        
+                        // For each flag in the challenge
+                        foreach ($challange->flags as $flag) {
+                            // If this submission solves this flag (and we haven't counted it yet)
+                            if ($flag->flag === $submissionFlag && !$processedLab3Flags->contains("flag_{$flag->id}")) {
+                                $processedLab3Flags->push("flag_{$flag->id}");
+                                
+                                // Check if this is a first blood for this specific flag
+                                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                                    ->where('flag', $flag->flag)
+                                    ->where('solved', true)
+                                    ->orderBy('created_at')
+                                    ->first()
+                                    ->user_uuid === $user->uuid;
+                                
+                                if ($isFirstBlood) {
+                                    // User gets firstblood bytes only
+                                    $lab3FirstBloodBytes += $flag->firstBloodBytes;
+                                } else {
+                                    // User gets regular bytes
+                                    $lab3Bytes += $flag->bytes;
+                                }
                             }
                         }
                     }
-                }
-                // For multiple_all challenges
-                else {
-                    // Skip if we've already processed this challenge
-                    if ($processedLab3Flags->contains("challenge_{$challange->id}")) {
-                        continue;
+                    // For multiple_all challenges
+                    else {
+                        // Skip if we've already processed this challenge
+                        if ($processedLab3Flags->contains("challenge_{$challange->id}")) {
+                            continue;
+                        }
+                        $processedLab3Flags->push("challenge_{$challange->id}");
+                        
+                        // Check if this is a first blood
+                        $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                            ->where('solved', true)
+                            ->orderBy('created_at')
+                            ->first()
+                            ->user_uuid === $user->uuid;
+                        
+                        if ($isFirstBlood) {
+                            // User gets firstblood bytes only
+                            $lab3FirstBloodBytes += $challange->firstBloodBytes;
+                        } else {
+                            // User gets regular bytes
+                            $lab3Bytes += $challange->bytes;
+                        }
                     }
-                    $processedLab3Flags->push("challenge_{$challange->id}");
-                    
-                    // Check if this is a first blood
-                    $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                        ->where('solved', true)
-                        ->orderBy('created_at')
-                        ->first()
-                        ->user_uuid === $user->uuid;
-                    
-                    if ($isFirstBlood) {
-                        // User gets firstblood bytes only
-                        $lab3FirstBloodBytes += $challange->firstBloodBytes;
-                    } else {
-                        // User gets regular bytes
-                        $lab3Bytes += $challange->bytes;
-                    }
                 }
+                
+                $lab3Stats = [
+                    'total_challenges' => $lab3TotalChallenges,
+                    'solved_challenges' => $lab3SolvedCount,
+                    'percentage_solved' => $lab3PercentageSolved,
+                    'solved_by_difficulty' => $lab3SolvedByDifficulty,
+                    'total_bytes' => $lab3Bytes,
+                    'total_firstblood_bytes' => $lab3FirstBloodBytes
+                ];
             }
-            
-            $lab3Stats = [
-                'total_challenges' => $lab3TotalChallenges,
-                'solved_challenges' => $lab3SolvedCount,
-                'percentage_solved' => $lab3PercentageSolved,
-                'solved_by_difficulty' => $lab3SolvedByDifficulty,
-                'total_bytes' => $lab3Bytes,
-                'total_firstblood_bytes' => $lab3FirstBloodBytes
-            ];
         }
         
         // Get maximum and minimum bytes per month (current year) and yearly median max and min
