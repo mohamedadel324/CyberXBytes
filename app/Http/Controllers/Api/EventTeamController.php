@@ -1125,7 +1125,7 @@ class EventTeamController extends Controller
     public function getTeamById($teamUuid)
     {
         $team = EventTeam::with(['members', 'event'])
-            ->where('uuid', $teamUuid)
+            ->where('id', $teamUuid)
             ->first();
 
         if (!$team) {
