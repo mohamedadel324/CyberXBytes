@@ -159,3 +159,9 @@ Route::get('/poll', function () {
     }
 });
 
+Route::get('/stream', function () {
+    return response()->json([
+        'message' => 'This endpoint has been moved to a separate service',
+        'service_url' => env('ONLINE_USERS_SERVICE_URL', 'http://localhost:8090')
+    ]);
+});

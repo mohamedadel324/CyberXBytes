@@ -64,3 +64,22 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Online Users Service
+
+To reduce the load on the main application server, the online users count is served from a separate lightweight service:
+
+1. Run the service on port 8090:
+   ```
+   // On Windows
+   run-online-service.bat
+   
+   // On Linux/Mac
+   php -S 0.0.0.0:8090 online-users-service.php
+   ```
+
+2. Access the service at http://localhost:8090
+
+3. Set the `ONLINE_USERS_SERVICE_URL` in your `.env` file if you're running the service on a different host or port.
+
+This separation helps prevent DoS attacks and reduces load on the main application server.
