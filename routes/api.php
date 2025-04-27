@@ -101,6 +101,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         Route::post('{eventUuid}/teams', [EventTeamController::class, 'create']);
         Route::get('{eventUuid}/teams', [EventTeamController::class, 'listTeams']);
         Route::get('{eventUuid}/my-team', [EventTeamController::class, 'myTeam']);
+        Route::get('teams/{teamUuid}', [EventTeamController::class, 'getTeamById']);
         Route::get('{eventUuid}/check-if-in-team', [EventTeamController::class, 'checkIfInTeam']);
         Route::post('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'generateJoinSecret']);
         Route::get('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'listJoinSecrets']);
