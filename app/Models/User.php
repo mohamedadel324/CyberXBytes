@@ -46,7 +46,8 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'country',
         'status',
         'email_verified_at',
-        'time_zone'
+        'time_zone',
+        'last_seen'
     ];
 
     /**

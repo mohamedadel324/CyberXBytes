@@ -35,7 +35,8 @@ Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('change-socialmedia-links', [UserController::class, 'changeSocialMediaLinks']);
     Route::post('unlink-socialmedia-links', [UserController::class, 'unlinkSocialMedia']);
-
+    Route::post('update-last-seen', [UserController::class, 'updateLastSeen']);
+    Route::get('online-users-count', [UserController::class, 'getOnlineUsersCount']);
     Route::post('change-profile-image', [UserController::class, 'changeProfileImage']);
     
     // Email change routes

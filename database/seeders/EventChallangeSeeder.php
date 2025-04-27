@@ -44,6 +44,7 @@ class EventChallangeSeeder extends Seeder
                     'title' => $challenge->title,
                     'description' => $challenge->description,
                     'difficulty' => $difficulty,
+                    'made_by' => $challenge->made_by,
                     'bytes' => $points,
                     'firstBloodBytes' => $points * 2,
                 ]);

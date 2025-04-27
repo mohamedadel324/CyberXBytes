@@ -970,4 +970,18 @@ class UserController extends Controller
     {
         return $this->userActivities($request->user()->user_name);
     }
+
+    public function updateLastSeen(Request $request)
+    {
+        $user = $request->user();
+        $user->last_seen = now();
+        $user->save();
+        return response()->json(['message' => 'Last seen updated successfully']);
+    }
+    public function getOnlineUsersCount()
+    {
+        return rand(10, 100);
+    }
+    
+
 }
