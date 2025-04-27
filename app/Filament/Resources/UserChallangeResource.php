@@ -43,10 +43,15 @@ class UserChallangeResource extends Resource
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('difficulty')
+                Forms\Components\Select::make('difficulty')
                     ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('flag')
+                    ->options([
+                        'easy' => 'Easy',
+                        'medium' => 'Medium',
+                        'hard' => 'Hard',
+                        'very_hard' => 'Very Hard',
+                    ]),
+                Forms\Components\TagsInput::make('flag')
                     ->required(),
                 Forms\Components\FileUpload::make('challange_file')
                     ->required()
