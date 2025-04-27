@@ -26,7 +26,8 @@ class EventChallange extends Model
         'link',
         'flag_type',
         'keywords',
-        'made_by'
+        'made_by',
+        'made_by_url'
     ];
 
     protected $casts = [

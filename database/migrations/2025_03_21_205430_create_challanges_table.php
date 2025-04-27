@@ -23,6 +23,7 @@ return new class extends Migration
             $table->integer('firstBloodBytes');
             $table->json('keywords')->nullable();
             $table->string('made_by');
+            $table->string('made_by_url')->nullable();
             $table->text('flag')->nullable();   
             $table->enum('flag_type', ['single', 'multiple_all', 'multiple_individual'])->default('single');
             $table->longText('file')->nullable();

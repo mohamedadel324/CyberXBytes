@@ -20,6 +20,7 @@ class Challange extends Model
         'flag_type',
         'keywords',
         'made_by',
+        'made_by_url',
         'available'
     ];
 

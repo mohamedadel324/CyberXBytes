@@ -22,6 +22,8 @@ return new class extends Migration
             $table->enum('flag_type', ['single', 'multiple_all', 'multiple_individual'])->default('single');
             $table->longText('file')->nullable();
             $table->longText('link')->nullable();
+            $table->string('made_by');
+            $table->string('made_by_url')->nullable();
             $table->timestamps();
         });
 
