@@ -16,7 +16,7 @@ use App\Models\Submission;
 use App\Models\PlayerTitle;
 use App\Models\Lab;
 use App\Models\ChallangeCategory;
-
+use App\Events\UsersOnlineEvent;
 class UserController extends Controller
 {
     public function profile(Request $request)
@@ -976,11 +976,12 @@ class UserController extends Controller
         $user = $request->user();
         $user->last_seen = now();
         $user->save();
+        broadcast(new UsersOnlineEvent());
         return response()->json(['message' => 'Last seen updated successfully']);
     }
     public function getOnlineUsersCount()
     {
-        return rand(10, 100);
+        return User::where('last_seen', '>=', now()->subMinutes(1))->count();
     }
     
 

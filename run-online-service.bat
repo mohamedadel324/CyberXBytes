@@ -1,3 +1,0 @@
-@echo off
-echo Starting online users service on port 8090...
-php -S 0.0.0.0:8090 online-users-service.php 

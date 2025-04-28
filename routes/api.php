@@ -129,39 +129,3 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/challenge-categories/{uuid}', [ChallangeCategoryController::class, 'show']);
 });
 
-Route::get('/poll', function () {
-    $lastKnownOnline = request()->query('last_online', 0);
-    $start = time();
-    $timeout = 1;  // max time to hold the connection open
-
-    while (true) {
-        $currentOnline = Cache::get('online_users', 0);
-        $currentTime = now()->toDateTimeString();  // Get current server time
-
-        // If the data (online users or time) changes, push it immediately
-        if ($currentOnline != $lastKnownOnline || $currentTime != request()->query('last_time')) {
-            return response()->json([
-                'online_users' => User::where('last_seen', '>=', Carbon::now()->subMinutes(1))->count(),
-                'current_time' => $currentTime,
-            ]);
-        }
-
-        // If no change after timeout, return with no updates
-        if ((time() - $start) >= $timeout) {
-            return response()->json([
-                'message' => 'no_update',
-                'current_time' => $currentTime,  // Always return the time
-            ]);
-        }
-
-        // Sleep briefly to avoid burning CPU
-        usleep(1);
-    }
-});
-
-Route::get('/stream', function () {
-    return response()->json([
-        'message' => 'This endpoint has been moved to a separate service',
-        'service_url' => env('ONLINE_USERS_SERVICE_URL', 'http://localhost:8090')
-    ]);
-});
