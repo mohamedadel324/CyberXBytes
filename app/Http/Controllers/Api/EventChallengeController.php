@@ -584,6 +584,7 @@ class EventChallengeController extends Controller
                 }
 
                 return [
+                    'team_uuid' => $team->id,
                     'team_name' => $team->name,
                     'team_icon' => $team->icon_url,
                     'points' => $points,

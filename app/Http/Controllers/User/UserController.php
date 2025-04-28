@@ -981,7 +981,7 @@ class UserController extends Controller
     }
     public function getOnlineUsersCount()
     {
-        return User::where('last_seen', '>=', now()->subMinutes(1))->count();
+        return rand(10, 100);
     }
     
 

@@ -11,7 +11,7 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use App\Models\User;
 
-class UsersOnlineEvent implements ShouldBroadcast
+class UsersOnlineEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -34,13 +34,5 @@ class UsersOnlineEvent implements ShouldBroadcast
         return [
             new Channel('online-users'),
         ];
-    }
-
-    /**
-     * The event's broadcast name.
-     */
-    public function broadcastAs(): string
-    {
-        return 'users.online';
     }
 }
