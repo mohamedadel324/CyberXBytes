@@ -56,7 +56,6 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'ce9671a430e4846b44e1c68c7611f9f5' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery.php',
         'a1cfe24d14977df6878b9bf804af2d1c' => __DIR__ . '/..' . '/nunomaduro/collision/src/Adapters/Phpunit/Autoload.php',
         'ec07570ca5a812141189b1fa81503674' => __DIR__ . '/..' . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
-        'c0dbcc5167e0e20bf07a89820f2f42bb' => __DIR__ . '/..' . '/pst/pst/src/PST.php',
         '377b22b161c09ed6e5152de788ca020a' => __DIR__ . '/..' . '/spatie/laravel-permission/src/helpers.php',
         'cb13af02c6f0ae847685564c9910670f' => __DIR__ . '/../..' . '/app/Helpers/FilamentHelper.php',
     );
@@ -216,6 +215,8 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'F' => 
         array (
             'Fruitcake\\Cors\\' => 15,
+            'Flowframe\\Trend\\Database\\Factories\\' => 35,
+            'Flowframe\\Trend\\' => 16,
             'Filament\\Widgets\\' => 17,
             'Filament\\Tables\\' => 16,
             'Filament\\Support\\' => 17,
@@ -706,6 +707,14 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         array (
             0 => __DIR__ . '/..' . '/fruitcake/php-cors/src',
         ),
+        'Flowframe\\Trend\\Database\\Factories\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/flowframe/laravel-trend/database/factories',
+        ),
+        'Flowframe\\Trend\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/flowframe/laravel-trend/src',
+        ),
         'Filament\\Widgets\\' => 
         array (
             0 => __DIR__ . '/..' . '/filament/widgets/src',
@@ -884,6 +893,7 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'AnourValar\\EloquentSerialize\\Grammars\\QueryBuilderGrammar' => __DIR__ . '/..' . '/anourvalar/eloquent-serialize/src/Grammars/QueryBuilderGrammar.php',
         'AnourValar\\EloquentSerialize\\Package' => __DIR__ . '/..' . '/anourvalar/eloquent-serialize/src/Package.php',
         'AnourValar\\EloquentSerialize\\Service' => __DIR__ . '/..' . '/anourvalar/eloquent-serialize/src/Service.php',
+        'App\\Events\\UsersOnlineEvent' => __DIR__ . '/../..' . '/app/Events/UsersOnlineEvent.php',
         'App\\Filament\\Admin\\Resources\\UserResource' => __DIR__ . '/../..' . '/app/Filament/Admin/Resources/UserResource.php',
         'App\\Filament\\Admin\\Resources\\UserResource\\Pages\\CreateUser' => __DIR__ . '/../..' . '/app/Filament/Admin/Resources/UserResource/Pages/CreateUser.php',
         'App\\Filament\\Admin\\Resources\\UserResource\\Pages\\EditUser' => __DIR__ . '/../..' . '/app/Filament/Admin/Resources/UserResource/Pages/EditUser.php',
@@ -932,6 +942,10 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'App\\Filament\\Resources\\UserResource\\Pages\\EditUser' => __DIR__ . '/../..' . '/app/Filament/Resources/UserResource/Pages/EditUser.php',
         'App\\Filament\\Resources\\UserResource\\Pages\\ListUsers' => __DIR__ . '/../..' . '/app/Filament/Resources/UserResource/Pages/ListUsers.php',
         'App\\Filament\\Resources\\UserResource\\Widgets\\Users' => __DIR__ . '/../..' . '/app/Filament/Resources/UserResource/Widgets/Users.php',
+        'App\\Filament\\Widgets\\ChallengeStatsWidget' => __DIR__ . '/../..' . '/app/Filament/Widgets/ChallengeStatsWidget.php',
+        'App\\Filament\\Widgets\\EventStatsWidget' => __DIR__ . '/../..' . '/app/Filament/Widgets/EventStatsWidget.php',
+        'App\\Filament\\Widgets\\UserRegistrationChart' => __DIR__ . '/../..' . '/app/Filament/Widgets/UserRegistrationChart.php',
+        'App\\Filament\\Widgets\\UserStatsWidget' => __DIR__ . '/../..' . '/app/Filament/Widgets/UserStatsWidget.php',
         'App\\Helpers\\CountryList' => __DIR__ . '/../..' . '/app/Helpers/CountryList.php',
         'App\\Http\\Controllers\\Api\\ChallangeCategoryController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/ChallangeCategoryController.php',
         'App\\Http\\Controllers\\Api\\EventChallengeController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/EventChallengeController.php',
@@ -944,6 +958,7 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'App\\Http\\Controllers\\LabController' => __DIR__ . '/../..' . '/app/Http/Controllers/LabController.php',
         'App\\Http\\Controllers\\User\\Auth\\AuthController' => __DIR__ . '/../..' . '/app/Http/Controllers/User/Auth/AuthController.php',
         'App\\Http\\Controllers\\User\\UserController' => __DIR__ . '/../..' . '/app/Http/Controllers/User/UserController.php',
+        'App\\Http\\Middleware\\UpdateLastSeen' => __DIR__ . '/../..' . '/app/Http/Middleware/UpdateLastSeen.php',
         'App\\Imports\\EventInvitationsImport' => __DIR__ . '/../..' . '/app/Imports/EventInvitationsImport.php',
         'App\\Mail\\EventInvitation' => __DIR__ . '/../..' . '/app/Mail/EventInvitation.php',
         'App\\Mail\\EventInvitationMail' => __DIR__ . '/../..' . '/app/Mail/EventInvitationMail.php',
@@ -3512,6 +3527,13 @@ class ComposerStaticInit88970a0117c062eed55fa8728fc43833
         'Filament\\Widgets\\Widget' => __DIR__ . '/..' . '/filament/widgets/src/Widget.php',
         'Filament\\Widgets\\WidgetConfiguration' => __DIR__ . '/..' . '/filament/widgets/src/WidgetConfiguration.php',
         'Filament\\Widgets\\WidgetsServiceProvider' => __DIR__ . '/..' . '/filament/widgets/src/WidgetsServiceProvider.php',
+        'Flowframe\\Trend\\Adapters\\AbstractAdapter' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/Adapters/AbstractAdapter.php',
+        'Flowframe\\Trend\\Adapters\\MySqlAdapter' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/Adapters/MySqlAdapter.php',
+        'Flowframe\\Trend\\Adapters\\PgsqlAdapter' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/Adapters/PgsqlAdapter.php',
+        'Flowframe\\Trend\\Adapters\\SqliteAdapter' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/Adapters/SqliteAdapter.php',
+        'Flowframe\\Trend\\Trend' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/Trend.php',
+        'Flowframe\\Trend\\TrendServiceProvider' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/TrendServiceProvider.php',
+        'Flowframe\\Trend\\TrendValue' => __DIR__ . '/..' . '/flowframe/laravel-trend/src/TrendValue.php',
         'Fruitcake\\Cors\\CorsService' => __DIR__ . '/..' . '/fruitcake/php-cors/src/CorsService.php',
         'Fruitcake\\Cors\\Exceptions\\InvalidOptionException' => __DIR__ . '/..' . '/fruitcake/php-cors/src/Exceptions/InvalidOptionException.php',
         'GrahamCampbell\\ResultType\\Error' => __DIR__ . '/..' . '/graham-campbell/result-type/src/Error.php',

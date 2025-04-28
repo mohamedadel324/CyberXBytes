@@ -55,7 +55,6 @@ return array(
     'ce9671a430e4846b44e1c68c7611f9f5' => $vendorDir . '/mockery/mockery/library/Mockery.php',
     'a1cfe24d14977df6878b9bf804af2d1c' => $vendorDir . '/nunomaduro/collision/src/Adapters/Phpunit/Autoload.php',
     'ec07570ca5a812141189b1fa81503674' => $vendorDir . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
-    'c0dbcc5167e0e20bf07a89820f2f42bb' => $vendorDir . '/pst/pst/src/PST.php',
     '377b22b161c09ed6e5152de788ca020a' => $vendorDir . '/spatie/laravel-permission/src/helpers.php',
     'cb13af02c6f0ae847685564c9910670f' => $baseDir . '/app/Helpers/FilamentHelper.php',
 );

@@ -17,4 +17,5 @@ Route::prefix('admin')->group(function () {
     Route::get('/backups/{filename}', [BackupController::class, 'download'])->name('backups.download');
     Route::delete('/backups/{filename}', [BackupController::class, 'destroy'])->name('backups.destroy');
 });
+Route::view('/admin/user/{user}','admin.users.user');
 

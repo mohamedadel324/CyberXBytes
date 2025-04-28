@@ -10,6 +10,7 @@
         "dedoc/scramble": "^0.12.10",
         "doctrine/dbal": "^4.2",
         "filament/filament": "3.3.3",
+        "flowframe/laravel-trend": "^0.4.0",
         "hasnayeen/themes": "^3.0",
         "laravel/framework": "^12.0",
         "laravel/reverb": "^1.0",

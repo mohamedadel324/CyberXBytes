@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Models\Event;
+use App\Models\EventChallange;
+use App\Models\EventChallangeSubmission;
+use App\Models\EventChallangeFlag;
+use App\Models\EventChallangeFlagSubmission;
+use App\Models\UserSocialMedia;
+use App\Models\UserOtp;
 
 class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
@@ -131,6 +138,11 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
             ->wherePivot('solved', true)
             ->withPivot(['solved_at', 'attempts'])
             ->withTimestamps();
+    }
+
+    public function registeredEvents()
+    {
+        return $this->belongsToMany(Event::class, 'event_registrations', 'user_uuid', 'event_uuid', 'uuid', 'uuid');
     }
 
     public function getCurrentTitleAttribute()

@@ -176,7 +176,8 @@ class AuthController extends \Illuminate\Routing\Controller
      * @response {
      *   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
      *   "token_type": "bearer",
-     *   "expires_in": 3600
+     *   "expires_in": 3600,
+     *   "bound_ip": "127.0.0.1"
      * }
      * 
      * @return \Illuminate\Http\JsonResponse
@@ -236,6 +237,18 @@ class AuthController extends \Illuminate\Routing\Controller
     }
 
     /**
+     * Refresh a token.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     * @authenticated
+     */
+    public function refresh()
+    {
+        // Get a new token with the current IP address
+        return $this->respondWithToken(auth()->refresh());
+    }
+
+    /**
      * Get the token array structure.
      *
      * @param  string $token
@@ -244,10 +257,15 @@ class AuthController extends \Illuminate\Routing\Controller
      */
     protected function respondWithToken($token)
     {
+        // Store the IP address associated with this token
+        $ip = request()->ip();
+        Cache::put('token_ip:' . $token, $ip, auth()->factory()->getTTL() * 60);
+        
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60
+            'expires_in' => auth()->factory()->getTTL() * 60,
+            'bound_ip' => $ip
         ]);
     }
 

@@ -501,7 +501,9 @@ class LabController extends Controller
                     $flagsData[] = [
                         'id' => $flag->id,
                         'name' => $flag->name,
-                        'description' => $flag->description,
+                        'ar_name' => $flag->ar_name,
+
+                        'description'=> $flag->description,
                         'bytes' => $challenge->bytes,
                         'first_blood_bytes' => $challenge->firstBloodBytes,
                         'solved_count' => $solvedCount,
@@ -547,6 +549,8 @@ class LabController extends Controller
                     $flagsData[] = [
                         'id' => $flag->id,
                         'name' => $flag->name,
+                        'ar_name' => $flag->ar_name,
+
                         'description' => $flag->description,
                         'bytes' => $flag->bytes,
                         'first_blood_bytes' => $flag->firstBloodBytes,

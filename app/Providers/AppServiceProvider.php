@@ -9,6 +9,8 @@ use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Routing\Router;
+use App\Http\Middleware\CheckTokenIP;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Register IP check middleware
+        $router = $this->app->make(Router::class);
+        $router->aliasMiddleware('check.token.ip', CheckTokenIP::class);
+        $router->pushMiddlewareToGroup('api', CheckTokenIP::class);
+
         Scramble::configure()
         ->withDocumentTransformers(function (OpenApi $openApi) {
             $openApi->secure(
