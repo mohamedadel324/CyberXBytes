@@ -920,6 +920,8 @@ class EventChallengeController extends Controller
                 $flagsData[] = [
                     'id' => $flag->id,
                     'name' => $flag->name,
+                    'ar_name' => $flag->ar_name,
+
                     'description' => $flag->description,
                     'bytes' => $challenge->bytes,
                     'first_blood_bytes' => $challenge->firstBloodBytes,
@@ -966,6 +968,8 @@ class EventChallengeController extends Controller
                 $flagsData[] = [
                     'id' => $flag->id,
                     'name' => $flag->name,
+                    'ar_name' => $flag->ar_name,
+
                     'description' => $flag->description,
                     'bytes' => $flag->bytes,
                     'first_blood_bytes' => $flag->firstBloodBytes,
