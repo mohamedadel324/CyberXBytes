@@ -1073,7 +1073,7 @@ class UserController extends Controller
                 
                 // Limit to 50 activities
                 $count++;
-                if ($count >= 50) {
+                if ($count >= 30) {
                     break;
                 }
             }
