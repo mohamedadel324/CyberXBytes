@@ -978,41 +978,38 @@ class UserController extends Controller
      */
     public function recentPlatformActivities()
     {
-        // Get all solved submissions, ordered by solved time (most recent first)
-        $recentSubmissions = Submission::where('solved', true)
-            ->with(['challange', 'challange.category', 'challange.flags', 'user'])
+        // Get user's solved challenges, ordered by solved time (most recent first)
+        $userSubmissions = Submission::
+            where('solved', true)
+            ->with(['challange', 'challange.category', 'challange.flags'])
             ->orderBy('created_at', 'desc')
-            ->take(50)
             ->get();
         
         $activities = [];
-        $processedChallenges = []; // Track processed challenges for multiple_all type
         $count = 0;
         
-        foreach ($recentSubmissions as $submission) {
-            if (!$submission->challange || !$submission->user) {
+        foreach ($userSubmissions as $submission) {
+            if (!$submission->challange) {
                 continue;
             }
             
             $challange = $submission->challange;
             $submissionFlag = $submission->flag;
-            $user = $submission->user;
             
-            // For single-flag challenges
-            if ($challange->flag_type === 'single') {
+            // For single-flag or multiple_all challenges
+            if (!$challange->usesIndividualFlagPoints()) {
                 // Check if this was a first blood
                 $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
                     ->where('solved', true)
                     ->orderBy('created_at')
-                    ->first()
-                    ->user_uuid === $user->uuid;
+                    ->first();
                 
-                // Format date in UTC (clients can convert to their timezone)
+                // Format date based on user's timezone
                 $solvedAt = new \DateTime($submission->created_at);
+                $userTimezone = $user->time_zone ?? 'UTC';
+                $solvedAt->setTimezone(new \DateTimeZone($userTimezone));
                 
                 $activities[] = [
-                    'user_name' => $user->user_name,
-                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                     'challenge_title' => $challange->title,
                     'challenge_uuid' => $challange->uuid,
                     'category' => $challange->category ? $challange->category->name : null,
@@ -1022,84 +1019,18 @@ class UserController extends Controller
                     'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
                     'total_bytes' => $isFirstBlood ? $challange->firstBloodBytes : $challange->bytes,
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
+                    'timezone' => $userTimezone,
                     'flag_type' => $challange->flag_type
                 ];
                 
-                // Limit to 30 activities
+                // Limit to 50 activities
                 $count++;
-                if ($count >= 30) {
+                if ($count >= 50) {
                     break;
                 }
             }
-            // For multiple_all challenges, check if all flags are solved before creating an activity
-            else if ($challange->flag_type === 'multiple_all') {
-                // Skip if we've already processed this challenge for this user
-                $challengeKey = $challange->uuid . '_' . $user->uuid;
-                if (isset($processedChallenges[$challengeKey])) {
-                    continue;
-                }
-                
-                // Get all flags for this challenge
-                $allFlags = $challange->flags;
-                $totalFlags = $allFlags->count();
-                
-                // Count how many flags the user has solved for this challenge
-                $solvedFlags = Submission::where('challange_uuid', $challange->uuid)
-                    ->where('user_uuid', $user->uuid)
-                    ->where('solved', true)
-                    ->count();
-                
-                // Only create an activity if the user has solved all flags
-                if ($solvedFlags === $totalFlags) {
-                    $processedChallenges[$challengeKey] = true;
-                    
-                    // Check if this was a first blood (first to solve all flags)
-                    $isFirstBlood = false;
-                    $firstToSolveAll = null;
-                    
-                    // Find the first user to solve all flags
-                    $users = User::all();
-                    foreach ($users as $userCheck) {
-                        $userSolvedFlags = Submission::where('challange_uuid', $challange->uuid)
-                            ->where('user_uuid', $userCheck->uuid)
-                            ->where('solved', true)
-                            ->count();
-                        
-                        if ($userSolvedFlags === $totalFlags) {
-                            $firstToSolveAll = $userCheck->uuid;
-                            break;
-                        }
-                    }
-                    
-                    $isFirstBlood = ($firstToSolveAll === $user->uuid);
-                    
-                    // Format date in UTC
-                    $solvedAt = new \DateTime($submission->created_at);
-                    
-                    $activities[] = [
-                        'user_name' => $user->user_name,
-                        'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                        'challenge_title' => $challange->title,
-                        'challenge_uuid' => $challange->uuid,
-                        'category' => $challange->category ? $challange->category->name : null,
-                        'difficulty' => $challange->difficulty,
-                        'bytes' => $isFirstBlood ? 0 : $challange->bytes,
-                        'is_first_blood' => $isFirstBlood,
-                        'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
-                        'total_bytes' => $isFirstBlood ? $challange->firstBloodBytes : $challange->bytes,
-                        'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                        'flag_type' => $challange->flag_type
-                    ];
-                    
-                    // Limit to 30 activities
-                    $count++;
-                    if ($count >= 30) {
-                        break;
-                    }
-                }
-            }
-            // For multiple_individual challenges, each flag is a separate activity
-            else if ($challange->flag_type === 'multiple_individual') {
+            // For multiple_individual challenges, list each flag separately
+            else {
                 // Find the specific flag this submission corresponds to
                 $flag = null;
                 foreach ($challange->flags as $challengeFlag) {
@@ -1118,15 +1049,14 @@ class UserController extends Controller
                     ->where('flag', $flag->flag)
                     ->where('solved', true)
                     ->orderBy('created_at')
-                    ->first()
-                    ->user_uuid === $user->uuid;
+                    ->first();
                 
-                // Format date in UTC
+                // Format date based on user's timezone
                 $solvedAt = new \DateTime($submission->created_at);
+                $userTimezone = $user->time_zone ?? 'UTC';
+                $solvedAt->setTimezone(new \DateTimeZone($userTimezone));
                 
                 $activities[] = [
-                    'user_name' => $user->user_name,
-                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                     'challenge_title' => $challange->title . ' - ' . ($flag->name ?? 'Flag'),
                     'challenge_uuid' => $challange->uuid,
                     'category' => $challange->category ? $challange->category->name : null,
@@ -1135,14 +1065,15 @@ class UserController extends Controller
                     'is_first_blood' => $isFirstBlood,
                     'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
                     'total_bytes' => $isFirstBlood ? $flag->firstBloodBytes : $flag->bytes,
-                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
+                    'solved_at' => $solvedAt->format('Y-m-d H:i:s')sa,
+                    'timezone' => $userTimezone,
                     'flag_type' => $challange->flag_type,
                     'flag_name' => $flag->name ?? 'Flag'
                 ];
                 
-                // Limit to 30 activities
+                // Limit to 50 activities
                 $count++;
-                if ($count >= 30) {
+                if ($count >= 50) {
                     break;
                 }
             }
