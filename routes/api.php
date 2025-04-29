@@ -52,6 +52,8 @@ Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
     // User activities
     Route::get('activities/{user_name}', [UserController::class, 'userActivities']);
     Route::get('my-activities', [UserController::class, 'myActivities']);
+
+    Route::get('recentPlatformActivities', [UserController::class, 'recentPlatformActivities']);
 });
 
 Route::middleware(['auth:api', 'verified'])->group(function () {
