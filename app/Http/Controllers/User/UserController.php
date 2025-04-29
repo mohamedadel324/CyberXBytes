@@ -971,6 +971,120 @@ class UserController extends Controller
         return $this->userActivities($request->user()->user_name);
     }
 
+    /**
+     * Get the most recent 30 challenge activities across all users
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function recentPlatformActivities()
+    {
+        // Get all solved submissions, ordered by solved time (most recent first)
+        $recentSubmissions = Submission::where('solved', true)
+            ->with(['challange', 'challange.category', 'challange.flags', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->take(50)
+            ->get();
+        
+        $activities = [];
+        $count = 0;
+        
+        foreach ($recentSubmissions as $submission) {
+            if (!$submission->challange || !$submission->user) {
+                continue;
+            }
+            
+            $challange = $submission->challange;
+            $submissionFlag = $submission->flag;
+            $user = $submission->user;
+            
+            // For single-flag or multiple_all challenges
+            if (!$challange->usesIndividualFlagPoints()) {
+                // Check if this was a first blood
+                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first()
+                    ->user_uuid === $user->uuid;
+                
+                // Format date in UTC (clients can convert to their timezone)
+                $solvedAt = new \DateTime($submission->created_at);
+                
+                $activities[] = [
+                    'user_name' => $user->user_name,
+                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
+                    'challenge_title' => $challange->title,
+                    'challenge_uuid' => $challange->uuid,
+                    'category' => $challange->category ? $challange->category->name : null,
+                    'difficulty' => $challange->difficulty,
+                    'bytes' => $isFirstBlood ? 0 : $challange->bytes,
+                    'is_first_blood' => $isFirstBlood,
+                    'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
+                    'total_bytes' => $isFirstBlood ? $challange->firstBloodBytes : $challange->bytes,
+                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
+                    'flag_type' => $challange->flag_type
+                ];
+                
+                // Limit to 30 activities
+                $count++;
+                if ($count >= 30) {
+                    break;
+                }
+            }
+            // For multiple_individual challenges, list each flag separately
+            else {
+                // Find the specific flag this submission corresponds to
+                $flag = null;
+                foreach ($challange->flags as $challengeFlag) {
+                    if ($challengeFlag->flag === $submissionFlag) {
+                        $flag = $challengeFlag;
+                        break;
+                    }
+                }
+                
+                if (!$flag) {
+                    continue; // Skip if we can't find the matching flag
+                }
+                
+                // Check if this was a first blood for this specific flag
+                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                    ->where('flag', $flag->flag)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first()
+                    ->user_uuid === $user->uuid;
+                
+                // Format date in UTC (clients can convert to their timezone)
+                $solvedAt = new \DateTime($submission->created_at);
+                
+                $activities[] = [
+                    'user_name' => $user->user_name,
+                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
+                    'challenge_title' => $challange->title . ' - ' . ($flag->name ?? 'Flag'),
+                    'challenge_uuid' => $challange->uuid,
+                    'category' => $challange->category ? $challange->category->name : null,
+                    'difficulty' => $challange->difficulty,
+                    'bytes' => $isFirstBlood ? 0 : $flag->bytes,
+                    'is_first_blood' => $isFirstBlood,
+                    'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
+                    'total_bytes' => $isFirstBlood ? $flag->firstBloodBytes : $flag->bytes,
+                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
+                    'flag_type' => $challange->flag_type,
+                    'flag_name' => $flag->name ?? 'Flag'
+                ];
+                
+                // Limit to 30 activities
+                $count++;
+                if ($count >= 30) {
+                    break;
+                }
+            }
+        }
+        
+        return response()->json([
+            'activities' => $activities
+        ]);
+    }
+
     public function updateLastSeen(Request $request)
     {
         $user = $request->user();
