@@ -926,22 +926,44 @@ class UserController extends Controller
                     ->first()
                     ->user_uuid === $user->uuid;
                 
-                // Format date based on user's timezone
+                // Format date in UTC (clients can convert to their timezone)
                 $solvedAt = new \DateTime($submission->created_at);
-                $userTimezone = $user->time_zone ?? 'UTC';
-                $solvedAt->setTimezone(new \DateTimeZone($userTimezone));
+                
+                // Set bytes values, handling null/0 cases appropriately
+                $regularBytes = $flag->bytes ?? 0;
+                $firstBloodBytes = $flag->firstBloodBytes ?? 0;
+                
+                // If firstBloodBytes is 0 or null, use a default value based on difficulty
+                if ($isFirstBlood && $firstBloodBytes <= 0) {
+                    switch ($challange->difficulty) {
+                        case 'easy':
+                            $firstBloodBytes = 50;
+                            break;
+                        case 'medium':
+                            $firstBloodBytes = 100;
+                            break;
+                        case 'hard':
+                            $firstBloodBytes = 150;
+                            break;
+                        case 'very_hard':
+                            $firstBloodBytes = 200;
+                            break;
+                        default:
+                            $firstBloodBytes = 100;
+                    }
+                }
                 
                 $activities[] = [
+                    'user_name' => $user->user_name,
+                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                     'challenge_title' => $challange->title . ' - ' . ($flag->name ?? 'Flag'),
                     'challenge_uuid' => $challange->uuid,
                     'category' => $challange->category ? $challange->category->name : null,
                     'difficulty' => $challange->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $flag->bytes,
+                    'bytes' => $isFirstBlood ? 0 : $regularBytes,
                     'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
-                    'total_bytes' => $isFirstBlood ? $flag->firstBloodBytes : $flag->bytes,
+                    'first_blood_bytes' => $isFirstBlood ? $firstBloodBytes : 0,
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                    'timezone' => $userTimezone,
                     'flag_type' => $challange->flag_type,
                     'flag_name' => $flag->name ?? 'Flag'
                 ];
@@ -1009,6 +1031,30 @@ class UserController extends Controller
                 // Format date in UTC (clients can convert to their timezone)
                 $solvedAt = new \DateTime($submission->created_at);
                 
+                // Set bytes values, handling null/0 cases appropriately
+                $regularBytes = $challange->bytes ?? 0;
+                $firstBloodBytes = $challange->firstBloodBytes ?? 0;
+                
+                // If firstBloodBytes is 0 or null, use a default value based on difficulty
+                if ($isFirstBlood && $firstBloodBytes <= 0) {
+                    switch ($challange->difficulty) {
+                        case 'easy':
+                            $firstBloodBytes = 50;
+                            break;
+                        case 'medium':
+                            $firstBloodBytes = 100;
+                            break;
+                        case 'hard':
+                            $firstBloodBytes = 150;
+                            break;
+                        case 'very_hard':
+                            $firstBloodBytes = 200;
+                            break;
+                        default:
+                            $firstBloodBytes = 100;
+                    }
+                }
+                
                 $activities[] = [
                     'user_name' => $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
@@ -1016,9 +1062,9 @@ class UserController extends Controller
                     'challenge_uuid' => $challange->uuid,
                     'category' => $challange->category ? $challange->category->name : null,
                     'difficulty' => $challange->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $challange->bytes,
+                    'bytes' => $isFirstBlood ? 0 : $regularBytes,
                     'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
+                    'first_blood_bytes' => $isFirstBlood ? $firstBloodBytes : 0,
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                     'flag_type' => $challange->flag_type
                 ];
@@ -1055,6 +1101,30 @@ class UserController extends Controller
                 // Format date in UTC (clients can convert to their timezone)
                 $solvedAt = new \DateTime($submission->created_at);
                 
+                // Set bytes values, handling null/0 cases appropriately
+                $regularBytes = $flag->bytes ?? 0;
+                $firstBloodBytes = $flag->firstBloodBytes ?? 0;
+                
+                // If firstBloodBytes is 0 or null, use a default value based on difficulty
+                if ($isFirstBlood && $firstBloodBytes <= 0) {
+                    switch ($challange->difficulty) {
+                        case 'easy':
+                            $firstBloodBytes = 50;
+                            break;
+                        case 'medium':
+                            $firstBloodBytes = 100;
+                            break;
+                        case 'hard':
+                            $firstBloodBytes = 150;
+                            break;
+                        case 'very_hard':
+                            $firstBloodBytes = 200;
+                            break;
+                        default:
+                            $firstBloodBytes = 100;
+                    }
+                }
+                
                 $activities[] = [
                     'user_name' => $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
@@ -1062,9 +1132,9 @@ class UserController extends Controller
                     'challenge_uuid' => $challange->uuid,
                     'category' => $challange->category ? $challange->category->name : null,
                     'difficulty' => $challange->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $flag->bytes,
+                    'bytes' => $isFirstBlood ? 0 : $regularBytes,
                     'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
+                    'first_blood_bytes' => $isFirstBlood ? $firstBloodBytes : 0,
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                     'flag_type' => $challange->flag_type,
                     'flag_name' => $flag->name ?? 'Flag'
