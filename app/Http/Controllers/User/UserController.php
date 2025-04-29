@@ -1065,7 +1065,7 @@ class UserController extends Controller
                     'is_first_blood' => $isFirstBlood,
                     'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
                     'total_bytes' => $isFirstBlood ? $flag->firstBloodBytes : $flag->bytes,
-                    'solved_at' => $solvedAt->format('Y-m-d H:i:s')sa,
+                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                     'timezone' => $userTimezone,
                     'flag_type' => $challange->flag_type,
                     'flag_name' => $flag->name ?? 'Flag'
