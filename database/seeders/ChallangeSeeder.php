@@ -32,24 +32,22 @@ class ChallangeSeeder extends Seeder
         
         foreach ($labCategories as $labCategory) {
             foreach ($challengeCategories as $category) {
-                // Create 3 challenges for each category
-                for ($i = 1; $i <= 3; $i++) {
-                    $difficulty = $difficulties[array_rand($difficulties)];
-                    $bytes = rand(10, 100);
-                    $firstBloodBytes = $bytes * 2;
-                    
-                    Challange::create([
-                        'lab_category_uuid' => $labCategory->uuid,
-                        'category_uuid' => $category->uuid,
-                        'title' => "{$category->name} Challenge {$i}",
-                        'description' => "This is a {$difficulty} {$category->name} challenge for {$labCategory->title}.",
-                        'difficulty' => $difficulty,
-                        'bytes' => $bytes,
-                        'flag' => "flag_{$labCategory->uuid}_{$category->uuid}_{$i}",
-                        'firstBloodBytes' => $firstBloodBytes,
-                        'made_by' => 'Admin',
-                    ]);
-                }
+                // Create 1 challenge for each category
+                $difficulty = $difficulties[array_rand($difficulties)];
+                $bytes = rand(10, 100);
+                $firstBloodBytes = $bytes * 2;
+                
+                Challange::create([
+                    'lab_category_uuid' => $labCategory->uuid,
+                    'category_uuid' => $category->uuid,
+                    'title' => "{$category->name} Challenge",
+                    'description' => "This is a {$difficulty} {$category->name} challenge for {$labCategory->title}.",
+                    'difficulty' => $difficulty,
+                    'bytes' => $bytes,
+                    'flag' => "flag_{$labCategory->uuid}_{$category->uuid}",
+                    'firstBloodBytes' => $firstBloodBytes,
+                    'made_by' => 'Admin',
+                ]);
             }
         }
     }
