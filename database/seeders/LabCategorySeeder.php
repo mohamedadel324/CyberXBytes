@@ -26,26 +26,7 @@ class LabCategorySeeder extends Seeder
                 'ar_title' => 'أمن الويب',
                 'image' => 'web_security.png',
             ],
-            [
-                'title' => 'Network Security',
-                'ar_title' => 'أمن الشبكات',
-                'image' => 'network_security.png',
-            ],
-            [
-                'title' => 'Mobile Security',
-                'ar_title' => 'أمن الهواتف المحمولة',
-                'image' => 'mobile_security.png',
-            ],
-            [
-                'title' => 'IoT Security',
-                'ar_title' => 'أمن إنترنت الأشياء',
-                'image' => 'iot_security.png',
-            ],
-            [
-                'title' => 'Cloud Security',
-                'ar_title' => 'أمن السحابة',
-                'image' => 'cloud_security.png',
-            ],
+         
         ];
         
         foreach ($labs as $lab) {
