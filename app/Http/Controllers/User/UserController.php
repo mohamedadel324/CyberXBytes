@@ -290,6 +290,9 @@ class UserController extends Controller
         // Get the user
         $user = User::where('user_name', $user_name)->firstOrFail();
         
+        // Get user's social media
+        $socialMedia = $user->socialMedia()->first();
+        
         // Get all challenges (excluding events)
         $allChallenges = Challange::all();
         $totalChallenges = $allChallenges->count();
@@ -814,6 +817,7 @@ class UserController extends Controller
                 'total_bytes' => $totalBytes,
                 'total_firstblood_bytes' => $totalFirstBloodBytes,
                 'rank' => $userRank,
+                'social_media' => $socialMedia,
             ],
             'challenges' => [
                 'total' => $totalChallenges,
