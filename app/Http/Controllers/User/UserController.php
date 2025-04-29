@@ -999,7 +999,7 @@ class UserController extends Controller
             $user = $submission->user;
             
             // For single-flag challenges
-            if ($challange->flag_type === 'simple' || $challange->flag_type === 'default') {
+            if ($challange->flag_type === 'single') {
                 // Check if this was a first blood
                 $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
                     ->where('solved', true)
