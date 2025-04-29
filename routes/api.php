@@ -85,6 +85,8 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/user-challenges', [UserChallangeController::class, 'getUserChallenges']);
     Route::get('/user-challenges/terms', [UserChallangeController::class, 'getTerms']);
     Route::get('/user-challenges/privacy', [UserChallangeController::class, 'getPrivacy']);
+    Route::get('/user-challenges/streak', [UserChallangeController::class, 'getUserChallengeStreak']);
+    Route::get('/user-challenges/total-approved', [UserChallangeController::class, 'getTotalApprovedChallenges']);
 
     // Events routes
     Route::get('/events', [EventController::class, 'index']);

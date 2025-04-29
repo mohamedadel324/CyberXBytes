@@ -161,4 +161,96 @@ class UserChallangeController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Get user's challenge streak and total approved challenges
+     */
+    public function getUserChallengeStreak()
+    {
+        $userUuid = Auth::user()->uuid;
+        
+        // Get the user's approved challenges ordered by creation date
+        $approvedChallenges = UserChallange::where('user_uuid', $userUuid)
+            ->where('status', 'approved')
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        // Count total approved challenges
+        $totalApproved = $approvedChallenges->count();
+        
+        // Calculate streak
+        $currentStreak = $this->calculateStreak($approvedChallenges);
+        
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'total_approved_challenges' => $totalApproved,
+                'current_streak' => $currentStreak
+            ]
+        ]);
+    }
+    
+    /**
+     * Calculate the user's current challenge streak.
+     * 
+     * @param \Illuminate\Database\Eloquent\Collection $challenges
+     * @return int
+     */
+    private function calculateStreak($challenges)
+    {
+        if ($challenges->isEmpty()) {
+            return 0;
+        }
+        
+        $streak = 0;
+        $maxStreak = 5; // Maximum streak value
+        $lastActivity = now();
+        
+        // Check if the most recent challenge is within the last week
+        $latestChallenge = $challenges->first();
+        $daysSinceLastChallenge = $latestChallenge->created_at->diffInDays($lastActivity);
+        
+        // If it's been more than a week since the last challenge, reset streak
+        if ($daysSinceLastChallenge > 7) {
+            return 0;
+        }
+        
+        // Process each challenge to calculate streak
+        foreach ($challenges as $challenge) {
+            // If challenge is recent (within 7 days of the previous one)
+            if ($challenge->created_at->diffInDays($lastActivity) <= 7) {
+                $streak++;
+                $lastActivity = $challenge->created_at;
+                
+                // Cap streak at maximum value
+                if ($streak >= $maxStreak) {
+                    return $maxStreak;
+                }
+            } else {
+                // Break the streak if more than 7 days between challenges
+                break;
+            }
+        }
+        
+        return $streak;
+    }
+    
+    /**
+     * Get total approved challenges count
+     */
+    public function getTotalApprovedChallenges()
+    {
+        $userUuid = Auth::user()->uuid;
+        
+        $totalApproved = UserChallange::where('user_uuid', $userUuid)
+            ->where('status', 'approved')
+            ->count();
+            
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'total_approved_challenges' => $totalApproved
+            ]
+        ]);
+    }
 } 
