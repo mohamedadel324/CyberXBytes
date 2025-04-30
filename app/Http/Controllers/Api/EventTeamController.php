@@ -983,8 +983,19 @@ class EventTeamController extends Controller
         }
 
         // Generate a unique 16-character secret
+        $maxAttempts = 5;
+        $attempt = 0;
+        $characterPool = 'cxb1$';
+        
         do {
-            $secret = Str::random(16);
+            if ($attempt >= $maxAttempts) {
+                // If we've tried too many times with the current character pool, expand it
+                $characterPool .= 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#%^&*';
+                $attempt = 0; // Reset attempt counter with new character pool
+            }
+            
+            $secret = substr(str_shuffle(str_repeat($characterPool, 16)), 0, 16);
+            $attempt++;
         } while (EventTeamJoinSecret::where('secret', $secret)->exists());
 
         // Create the join secret
