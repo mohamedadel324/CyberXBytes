@@ -83,7 +83,7 @@ class UserController extends Controller
         $validatedData = $request->validate([
             'discord' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?discord\.(?:gg|com)/'],
             'instagram' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?instagram\.com/'],
-            'twitter' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?twitter\.com/'],
+            'twitter' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?x\.com/'],
             'tiktok' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?tiktok\.com/'],
             'youtube' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?youtube\.com/'],
             'linkedIn' => ['nullable', 'string', 'regex:/^https?:\/\/(?:www\.)?linkedin\.com/'],
