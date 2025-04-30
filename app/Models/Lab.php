@@ -9,6 +9,8 @@ class Lab extends Model
     protected $fillable = [
         'name',
         'ar_name',
+        'description',
+        'ar_description'
     ];
     
     protected $hidden = [
