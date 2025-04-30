@@ -156,7 +156,7 @@ class EventResource extends Resource
                                         ->nullable()
                                         ->maxLength(255),
                                     Forms\Components\TagsInput::make('keywords')
-                                        ->required(),
+                                        ->nullable(),
                                     Forms\Components\Select::make('difficulty')
                                         ->required()
                                         ->options([

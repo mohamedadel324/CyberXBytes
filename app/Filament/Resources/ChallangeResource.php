@@ -71,7 +71,7 @@ class ChallangeResource extends Resource
                     ->nullable(),
                 Forms\Components\TagsInput::make('keywords')
                     ->label('Keywords')
-                    ->required(),
+                    ->nullable(),
                 Forms\Components\Toggle::make('available')
                     ->label('Available')
                     ->default(true),
