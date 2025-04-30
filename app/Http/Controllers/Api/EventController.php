@@ -65,7 +65,7 @@ class EventController extends Controller
                 'uuid' => $event->uuid,
                 'title' => $event->title,
                 'description' => $event->description,
-                'image' => url('storage/' . $event->image) ?: $event->image,
+                'background_image' => url('storage/' . $event->background_image) ?: $event->background_image,
                 'is_main' => $event->is_main,
                 'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
                 'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
