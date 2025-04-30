@@ -3,8 +3,9 @@
 namespace App\Imports;
 
 use App\Models\EventInvitation;
+use App\Models\EventRegistration;
+use App\Models\User;
 use App\Models\Event;
-use App\Mail\EventInvitation as EventInvitationMail;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
@@ -12,6 +13,7 @@ use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
 use Maatwebsite\Excel\Concerns\SkipsErrors;
 use Illuminate\Support\Facades\Log;
+use App\Mail\EventRegistrationMail;
 use Illuminate\Support\Facades\Mail;
 
 class EventInvitationsImport implements ToModel, WithHeadingRow, WithValidation, SkipsOnError
@@ -42,32 +44,14 @@ class EventInvitationsImport implements ToModel, WithHeadingRow, WithValidation,
             throw new \Exception('No email column found in CSV');
         }
 
-        Log::info('Creating invitation for email: ' . $email);
+        Log::info('Adding user for: ' . $email);
         
         try {
-            $invitation = new EventInvitation([
-                'event_uuid' => $this->eventUuid,
-                'email' => $email,
-            ]);
-            
-            // Save the model explicitly
-            $invitation->save();
-            
-            // Send invitation email
-            try {
-                Mail::to($email)->send(new EventInvitationMail($invitation, $this->event));
-                $invitation->email_sent_at = now();
-                $invitation->save();
-                Log::info('Invitation email sent to: ' . $email);
-            } catch (\Exception $e) {
-                Log::error('Failed to send invitation email to ' . $email . ': ' . $e->getMessage());
-            }
-            
-            Log::info('Successfully created invitation for: ' . $email);
-            
-            return null; // Return null since we already saved the model
+            // Use the direct method to add the user
+            $this->event->addUserByEmail($email);
+            return null; // Don't return a model
         } catch (\Exception $e) {
-            Log::error('Error creating invitation: ' . $e->getMessage());
+            Log::error('Error adding user: ' . $e->getMessage());
             throw $e;
         }
     }

@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\EventChallangeSubmission;
 use App\Models\EventChallangeFlagSubmission;
+use App\Models\EventRegistration;
+use App\Models\EventInvitation;
+use App\Mail\EventRegistrationMail;
+use Illuminate\Support\Facades\Mail;
 
 class EventTeamController extends Controller
 {
@@ -24,6 +28,15 @@ class EventTeamController extends Controller
 
     public function create(Request $request, $eventUuid)
     {
+        $event = Event::where('uuid', $eventUuid)->first();
+        
+        if (!$event) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Event not found'
+            ], 404);
+        }
+
         // Check if user is already in a team for this event
         $existingTeam = EventTeam::where('event_uuid', $eventUuid)
             ->whereHas('members', function ($query) {
@@ -38,6 +51,55 @@ class EventTeamController extends Controller
             ], 400);
         }
 
+        // Check if user is registered for the event
+        $isRegistered = EventRegistration::where('event_uuid', $eventUuid)
+            ->where('user_uuid', Auth::user()->uuid)
+            ->exists();
+
+        // If not registered, check if user was invited to a private event
+        if (!$isRegistered && $event->is_private) {
+            $isInvited = EventInvitation::where('event_uuid', $eventUuid)
+                ->where('email', Auth::user()->email)
+                ->exists();
+                
+            if ($isInvited) {
+                // Auto-register the user as they were invited
+                EventRegistration::create([
+                    'event_uuid' => $eventUuid,
+                    'user_uuid' => Auth::user()->uuid,
+                    'status' => 'registered'
+                ]);
+                
+                // Mark the invitation as registered
+                $invitation = EventInvitation::where('event_uuid', $eventUuid)
+                    ->where('email', Auth::user()->email)
+                    ->first();
+                
+                if ($invitation && !$invitation->registered_at) {
+                    $invitation->update(['registered_at' => now()]);
+                    
+                    // Send registration email
+                    try {
+                        Mail::to(Auth::user()->email)->send(new EventRegistrationMail($event, Auth::user()));
+                        Log::info('Auto-registered user when creating team and sent email: ' . Auth::user()->email);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send registration email: ' . $e->getMessage());
+                    }
+                }
+                
+                $isRegistered = true;
+                Log::info('Auto-registered invited user for team creation: ' . Auth::user()->email);
+            }
+        }
+
+        // If still not registered, they can't create a team
+        if (!$isRegistered) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You must be registered for this event to create a team'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:event_teams,name',
         ]);
@@ -47,15 +109,6 @@ class EventTeamController extends Controller
                 'status' => 'error',
                 'message' => $validator->errors()->first()
             ], 422);
-        }
-
-        $event = Event::where('uuid', $eventUuid)->first();
-        
-        if (!$event) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Event not found'
-            ], 404);
         }
 
         // DIRECT SERVER-SIDE TIME CHECK
@@ -136,6 +189,55 @@ class EventTeamController extends Controller
                 'status' => 'error',
                 'message' => 'This team is locked'
             ], 400);
+        }
+
+        // Check if user is registered for the event
+        $isRegistered = EventRegistration::where('event_uuid', $team->event_uuid)
+            ->where('user_uuid', Auth::user()->uuid)
+            ->exists();
+
+        // If not registered, check if user was invited to a private event
+        if (!$isRegistered && $team->event->is_private) {
+            $isInvited = EventInvitation::where('event_uuid', $team->event_uuid)
+                ->where('email', Auth::user()->email)
+                ->exists();
+                
+            if ($isInvited) {
+                // Auto-register the user as they were invited
+                EventRegistration::create([
+                    'event_uuid' => $team->event_uuid,
+                    'user_uuid' => Auth::user()->uuid,
+                    'status' => 'registered'
+                ]);
+                
+                // Mark the invitation as registered
+                $invitation = EventInvitation::where('event_uuid', $team->event_uuid)
+                    ->where('email', Auth::user()->email)
+                    ->first();
+                
+                if ($invitation && !$invitation->registered_at) {
+                    $invitation->update(['registered_at' => now()]);
+                    
+                    // Send registration email
+                    try {
+                        Mail::to(Auth::user()->email)->send(new EventRegistrationMail($team->event, Auth::user()));
+                        Log::info('Auto-registered user when joining team and sent email: ' . Auth::user()->email);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send registration email: ' . $e->getMessage());
+                    }
+                }
+                
+                $isRegistered = true;
+                Log::info('Auto-registered invited user for team joining: ' . Auth::user()->email);
+            }
+        }
+
+        // If still not registered, they can't join a team
+        if (!$isRegistered) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You must be registered for this event to join a team'
+            ], 403);
         }
 
         // DIRECT SERVER-SIDE TIME CHECK
@@ -932,6 +1034,56 @@ class EventTeamController extends Controller
         }
 
         $team = $joinSecret->team;
+        $event = $team->event;
+
+        // Check if user is registered for the event
+        $isRegistered = EventRegistration::where('event_uuid', $event->uuid)
+            ->where('user_uuid', Auth::user()->uuid)
+            ->exists();
+
+        // If not registered, check if user was invited to a private event
+        if (!$isRegistered && $event->is_private) {
+            $isInvited = EventInvitation::where('event_uuid', $event->uuid)
+                ->where('email', Auth::user()->email)
+                ->exists();
+                
+            if ($isInvited) {
+                // Auto-register the user as they were invited
+                EventRegistration::create([
+                    'event_uuid' => $event->uuid,
+                    'user_uuid' => Auth::user()->uuid,
+                    'status' => 'registered'
+                ]);
+                
+                // Mark the invitation as registered
+                $invitation = EventInvitation::where('event_uuid', $event->uuid)
+                    ->where('email', Auth::user()->email)
+                    ->first();
+                
+                if ($invitation && !$invitation->registered_at) {
+                    $invitation->update(['registered_at' => now()]);
+                    
+                    // Send registration email
+                    try {
+                        Mail::to(Auth::user()->email)->send(new EventRegistrationMail($event, Auth::user()));
+                        Log::info('Auto-registered user when joining team with secret and sent email: ' . Auth::user()->email);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to send registration email: ' . $e->getMessage());
+                    }
+                }
+                
+                $isRegistered = true;
+                Log::info('Auto-registered invited user for team joining with secret: ' . Auth::user()->email);
+            }
+        }
+
+        // If still not registered, they can't join a team
+        if (!$isRegistered) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You must be registered for this event to join a team'
+            ], 403);
+        }
 
         // Check if user is already in a team for this event
         $existingTeam = EventTeam::where('event_uuid', $team->event_uuid)
@@ -992,7 +1144,7 @@ class EventTeamController extends Controller
                 ]
             ], 400);
         }
-
+        
         if ($team->is_locked) {
             return response()->json([
                 'status' => 'error',

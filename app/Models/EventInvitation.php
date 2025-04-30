@@ -4,6 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use App\Models\User;
+use App\Models\EventRegistration;
+use App\Mail\EventRegistrationMail;
+use Illuminate\Support\Facades\Mail;
 
 class EventInvitation extends Model
 {
@@ -12,12 +17,10 @@ class EventInvitation extends Model
         'event_uuid',
         'email',
         'invitation_token',
-        'email_sent_at',
         'registered_at',
     ];
 
     protected $casts = [
-        'email_sent_at' => 'datetime',
         'registered_at' => 'datetime',
     ];
 
@@ -32,11 +35,23 @@ class EventInvitation extends Model
             if (empty($invitation->invitation_token)) {
                 $invitation->invitation_token = Str::random(64);
             }
+            
+            Log::info("Created invitation for {$invitation->email} to event {$invitation->event_uuid}");
         });
     }
 
     public function event()
     {
         return $this->belongsTo(Event::class, 'event_uuid', 'uuid');
+    }
+    
+    public function user()
+    {
+        return User::where('email', $this->email)->first();
+    }
+    
+    public function isRegistered()
+    {
+        return !is_null($this->registered_at);
     }
 }

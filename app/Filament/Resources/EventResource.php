@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\Log;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\EventInvitationsImport;
+use App\Models\User;
+use App\Models\EventRegistration;
+use App\Mail\EventRegistrationMail;
+use Illuminate\Support\Facades\Mail;
 
 class EventResource extends Resource
 {
@@ -247,16 +251,17 @@ class EventResource extends Resource
                         ]),
                     
                     Forms\Components\Wizard\Step::make('Invitations')
-                        ->description('Invite users to your event')
+                        ->description('Add users to your private event')
                         ->schema([
-                            Forms\Components\Section::make('Invite Users')
+                            Forms\Components\Section::make('Add Users')
                                 ->schema([
                                     Forms\Components\Toggle::make('is_private')
                                         ->label('Private Event')
-                                        ->helperText('If enabled, only invited users can register')
+                                        ->helperText('If enabled, only invited users can view and will be auto-registered for this event')
                                         ->reactive(),
                                     Forms\Components\FileUpload::make('invitation_list')
-                                        ->label('Invitation List (CSV)')
+                                        ->label('User List (CSV)')
+                                        ->helperText('Upload a CSV file with a list of user emails to add to this event. They will be automatically registered if their account exists.')
                                         ->columnSpanFull()
                                         ->acceptedFileTypes(['text/csv'])
                                         ->directory('invitations')
@@ -298,7 +303,7 @@ class EventResource extends Resource
                                                 $set('invitation_list', null);
                                                 
                                                 Notification::make()
-                                                    ->title('Invitations imported successfully')
+                                                    ->title('Users added and auto-registered successfully')
                                                     ->success()
                                                     ->send();
                                                     
@@ -307,7 +312,7 @@ class EventResource extends Resource
                                                 Log::error('Stack trace: ' . $e->getTraceAsString());
                                                 
                                                 Notification::make()
-                                                    ->title('Error importing invitations')
+                                                    ->title('Error adding users')
                                                     ->body($e->getMessage())
                                                     ->danger()
                                                     ->persistent()
@@ -318,9 +323,13 @@ class EventResource extends Resource
                                             }
                                         })
                                         ->visible(fn (Forms\Get $get) => $get('is_private')),
-                                    Forms\Components\Hidden::make('invited_emails')
+                                    Forms\Components\TagsInput::make('invited_emails')
+                                        ->label('Add Individual Users')
+                                        ->helperText('Enter email addresses of users to add to this event. They will be automatically registered if their account exists.')
+                                        ->placeholder('Enter email address and press Enter')
+                                        ->visible(fn (Forms\Get $get) => $get('is_private'))
                                         ->default([])
-                                        ->dehydrated(true),
+                                        ->dehydrated(true)
                                 ]),
                         ]),
                 ])
