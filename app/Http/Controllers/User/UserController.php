@@ -984,148 +984,139 @@ class UserController extends Controller
      */
     public function recentPlatformActivities()
     {
-        // Get more recent solved submissions to ensure we have enough valid ones
-        $recentSubmissions = Submission::where('solved', true)
-            ->with(['challange', 'challange.category', 'challange.flags', 'user'])
-            ->orderBy('created_at', 'desc')
-            ->take(100)
-            ->get();
-        
-        $activities = [];
-        $processedKeys = []; // Track which submissions we've already processed
-        
-        foreach ($recentSubmissions as $submission) {
-            // Skip if challenge or user is missing
-            if (!$submission->challange || !$submission->user) {
-                continue;
-            }
+        try {
+            // Get recent solved submissions
+            $recentSubmissions = Submission::where('solved', true)
+                ->with(['challange', 'challange.category', 'challange.flags', 'user'])
+                ->orderBy('created_at', 'desc')
+                ->limit(100)
+                ->get();
             
-            $challange = $submission->challange;
-            $user = $submission->user;
-            $flagType = $challange->flag_type;
+            $activities = [];
+            $processedItems = []; // Track what we've already processed
             
-            // Generate a unique key based on flag type
-            $uniqueKey = '';
-            
-            // For single flag and multiple_all challenges, use challenge+user as key
-            if ($flagType == 'simple' || $flagType == 'default' || $flagType == 'multiple_all') {
-                $uniqueKey = $challange->uuid . '_' . $user->uuid;
+            foreach ($recentSubmissions as $submission) {
+                // Skip submissions without challenge or user
+                if (!$submission->challange || !$submission->user) {
+                    continue;
+                }
                 
-                // For multiple_all, additional check that all flags are solved
-                if ($flagType == 'multiple_all') {
-                    // Get count of all flags for this challenge
-                    $totalFlagsCount = $challange->flags->count();
-                    if ($totalFlagsCount == 0) continue; // Skip if no flags
+                $challange = $submission->challange;
+                $user = $submission->user;
+                
+                // Generate a unique ID based on flag type
+                $uniqueId = '';
+                $title = $challange->title;
+                $bytes = $challange->bytes;
+                $firstBloodBytes = $challange->firstBloodBytes;
+                $flagName = null;
+                
+                if ($challange->usesIndividualFlagPoints()) {
+                    // For multiple_individual, we track by flag
+                    $uniqueId = $challange->uuid . '_' . $submission->flag . '_' . $user->uuid;
                     
-                    // Count how many flags this user has solved
-                    $solvedFlagsCount = Submission::where('user_uuid', $user->uuid)
+                    // Find the specific flag to get its details
+                    foreach ($challange->flags as $flag) {
+                        if ($flag->flag === $submission->flag) {
+                            $flagName = $flag->name ?? 'Flag';
+                            $bytes = $flag->bytes ?? $challange->bytes;
+                            $firstBloodBytes = $flag->firstBloodBytes ?? $challange->firstBloodBytes;
+                            break;
+                        }
+                    }
+                    
+                    // Add flag name to title
+                    $title = $challange->title . ' - ' . ($flagName ?? 'Flag');
+                } 
+                else if ($challange->usesMultipleFlags() && $challange->flag_type === 'multiple_all') {
+                    // For multiple_all, we need to check if all flags have been solved
+                    $uniqueId = $challange->uuid . '_' . $user->uuid; 
+                    
+                    // Get total flags
+                    $totalFlags = $challange->flags->count();
+                    if ($totalFlags === 0) continue;
+                    
+                    // Count solved flags by this user
+                    $solvedFlags = Submission::where('user_uuid', $user->uuid)
                         ->where('challange_uuid', $challange->uuid)
                         ->where('solved', true)
-                        ->distinct('flag')
-                        ->count('flag');
+                        ->count();
                     
-                    // Skip if user hasn't solved all flags
-                    if ($solvedFlagsCount < $totalFlagsCount) {
+                    // Skip if not all flags are solved
+                    if ($solvedFlags < $totalFlags) {
                         continue;
                     }
                 }
-            } 
-            // For multiple_individual, use challenge+flag+user as key
-            else if ($flagType == 'multiple_individual') {
-                // Skip if no flag is recorded
-                if (empty($submission->flag)) {
+                else {
+                    // For single flag challenges
+                    $uniqueId = $challange->uuid . '_' . $user->uuid;
+                }
+                
+                // Skip if already processed
+                if (in_array($uniqueId, $processedItems)) {
                     continue;
                 }
-                $uniqueKey = $challange->uuid . '_' . $submission->flag . '_' . $user->uuid;
-            }
-            else {
-                // Unrecognized flag type, skip
-                continue;
-            }
-            
-            // Skip if we've already processed this unique combination
-            if (in_array($uniqueKey, $processedKeys)) {
-                continue;
-            }
-            
-            // Mark as processed
-            $processedKeys[] = $uniqueKey;
-            
-            // Determine if this is a firstblood
-            $isFirstBlood = false;
-            $bytes = 0;
-            $firstBloodBytes = 0;
-            
-            if ($flagType == 'multiple_individual') {
-                // For individual flags, check firstblood for this specific flag
-                $firstSubmission = Submission::where('challange_uuid', $challange->uuid)
-                    ->where('flag', $submission->flag)
-                    ->where('solved', true)
-                    ->orderBy('created_at')
-                    ->first();
+                $processedItems[] = $uniqueId;
                 
-                $isFirstBlood = $firstSubmission && $firstSubmission->user_uuid === $user->uuid;
-                
-                // Find this specific flag to get the bytes
-                $flag = null;
-                foreach ($challange->flags as $challengeFlag) {
-                    if ($challengeFlag->flag === $submission->flag) {
-                        $flag = $challengeFlag;
-                        break;
+                // Check if this was a first blood
+                $isFirstBlood = false;
+                if ($challange->usesIndividualFlagPoints()) {
+                    // For individual flags, check first blood for this specific flag
+                    $firstSubmission = Submission::where('challange_uuid', $challange->uuid)
+                        ->where('flag', $submission->flag)
+                        ->where('solved', true)
+                        ->orderBy('created_at')
+                        ->first();
+                    
+                    if ($firstSubmission) {
+                        $isFirstBlood = $firstSubmission->user_uuid === $user->uuid;
+                    }
+                } else {
+                    // For single flag or multiple_all, check first blood for the whole challenge
+                    $firstSubmission = Submission::where('challange_uuid', $challange->uuid)
+                        ->where('solved', true)
+                        ->orderBy('created_at')
+                        ->first();
+                    
+                    if ($firstSubmission) {
+                        $isFirstBlood = $firstSubmission->user_uuid === $user->uuid;
                     }
                 }
                 
-                if ($flag) {
-                    $bytes = $flag->bytes;
-                    $firstBloodBytes = $flag->firstBloodBytes;
+                // Format date
+                $solvedAt = new \DateTime($submission->created_at);
+                
+                // Create activity entry
+                $activities[] = [
+                    'user_name' => $user->user_name,
+                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
+                    'challenge_title' => $title,
+                    'challenge_uuid' => $challange->uuid,
+                    'category' => $challange->category ? $challange->category->name : null,
+                    'difficulty' => $challange->difficulty,
+                    'bytes' => $isFirstBlood ? 0 : $bytes,
+                    'is_first_blood' => $isFirstBlood,
+                    'first_blood_bytes' => $isFirstBlood ? $firstBloodBytes : 0,
+                    'total_bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
+                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
+                    'flag_type' => $challange->flag_type
+                ];
+                
+                // Limit to 30 activities
+                if (count($activities) >= 30) {
+                    break;
                 }
-                
-                // Title should include flag name
-                $title = $challange->title . ' - ' . ($flag && $flag->name ? $flag->name : 'Flag');
-            } else {
-                // For single flag or multiple_all (whole challenge)
-                $firstSubmission = Submission::where('challange_uuid', $challange->uuid)
-                    ->where('solved', true)
-                    ->orderBy('created_at')
-                    ->first();
-                
-                $isFirstBlood = $firstSubmission && $firstSubmission->user_uuid === $user->uuid;
-                $bytes = $challange->bytes;
-                $firstBloodBytes = $challange->firstBloodBytes;
-                $title = $challange->title;
             }
             
-            // Format date
-            $solvedAt = new \DateTime($submission->created_at);
-            
-            // Calculate total bytes (either firstblood or regular)
-            $totalBytes = $isFirstBlood ? $firstBloodBytes : $bytes;
-            
-            // Create activity entry
-            $activities[] = [
-                'user_name' => $user->user_name,
-                'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                'challenge_title' => $title,
-                'challenge_uuid' => $challange->uuid,
-                'category' => $challange->category ? $challange->category->name : null,
-                'difficulty' => $challange->difficulty,
-                'bytes' => $isFirstBlood ? 0 : $bytes,
-                'is_first_blood' => $isFirstBlood,
-                'first_blood_bytes' => $isFirstBlood ? $firstBloodBytes : 0,
-                'total_bytes' => $totalBytes,
-                'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                'flag_type' => $flagType
-            ];
-            
-            // Break once we have 30 activities
-            if (count($activities) >= 30) {
-                break;
-            }
+            return response()->json([
+                'activities' => $activities
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'An error occurred while fetching recent activities: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ], 500);
         }
-        
-        return response()->json([
-            'activities' => $activities
-        ]);
     }
 
     public function updateLastSeen(Request $request)
