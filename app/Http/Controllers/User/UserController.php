@@ -984,161 +984,142 @@ class UserController extends Controller
      */
     public function recentPlatformActivities()
     {
-        // Get the 30 most recent solved submissions
+        // Get more recent solved submissions to ensure we have enough valid ones
         $recentSubmissions = Submission::where('solved', true)
             ->with(['challange', 'challange.category', 'challange.flags', 'user'])
             ->orderBy('created_at', 'desc')
-            ->take(100) // Fetch more than needed to ensure we have 30 valid submissions after filtering
+            ->take(100)
             ->get();
         
         $activities = [];
-        $count = 0;
-        $processedChallenges = []; // Track processed challenges for multiple_all type
+        $processedKeys = []; // Track which submissions we've already processed
         
         foreach ($recentSubmissions as $submission) {
+            // Skip if challenge or user is missing
             if (!$submission->challange || !$submission->user) {
                 continue;
             }
             
             $challange = $submission->challange;
             $user = $submission->user;
-            $submissionFlag = $submission->flag;
+            $flagType = $challange->flag_type;
             
-            // For single-flag challenges
-            if ($challange->flag_type == 'simple' || $challange->flag_type == 'default') {
-                // Check if this was a first blood
-                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                    ->where('solved', true)
-                    ->orderBy('created_at')
-                    ->first()
-                    ->user_uuid === $user->uuid;
+            // Generate a unique key based on flag type
+            $uniqueKey = '';
+            
+            // For single flag and multiple_all challenges, use challenge+user as key
+            if ($flagType == 'simple' || $flagType == 'default' || $flagType == 'multiple_all') {
+                $uniqueKey = $challange->uuid . '_' . $user->uuid;
                 
-                // Format date
-                $solvedAt = new \DateTime($submission->created_at);
-                
-                $activities[] = [
-                    'user_name' => $user->user_name,
-                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                    'challenge_title' => $challange->title,
-                    'challenge_uuid' => $challange->uuid,
-                    'category' => $challange->category ? $challange->category->name : null,
-                    'difficulty' => $challange->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $challange->bytes,
-                    'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
-                    'total_bytes' => $isFirstBlood ? $challange->firstBloodBytes : $challange->bytes,
-                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                    'flag_type' => $challange->flag_type
-                ];
-                
-                // Limit to 30 activities
-                $count++;
-                if ($count >= 30) {
-                    break;
-                }
-            }
-            // For multiple_all challenges, we need to check if all flags have been solved
-            else if ($challange->flag_type == 'multiple_all') {
-                // Check if we've already processed this challenge for this user
-                $challengeKey = $challange->uuid . '_' . $user->uuid;
-                if (in_array($challengeKey, $processedChallenges)) {
-                    continue;
-                }
-                
-                // Get all flags for this challenge
-                $allFlags = $challange->flags;
-                $totalFlags = $allFlags->count();
-                
-                // Check how many flags the user has solved for this challenge
-                $solvedFlags = Submission::where('user_uuid', $user->uuid)
-                    ->where('challange_uuid', $challange->uuid)
-                    ->where('solved', true)
-                    ->count();
-                
-                // Only process if the user has solved all flags
-                if ($solvedFlags == $totalFlags) {
-                    // Mark this challenge as processed for this user
-                    $processedChallenges[] = $challengeKey;
+                // For multiple_all, additional check that all flags are solved
+                if ($flagType == 'multiple_all') {
+                    // Get count of all flags for this challenge
+                    $totalFlagsCount = $challange->flags->count();
+                    if ($totalFlagsCount == 0) continue; // Skip if no flags
                     
-                    // Check if this was a first blood for the whole challenge
-                    $isFirstBlood = Submission::where('challange_uuid', $challange->uuid)
+                    // Count how many flags this user has solved
+                    $solvedFlagsCount = Submission::where('user_uuid', $user->uuid)
+                        ->where('challange_uuid', $challange->uuid)
                         ->where('solved', true)
-                        ->orderBy('created_at')
-                        ->first()
-                        ->user_uuid === $user->uuid;
+                        ->distinct('flag')
+                        ->count('flag');
                     
-                    // Format date
-                    $solvedAt = new \DateTime($submission->created_at);
-                    
-                    $activities[] = [
-                        'user_name' => $user->user_name,
-                        'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                        'challenge_title' => $challange->title,
-                        'challenge_uuid' => $challange->uuid,
-                        'category' => $challange->category ? $challange->category->name : null,
-                        'difficulty' => $challange->difficulty,
-                        'bytes' => $isFirstBlood ? 0 : $challange->bytes,
-                        'is_first_blood' => $isFirstBlood,
-                        'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
-                        'total_bytes' => $isFirstBlood ? $challange->firstBloodBytes : $challange->bytes,
-                        'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                        'flag_type' => $challange->flag_type
-                    ];
-                    
-                    // Limit to 30 activities
-                    $count++;
-                    if ($count >= 30) {
-                        break;
+                    // Skip if user hasn't solved all flags
+                    if ($solvedFlagsCount < $totalFlagsCount) {
+                        continue;
                     }
                 }
+            } 
+            // For multiple_individual, use challenge+flag+user as key
+            else if ($flagType == 'multiple_individual') {
+                // Skip if no flag is recorded
+                if (empty($submission->flag)) {
+                    continue;
+                }
+                $uniqueKey = $challange->uuid . '_' . $submission->flag . '_' . $user->uuid;
             }
-            // For multiple_individual challenges, list each flag separately
-            else if ($challange->flag_type == 'multiple_individual') {
-                // Find the specific flag this submission corresponds to
+            else {
+                // Unrecognized flag type, skip
+                continue;
+            }
+            
+            // Skip if we've already processed this unique combination
+            if (in_array($uniqueKey, $processedKeys)) {
+                continue;
+            }
+            
+            // Mark as processed
+            $processedKeys[] = $uniqueKey;
+            
+            // Determine if this is a firstblood
+            $isFirstBlood = false;
+            $bytes = 0;
+            $firstBloodBytes = 0;
+            
+            if ($flagType == 'multiple_individual') {
+                // For individual flags, check firstblood for this specific flag
+                $firstSubmission = Submission::where('challange_uuid', $challange->uuid)
+                    ->where('flag', $submission->flag)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first();
+                
+                $isFirstBlood = $firstSubmission && $firstSubmission->user_uuid === $user->uuid;
+                
+                // Find this specific flag to get the bytes
                 $flag = null;
                 foreach ($challange->flags as $challengeFlag) {
-                    if ($challengeFlag->flag === $submissionFlag) {
+                    if ($challengeFlag->flag === $submission->flag) {
                         $flag = $challengeFlag;
                         break;
                     }
                 }
                 
-                if (!$flag) {
-                    continue; // Skip if we can't find the matching flag
+                if ($flag) {
+                    $bytes = $flag->bytes;
+                    $firstBloodBytes = $flag->firstBloodBytes;
                 }
                 
-                // Check if this was a first blood for this specific flag
-                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
-                    ->where('flag', $flag->flag)
+                // Title should include flag name
+                $title = $challange->title . ' - ' . ($flag && $flag->name ? $flag->name : 'Flag');
+            } else {
+                // For single flag or multiple_all (whole challenge)
+                $firstSubmission = Submission::where('challange_uuid', $challange->uuid)
                     ->where('solved', true)
                     ->orderBy('created_at')
-                    ->first()
-                    ->user_uuid === $user->uuid;
+                    ->first();
                 
-                // Format date
-                $solvedAt = new \DateTime($submission->created_at);
-                
-                $activities[] = [
-                    'user_name' => $user->user_name,
-                    'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                    'challenge_title' => $challange->title . ' - ' . ($flag->name ?? 'Flag'),
-                    'challenge_uuid' => $challange->uuid,
-                    'category' => $challange->category ? $challange->category->name : null,
-                    'difficulty' => $challange->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $flag->bytes,
-                    'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
-                    'total_bytes' => $isFirstBlood ? $flag->firstBloodBytes : $flag->bytes,
-                    'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                    'flag_type' => $challange->flag_type,
-                    'flag_name' => $flag->name ?? 'Flag'
-                ];
-                
-                // Limit to 30 activities
-                $count++;
-                if ($count >= 30) {
-                    break;
-                }
+                $isFirstBlood = $firstSubmission && $firstSubmission->user_uuid === $user->uuid;
+                $bytes = $challange->bytes;
+                $firstBloodBytes = $challange->firstBloodBytes;
+                $title = $challange->title;
+            }
+            
+            // Format date
+            $solvedAt = new \DateTime($submission->created_at);
+            
+            // Calculate total bytes (either firstblood or regular)
+            $totalBytes = $isFirstBlood ? $firstBloodBytes : $bytes;
+            
+            // Create activity entry
+            $activities[] = [
+                'user_name' => $user->user_name,
+                'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
+                'challenge_title' => $title,
+                'challenge_uuid' => $challange->uuid,
+                'category' => $challange->category ? $challange->category->name : null,
+                'difficulty' => $challange->difficulty,
+                'bytes' => $isFirstBlood ? 0 : $bytes,
+                'is_first_blood' => $isFirstBlood,
+                'first_blood_bytes' => $isFirstBlood ? $firstBloodBytes : 0,
+                'total_bytes' => $totalBytes,
+                'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
+                'flag_type' => $flagType
+            ];
+            
+            // Break once we have 30 activities
+            if (count($activities) >= 30) {
+                break;
             }
         }
         
