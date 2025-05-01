@@ -26,15 +26,24 @@ class PlayerTitle extends Model
     {
         $titleConfig = static::first();
         if (!$titleConfig) {
-            return null;
+            return [
+                'title' => null,
+                'arabic_title' => null
+            ];
         }
 
         foreach ($titleConfig->title_ranges as $range) {
             if ($percentage >= $range['from'] && $percentage <= $range['to']) {
-                return $range['title'];
+                return [
+                    'title' => $range['title'],
+                    'arabic_title' => $range['arabic_title']
+                ];
             }
         }
 
-        return null;
+        return [
+            'title' => null,
+            'arabic_title' => null
+        ];
     }
 }
