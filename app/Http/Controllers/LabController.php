@@ -51,6 +51,7 @@ class LabController extends Controller
             return [
                 'uuid' => $category->uuid,
                 'title' => $category->title,
+                'ar_title' => $category->ar_title,
                 'image' => $category->image ? asset('storage/' . $category->image) : null,
                 'challenges_count' => $category->challanges_count,
             ];
@@ -59,6 +60,7 @@ class LabController extends Controller
         $lastThreeChallengesData = $lastThreeChallenges->map(function ($challenge) {
             return [
                 'title' => $challenge->title,
+                
                 'description' => $challenge->description,
                 'difficulty' => $this->translateDifficulty($challenge->difficulty),
                 'category_icon' => $challenge->category->icon ? asset('storage/' . $challenge->category->icon) : null,
