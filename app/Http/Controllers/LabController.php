@@ -436,7 +436,7 @@ class LabController extends Controller
 
     public function getChallenge($uuid)
     {
-        $challenge = Challange::with(['category:uuid,icon', 'flags'])
+        $challenge = Challange::with(['category:uuid,icon', 'flags', 'labCategory:uuid,title,ar_title,lab_uuid'])
             ->where('uuid', $uuid)
             ->first();
 
@@ -445,6 +445,13 @@ class LabController extends Controller
                 'status' => 'error',
                 'message' => 'Challenge not found'
             ], 404);
+        }
+
+        // Get lab data through lab category
+        $lab = null;
+        if ($challenge->labCategory && $challenge->labCategory->lab_uuid) {
+            $lab = Lab::where('uuid', $challenge->labCategory->lab_uuid)
+                ->first(['uuid', 'name', 'ar_name']);
         }
 
         $challenge->category_icon = $challenge->category->icon ?? null;
@@ -572,10 +579,33 @@ class LabController extends Controller
         
         // Remove flags from response
         unset($challengeData['flags']);
+        
+        // Prepare lab category data
+        $labCategoryData = null;
+        if ($challenge->labCategory) {
+            $labCategoryData = [
+                'uuid' => $challenge->labCategory->uuid,
+                'title' => $challenge->labCategory->title,
+                'ar_title' => $challenge->labCategory->ar_title,
+            ];
+        }
+        unset($challengeData['lab_category']);
+        
+        // Prepare lab data
+        $labData = null;
+        if ($lab) {
+            $labData = [
+                'uuid' => $lab->uuid,
+                'name' => $lab->name,
+                'ar_name' => $lab->ar_name,
+            ];
+        }
 
         return response()->json([
             'status' => 'success',
-            'data' => $challengeData
+            'data' => $challengeData,
+            'lab_category' => $labCategoryData,
+            'lab' => $labData
         ]);
     }
 
