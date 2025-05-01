@@ -866,7 +866,7 @@ class UserController extends Controller
         
         $activities = [];
         $count = 0;
-        $processedMultipleAllChallenges = []; // Track multiple_all challenges that have been fully solved
+        $processedMultipleAllChallenges = []; // Track processed multiple_all challenges
         
         foreach ($userSubmissions as $submission) {
             if (!$submission->challange) {
@@ -918,25 +918,23 @@ class UserController extends Controller
                 }
                 
                 // Check if all flags for this challenge have been solved by the user
-                $challengeFlags = $challange->flags;
-                $flagsSolved = 0;
-                $lastSolvedTime = null;
-                $isChallengeSolved = false;
+                $totalFlags = $challange->flags->count();
+                if ($totalFlags == 0) {
+                    continue; // Skip if there are no flags
+                }
                 
-                // Count how many flags of this challenge the user has solved
+                // Get all solved flags for this user and challenge
                 $userSolvedSubmissions = Submission::where('user_uuid', $user->uuid)
                     ->where('challange_uuid', $challange->uuid)
                     ->where('solved', true)
-                    ->orderBy('created_at', 'desc')
                     ->get();
                 
-                $solvedFlagCount = 0;
                 $solvedFlags = [];
+                $lastSolvedTime = null;
                 
                 foreach ($userSolvedSubmissions as $solvedSubmission) {
                     if (!in_array($solvedSubmission->flag, $solvedFlags)) {
                         $solvedFlags[] = $solvedSubmission->flag;
-                        $solvedFlagCount++;
                         
                         // Track the most recent submission time
                         if (!$lastSolvedTime || $solvedSubmission->created_at > $lastSolvedTime) {
@@ -945,23 +943,23 @@ class UserController extends Controller
                     }
                 }
                 
-                // Check if all flags have been solved
-                if ($solvedFlagCount === count($challengeFlags)) {
-                    $isChallengeSolved = true;
+                // Only show an entry if ALL flags have been solved
+                if (count($solvedFlags) == $totalFlags) {
+                    // Mark this challenge as processed
                     $processedMultipleAllChallenges[] = $challange->uuid;
                     
                     // Check if this was a first blood for the whole challenge (all flags)
                     $isFirstBlood = true;
                     
-                    // To be a first blood, the user must be the first to solve ALL flags
-                    foreach ($challengeFlags as $flag) {
-                        $firstSolverForFlag = Submission::where('challange_uuid', $challange->uuid)
+                    // For a first blood, the user must be the first to solve ALL flags
+                    foreach ($challange->flags as $flag) {
+                        $firstSolver = Submission::where('challange_uuid', $challange->uuid)
                             ->where('flag', $flag->flag)
                             ->where('solved', true)
                             ->orderBy('created_at')
                             ->first();
                         
-                        if (!$firstSolverForFlag || $firstSolverForFlag->user_uuid !== $user->uuid) {
+                        if (!$firstSolver || $firstSolver->user_uuid !== $user->uuid) {
                             $isFirstBlood = false;
                             break;
                         }
@@ -984,8 +982,8 @@ class UserController extends Controller
                         'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                         'timezone' => $userTimezone,
                         'flag_type' => $challange->flag_type . '_complete', // Mark as complete
-                        'flags_total' => count($challengeFlags),
-                        'flags_solved' => $solvedFlagCount
+                        'flags_total' => $totalFlags,
+                        'flags_solved' => count($solvedFlags)
                     ];
                     
                     // Limit to 50 activities
