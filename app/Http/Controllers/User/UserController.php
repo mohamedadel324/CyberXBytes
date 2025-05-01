@@ -811,8 +811,8 @@ class UserController extends Controller
             'user' => [
                 'user_name' => $user->user_name,
                 'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                'title' => $currentTitle,
-                'ar_title' => $currentTitle,
+                'title' => $currentTitle["title"],
+                'ar_title' => $currentTitle["arabic_title"],
                 'next_title' => $nextTitle,
                 'next_title_arabic' => $nextTitleArabic,
                 'percentage_for_next_title' => $percentageForNextTitle,
