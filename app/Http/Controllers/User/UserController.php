@@ -987,21 +987,27 @@ class UserController extends Controller
         $recentSubmissions = Submission::where('solved', true)
             ->with(['challange', 'challange.category', 'challange.flags', 'user'])
             ->orderBy('created_at', 'desc')
-            ->take(100) // Take more to process
+            ->take(500) // Take more to process - increased from 100 to 500
             ->get();
         
         $activities = [];
         $processedEntries = []; // Track processed entries to avoid duplicates
         $count = 0;
         
+        // Debug information
+        \Log::info('Recent submissions count: ' . $recentSubmissions->count());
+        
         foreach ($recentSubmissions as $submission) {
             if (!$submission->challange || !$submission->user) {
+                \Log::info('Skipping submission - missing challenge or user: ' . $submission->id);
                 continue;
             }
             
             $challange = $submission->challange;
             $submissionFlag = $submission->flag;
             $user = $submission->user;
+            
+            \Log::info('Processing submission: ' . $submission->id . ' for challenge: ' . $challange->title . ' by user: ' . $user->user_name);
             
             // For single-flag challenges (simple/default)
             if ($challange->flag_type === 'simple' || $challange->flag_type === 'default') {
@@ -1018,7 +1024,10 @@ class UserController extends Controller
                     ->orderBy('created_at')
                     ->first();
                 
-                $isFirstBlood = ($firstBloodSubmission && $firstBloodSubmission->user_uuid === $user->uuid);
+                $isFirstBlood = false;
+                if ($firstBloodSubmission) {
+                    $isFirstBlood = ($firstBloodSubmission->user_uuid === $user->uuid);
+                }
                 
                 // Format date in UTC
                 $solvedAt = new \DateTime($submission->created_at);
@@ -1038,6 +1047,8 @@ class UserController extends Controller
                     'flag_type' => $challange->flag_type
                 ];
                 
+                \Log::info('Added single-flag activity for: ' . $challange->title);
+                
                 // Limit to 30 activities
                 $count++;
                 if ($count >= 30) {
@@ -1055,6 +1066,7 @@ class UserController extends Controller
                 // Get all flags for this challenge
                 $totalFlags = $challange->flags->count();
                 if ($totalFlags === 0) {
+                    \Log::info('Skipping - no flags defined for challenge: ' . $challange->title);
                     continue; // Skip if no flags defined
                 }
                 
@@ -1063,6 +1075,8 @@ class UserController extends Controller
                     ->where('user_uuid', $user->uuid)
                     ->where('solved', true)
                     ->count();
+                
+                \Log::info('User ' . $user->user_name . ' solved ' . $solvedFlags . ' out of ' . $totalFlags . ' flags for challenge: ' . $challange->title);
                 
                 // Only create an activity if the user has solved all flags
                 if ($solvedFlags >= $totalFlags) {
@@ -1076,6 +1090,7 @@ class UserController extends Controller
                         ->first();
                     
                     if (!$lastFlagSubmission) {
+                        \Log::info('Skipping - could not find last flag submission');
                         continue; // Something went wrong
                     }
                     
@@ -1097,9 +1112,11 @@ class UserController extends Controller
                     }
                     
                     // Sort by submission time to find the first user to solve all
-                    asort($usersWithAllFlags);
-                    $firstUserUuid = array_key_first($usersWithAllFlags);
-                    $isFirstBlood = ($firstUserUuid === $user->uuid);
+                    if (!empty($usersWithAllFlags)) {
+                        asort($usersWithAllFlags);
+                        $firstUserUuid = array_key_first($usersWithAllFlags);
+                        $isFirstBlood = ($firstUserUuid === $user->uuid);
+                    }
                     
                     // Format date in UTC
                     $solvedAt = new \DateTime($lastFlagSubmission->created_at);
@@ -1118,6 +1135,8 @@ class UserController extends Controller
                         'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                         'flag_type' => $challange->flag_type
                     ];
+                    
+                    \Log::info('Added multiple_all activity for: ' . $challange->title);
                     
                     // Limit to 30 activities
                     $count++;
@@ -1138,6 +1157,7 @@ class UserController extends Controller
                 }
                 
                 if (!$flag) {
+                    \Log::info('Skipping - could not find matching flag for submission: ' . $submission->id);
                     continue; // Skip if we can't find the matching flag
                 }
                 
@@ -1155,7 +1175,10 @@ class UserController extends Controller
                     ->orderBy('created_at')
                     ->first();
                 
-                $isFirstBlood = ($firstBloodSubmission && $firstBloodSubmission->user_uuid === $user->uuid);
+                $isFirstBlood = false;
+                if ($firstBloodSubmission) {
+                    $isFirstBlood = ($firstBloodSubmission->user_uuid === $user->uuid);
+                }
                 
                 // Format date in UTC
                 $solvedAt = new \DateTime($submission->created_at);
@@ -1176,6 +1199,8 @@ class UserController extends Controller
                     'flag_name' => $flag->name ?? 'Flag'
                 ];
                 
+                \Log::info('Added multiple_individual activity for: ' . $challange->title . ' - ' . ($flag->name ?? 'Flag'));
+                
                 // Limit to 30 activities
                 $count++;
                 if ($count >= 30) {
@@ -1184,13 +1209,19 @@ class UserController extends Controller
             }
         }
         
-        // Sort activities by solved_at in descending order to show most recent first
-        usort($activities, function($a, $b) {
-            return strtotime($b['solved_at']) - strtotime($a['solved_at']);
-        });
+        \Log::info('Total activities before sorting: ' . count($activities));
         
-        // Limit to exactly 30 activities after sorting
-        $activities = array_slice($activities, 0, 30);
+        // Sort activities by solved_at in descending order to show most recent first
+        if (!empty($activities)) {
+            usort($activities, function($a, $b) {
+                return strtotime($b['solved_at']) - strtotime($a['solved_at']);
+            });
+            
+            // Limit to exactly 30 activities after sorting
+            $activities = array_slice($activities, 0, 30);
+        }
+        
+        \Log::info('Final activities count: ' . count($activities));
         
         return response()->json([
             'activities' => $activities
