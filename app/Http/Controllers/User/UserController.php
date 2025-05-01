@@ -1034,17 +1034,25 @@ class UserController extends Controller
                     
                     // Get total flags
                     $totalFlags = $challange->flags->count();
-                    if ($totalFlags === 0) continue;
-                    
-                    // Count solved flags by this user
-                    $solvedFlags = Submission::where('user_uuid', $user->uuid)
-                        ->where('challange_uuid', $challange->uuid)
-                        ->where('solved', true)
-                        ->count();
-                    
-                    // Skip if not all flags are solved
-                    if ($solvedFlags < $totalFlags) {
-                        continue;
+                    if ($totalFlags === 0) {
+                        // If no flags defined, treat as a normal challenge
+                        // This prevents multiple_all challenges without flags from being excluded
+                    }
+                    else {
+                        // Count solved flags by this user - use distinct to count unique flags
+                        $solvedFlagsCount = Submission::where('user_uuid', $user->uuid)
+                            ->where('challange_uuid', $challange->uuid)
+                            ->where('solved', true)
+                            ->distinct('flag')
+                            ->count();
+                        
+                        // Debug to help understand why multiple_all might not be showing
+                        \Log::info("Multiple_all check: Challenge: {$challange->title}, Total flags: {$totalFlags}, Solved flags: {$solvedFlagsCount}");
+                        
+                        // Skip if user hasn't solved all flags
+                        if ($solvedFlagsCount < $totalFlags) {
+                            continue;
+                        }
                     }
                 }
                 else {
