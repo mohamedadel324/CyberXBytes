@@ -339,6 +339,7 @@ class UserController extends Controller
         // Get next title
         $titleConfig = PlayerTitle::first();
         $nextTitle = null;
+        $nextTitleArabic = null; // Initialize the variable
         $percentageForNextTitle = null;
         
         if ($titleConfig) {
