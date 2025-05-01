@@ -1032,25 +1032,37 @@ class UserController extends Controller
                     // For multiple_all, we need to check if all flags have been solved
                     $uniqueId = $challange->uuid . '_' . $user->uuid; 
                     
-                    // Get total flags
-                    $totalFlags = $challange->flags->count();
+                    // Get all flags for this challenge
+                    $challengeFlags = $challange->flags;
+                    $totalFlags = $challengeFlags->count();
+                    
                     if ($totalFlags === 0) {
                         // If no flags defined, treat as a normal challenge
                         // This prevents multiple_all challenges without flags from being excluded
                     }
                     else {
-                        // Count solved flags by this user - use distinct to count unique flags
-                        $solvedFlagsCount = Submission::where('user_uuid', $user->uuid)
+                        // Get all solved flags by this user for this challenge
+                        $userSubmissions = Submission::where('user_uuid', $user->uuid)
                             ->where('challange_uuid', $challange->uuid)
                             ->where('solved', true)
-                            ->distinct('flag')
-                            ->count();
+                            ->get();
                         
-                        // Debug to help understand why multiple_all might not be showing
-                        \Log::info("Multiple_all check: Challenge: {$challange->title}, Total flags: {$totalFlags}, Solved flags: {$solvedFlagsCount}");
+                        $solvedFlagValues = $userSubmissions->pluck('flag')->unique()->toArray();
+                        $challengeFlagValues = $challengeFlags->pluck('flag')->toArray();
                         
-                        // Skip if user hasn't solved all flags
-                        if ($solvedFlagsCount < $totalFlags) {
+                        // Check if all challenge flags are in the solved flags list
+                        $allFlagsSolved = true;
+                        foreach ($challengeFlagValues as $flagValue) {
+                            if (!in_array($flagValue, $solvedFlagValues)) {
+                                $allFlagsSolved = false;
+                                break;
+                            }
+                        }
+                        
+                        // Debug info
+                        \Log::info("Multiple_all check: Challenge: {$challange->title}, Total flags: {$totalFlags}, Solved flags: " . count($solvedFlagValues) . ", All solved: " . ($allFlagsSolved ? 'Yes' : 'No'));
+                        
+                        if (!$allFlagsSolved) {
                             continue;
                         }
                     }
