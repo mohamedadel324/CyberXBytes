@@ -851,6 +851,7 @@ class LabController extends Controller
                 'data' => [
                     'flag_type' => 'single',
                     'solved' => $solved,
+                    'all_flags_solved' => true, 
                     'solved_at' => $solved ? $challenge->submissions()
                         ->where('user_uuid', $user->uuid)
                         ->where('solved', true)
