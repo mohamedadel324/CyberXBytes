@@ -63,9 +63,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/labs/categories/{uuid}', [LabController::class, 'getAllLabCategoriesByLabUUID']);
     
     // Challenges routes
-    Route::get('/challenges', [LabController::class, 'getAllChallenges']);
     Route::get('/challenges/category/{LabCategoryUUID}', [LabController::class, 'getChallengesByLabCategoryUUID']);
-    Route::get('/challenges/difficulty/{difficulty}', [LabController::class, 'getChallengesByDifficulty']);
     Route::get('/challenges/{uuid}', [LabController::class, 'getChallenge']);
     Route::get('/challenges/{uuid}/flags', [LabController::class, 'getChallengeFlags']);
     Route::get('/challenges/{uuid}/solved-flags', [LabController::class, 'getUserSolvedFlags']);

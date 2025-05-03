@@ -75,110 +75,7 @@ class LabController extends Controller
             'last_three_challenges' => $lastThreeChallengesData
         ]);
     }
-    public function getAllChallenges()
-    {
-        $challenges = Challange::with(['category:uuid,icon', 'flags'])->get();
-        $challenges->each(function ($challenge) {
-            $challenge->category_icon = $challenge->category->icon ?? null;
-            unset($challenge->category);
-            $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
-            
-            // Add flag information
-            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
-            
-            // Get solved count for the challenge
-            $solvedCount = $challenge->submissions()->where('solved', true)->count();
-            $challenge->solved_count = $solvedCount;
-            
-            // Get first blood information
-            $firstBlood = null;
-            if ($solvedCount > 0) {
-                $firstSolver = $challenge->submissions()
-                    ->where('solved', true)
-                    ->orderBy('created_at', 'asc')
-                    ->first();
-                
-                if ($firstSolver) {
-                    $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
-                    if ($firstBloodUser) {
-                        $firstBlood = [
-                            'user_name' => $firstBloodUser->user_name,
-                            'profile_image' => $firstBloodUser->profile_image ? asset('storage/' . $firstBloodUser->profile_image) : null,
-                            'solved_at' => $firstSolver->created_at,
-                        ];
-                    }
-                }
-            }
-            $challenge->first_blood = $firstBlood;
-            
-            // For single flag type
-            if ($challenge->flag_type === 'single') {
-                $challenge->flag_data = [
-                    'flag' => $challenge->flag,
-                    'bytes' => $challenge->bytes,
-                    'first_blood_bytes' => $challenge->firstBloodBytes,
-                    'solved_count' => $solvedCount,
-                ];
-            }
-            // For multiple flag types
-            else if ($challenge->flags) {
-                $flagsData = [];
-                
-                foreach ($challenge->flags as $flag) {
-                    // Get solved count for this flag
-                    $flagSolvedCount = $challenge->submissions()
-                        ->where('flag', $flag->flag)
-                        ->where('solved', true)
-                        ->count();
-                    
-                    // Get first blood for this flag
-                    $flagFirstBlood = null;
-                    if ($flagSolvedCount > 0) {
-                        $flagFirstSolver = $challenge->submissions()
-                            ->where('flag', $flag->flag)
-                            ->where('solved', true)
-                            ->orderBy('created_at', 'asc')
-                            ->first();
-                        
-                        if ($flagFirstSolver) {
-                            $flagFirstBloodUser = User::where('uuid', $flagFirstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
-                            if ($flagFirstBloodUser) {
-                                $flagFirstBlood = [
-                                    'user_name' => $flagFirstBloodUser->user_name,
-                                    'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
-                                    'solved_at' => $flagFirstSolver->created_at,
-                                ];
-                            }
-                        }
-                    }
-                    
-                    $flagsData[] = [
-                        'id' => $flag->id,
-                        'name' => $flag->name,
-                        'description' => $flag->description,
-                        'bytes' => $flag->bytes,
-                        'first_blood_bytes' => $flag->firstBloodBytes,
-                        'solved_count' => $flagSolvedCount,
-                        'first_blood' => $flagFirstBlood,
-                    ];
-                }
-                
-                $challenge->flags_data = $flagsData;
-                $challenge->flags_count = $challenge->flags->count();
-                
-                // For multiple_all, add total bytes and first blood bytes
-                if ($challenge->flag_type === 'multiple_all') {
-                    $challenge->total_bytes = $challenge->bytes;
-                    $challenge->total_first_blood_bytes = $challenge->firstBloodBytes;
-                }
-            }
-        });
-        return response()->json([
-            'status' => 'success',
-            'data' => $challenges,
-            'count' => $challenges->count()
-        ]);
-    }
+ 
 
     public function getallLabCategories()
     {
@@ -398,41 +295,7 @@ class LabController extends Controller
         ]);
     }
 
-    public function getChallengesByDifficulty($difficulty)
-    {
-        $challenges = Challange::with(['category:uuid,icon', 'flags'])
-            ->where('difficulty', $difficulty)
-            ->get();
-        
-        $challenges->each(function ($challenge) {
-            $challenge->category_icon = $challenge->category->icon ?? null;
-            unset($challenge->category);
-            $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
-            
-            // Add flag information
-            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
-            
-            // For multiple flag types, format the flags data
-            if ($challenge->flag_type !== 'single' && $challenge->flags) {
-                $challenge->flags_data = $challenge->flags->map(function ($flag) {
-                    return [
-                        'id' => $flag->id,
-                        'name' => $flag->name,
-                        'description' => $flag->description,
-                        'bytes' => $flag->bytes,
-                        'first_blood_bytes' => $flag->firstBloodBytes,
-                    ];
-                });
-                $challenge->flags_count = $challenge->flags->count();
-            }
-        });
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $challenges,
-            'count' => $challenges->count()
-        ]);
-    }
 
     public function getChallenge($uuid)
     {
