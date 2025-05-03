@@ -851,7 +851,7 @@ class LabController extends Controller
                 'data' => [
                     'flag_type' => 'single',
                     'solved' => $solved,
-                    'all_flags_solved' => true, 
+                    'all_flags_solved' => $solved,
                     'solved_at' => $solved ? $challenge->submissions()
                         ->where('user_uuid', $user->uuid)
                         ->where('solved', true)
@@ -1217,7 +1217,7 @@ class LabController extends Controller
                 'data' => [
                     'flag_type' => 'single',
                     'points' => $solved ? $challenge->bytes : 0,
-                    'all_flags_solved' => true,
+                    'all_flags_solved' => $solved,
                     'first_blood_points' => $firstBloodPoints,
                     'is_first_blood' => $isFirstBlood
                 ]
