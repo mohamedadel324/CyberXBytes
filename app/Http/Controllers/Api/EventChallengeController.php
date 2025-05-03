@@ -1600,7 +1600,7 @@ class EventChallengeController extends Controller
             'data' => [
                 'team' => [
                     'name' => $team->name,
-                    'icon' => $team->icon ? url('storage/team-icons/' . $team->icon) : null,
+                    'icon' => $team->icon_url,
                     'member_count' => $team->members->count()
                 ],
                 'challenge' => [
