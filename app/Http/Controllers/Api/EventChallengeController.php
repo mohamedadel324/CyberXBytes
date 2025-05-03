@@ -1388,7 +1388,7 @@ class EventChallengeController extends Controller
                 return [
                     'user_uuid' => $member->uuid,
                     'user_name' => $member->user_name,
-                    'profile_image' => $member->profile_image ? url('storage/profile_images/' . $member->profile_image) : null,
+                    'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
                     'total_points' => $totalPoints,
                     'first_blood_points' => $totalFirstBloodPoints,
                     'challenges' => collect($solvedChallenges)->sortByDesc('solved_at')->values()->all(),
@@ -1583,7 +1583,7 @@ class EventChallengeController extends Controller
             $teamMembers->push([
                 'user_uuid' => $member->uuid,
                 'user_name' => $member->user_name,
-                'profile_image' => $member->profile_image ? url('storage/profile_images/' . $member->profile_image) : null,
+                'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
                 'points' => $points,
                 'first_blood_points' => $firstBloodPoints,
                 'is_first_blood' => $isFirstBlood,
