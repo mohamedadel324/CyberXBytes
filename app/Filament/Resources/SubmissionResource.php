@@ -18,7 +18,10 @@ class SubmissionResource extends Resource
     protected static ?string $model = Submission::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
-
+    public static function getNavigationGroup(): ?string
+    {
+        return 'Submissions';
+    }
     public static function form(Form $form): Form
     {
         return $form
