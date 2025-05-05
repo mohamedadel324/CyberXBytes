@@ -619,7 +619,6 @@ class EventTeamController extends Controller
                 'uuid' => $team->id,
                 'name' => $team->name,
                 'icon_url' => $team->icon_url,
-                'is_locked' => $team->is_locked,
                 'rank' => $teamRank,
                 'event' => [
                     'team_minimum_members' => $event->team_minimum_members,
@@ -738,7 +737,6 @@ class EventTeamController extends Controller
                 'team' => [
                     'uuid' => $team->id,
                     'name' => $team->name,
-                    'is_locked' => $team->is_locked,
                     'rank' => $teamRank,
                 ],
                 'event' => [
@@ -762,7 +760,6 @@ class EventTeamController extends Controller
                 return [
                     'uuid' => $team->id,
                     'name' => $team->name,
-                    'is_locked' => $team->is_locked,
                     'leader' => $team->leader->only(['uuid', 'user_name']),
                     'member_count' => $team->members->count(),
                 ];
@@ -774,54 +771,7 @@ class EventTeamController extends Controller
         ]);
     }
 
-    public function lock($teamUuid)
-    {
-        $team = EventTeam::where('id', $teamUuid)
-            ->where('leader_uuid', Auth::user()->uuid)
-            ->first();
-
-        if (!$team) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Team not found or you are not the leader'
-            ], 404);
-        }
-
-        if ($team->members()->count() < $team->event->team_minimum_members) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Team does not have minimum required members'
-            ], 400);
-        }
-
-        $team->update(['is_locked' => true]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Team has been locked'
-        ]);
-    }
-
-    public function unlock($teamUuid)
-    {
-        $team = EventTeam::where('id', $teamUuid)
-            ->where('leader_uuid', Auth::user()->uuid)
-            ->first();
-
-        if (!$team) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Team not found or you are not the leader'
-            ], 404);
-        }
-
-        $team->update(['is_locked' => false]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Team has been unlocked'
-        ]);
-    }
+ 
 
     public function removeMember(Request $request, $teamUuid)
     {

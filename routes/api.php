@@ -110,8 +110,6 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         Route::post('teams/join', [EventTeamController::class, 'joinWithSecret']);
         Route::post('teams/{teamUuid}', [EventTeamController::class, 'updateTeam']);
         Route::delete('teams/{teamUuid}/leave', [EventTeamController::class, 'leave']);
-        Route::post('teams/{teamUuid}/lock', [EventTeamController::class, 'lock']);
-        Route::post('teams/{teamUuid}/unlock', [EventTeamController::class, 'unlock']);
         Route::delete('teams/{teamUuid}/members', [EventTeamController::class, 'removeMember']);
 
         // Challenge management
