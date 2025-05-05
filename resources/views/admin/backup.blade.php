@@ -226,45 +226,37 @@
           document.getElementById('backupModal')?.remove();
 
           if (data.success) {
-            // Add new backup to the table
-            const tbody = document.querySelector('tbody');
-            if (tbody) {
-              const downloadUrl = `/admin/backups/${data.filename}`;
-              const newRow = `
-                <tr class="border-b border-gray-800">
-                  <td class="py-4 px-6">${data.filename}</td>
-                  <td class="py-4 px-6">local</td>
-                  <td class="py-4 px-6">
-                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                    </svg>
-                  </td>
-                  <td class="py-4 px-6">${data.size}</td>
-                  <td class="py-4 px-6">${data.date}</td>
-                  <td class="py-4 px-6">
-                    <div class="flex space-x-2">
-                      <a href="${downloadUrl}" class="text-blue-500 hover:text-blue-400">
-                        Download
-                      </a>
-                      <button onclick="restoreBackup('${data.filename}')" class="text-green-500 hover:text-green-400">
-                        Restore
-                      </button>
-                      <button onclick="deleteBackup('${data.filename}')" class="text-red-500 hover:text-red-400">
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-              tbody.insertAdjacentHTML('afterbegin', newRow);
-            }
-
-            // Show success message
+            // Show success notification
             const successMsg = document.createElement('div');
-            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50';
-            successMsg.textContent = data.message;
+            successMsg.id = 'backupSuccessMsg';
+            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50 transform transition-transform duration-300';
+            successMsg.style.opacity = '0';
+            successMsg.innerHTML = `
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Database backup created successfully!</span>
+              </div>
+            `;
             document.body.appendChild(successMsg);
-            setTimeout(() => successMsg.remove(), 3000);
+            
+            // Animate in
+            setTimeout(() => {
+              successMsg.style.opacity = '1';
+            }, 10);
+            
+            // Remove success message after 3 seconds
+            setTimeout(() => {
+              const msg = document.getElementById('backupSuccessMsg');
+              if (msg) {
+                msg.style.opacity = '0';
+                setTimeout(() => msg.remove(), 500);
+              }
+            }, 3000);
+            
+            // Refresh the backups table
+            window.location.reload();
           } else {
             throw new Error(data.message);
           }
@@ -292,7 +284,7 @@
       }
 
       function createFullBackup() {
-        if (!confirm('This will create a backup of your entire project including all files and database. Continue?')) {
+        if (!confirm('This will create a backup of your entire project including all files and database (excluding vendor folder). Continue?')) {
           return;
         }
 
@@ -308,91 +300,141 @@
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 </div>
-                <p class="text-center text-white" id="backupStatus">Creating backup... This may take a while.</p>
-                <div class="text-sm text-gray-400 text-center">Please don't close this window</div>
+                <p class="text-center text-white" id="backupStatus">Step 1/2: Creating database backup...</p>
+                <div class="text-sm text-gray-400 text-center mb-2">Please don't close this window</div>
+                <div id="backupTimeoutMessage" class="hidden">
+                  <div class="mt-2 p-3 bg-yellow-900 bg-opacity-40 rounded border border-yellow-700">
+                    <p class="text-yellow-400 text-sm">Taking longer than expected?</p>
+                    <div class="mt-2 flex space-x-2 justify-between">
+                      <button id="cancelBackupBtn" class="text-xs bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded">
+                        Cancel
+                      </button>
+                      <button id="continueWaitBtn" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded">
+                        Continue Waiting
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-        // Set a timeout to show additional message if it's taking too long
-        const timeoutMessage = setTimeout(() => {
-          const statusEl = document.getElementById('backupStatus');
-          if (statusEl) {
-            statusEl.innerHTML = 'Still working... Large projects may take several minutes.<br>Please be patient.';
+        // Set timeout to show alternate options if taking too long
+        const timeoutId = setTimeout(() => {
+          const timeoutEl = document.getElementById('backupTimeoutMessage');
+          if (timeoutEl) {
+            timeoutEl.classList.remove('hidden');
           }
-        }, 30000); // Show after 30 seconds
+        }, 30000); // 30 seconds timeout
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+        // Add event listeners
+        document.getElementById('cancelBackupBtn')?.addEventListener('click', () => {
+          clearTimeout(timeoutId);
+          document.getElementById('backupModal')?.remove();
+          
+          const cancelMsg = document.createElement('div');
+          cancelMsg.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded shadow-lg z-50';
+          cancelMsg.innerHTML = 'Backup operation cancelled.';
+          document.body.appendChild(cancelMsg);
+          setTimeout(() => cancelMsg.remove(), 3000);
+        });
 
-        fetch('/admin/backup/full', {
+        document.getElementById('continueWaitBtn')?.addEventListener('click', () => {
+          document.getElementById('backupTimeoutMessage').classList.add('hidden');
+          document.getElementById('backupStatus').innerHTML = 'Still working... Large projects may take several minutes.<br><span class="text-xs">Please be patient</span>';
+        });
+
+        // Step 1: First create database backup
+        fetch('/admin/backups', {
           method: 'POST',
           headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-          },
-          signal: controller.signal
+          }
         })
-        .then(response => {
-          clearTimeout(timeoutId);
-          clearTimeout(timeoutMessage);
+        .then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            throw new Error(data.message || 'Database backup failed');
+          }
           
-          // Remove the modal
-          document.getElementById('backupModal')?.remove();
-
-          if (!response.ok) {
-            return response.json().then(data => {
-              throw new Error(data.message || 'Network response was not ok');
-            });
+          // Update status message for step 2
+          const statusEl = document.getElementById('backupStatus');
+          if (statusEl) {
+            statusEl.textContent = 'Step 2/2: Creating full backup (excluding vendor)...';
           }
-
-          // Check if the response is JSON (error) or a file (success)
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
-            return response.json().then(data => {
-              throw new Error(data.message || 'Backup failed');
-            });
-          }
-
-          // If we get here, it's a file download
-          return response.blob().then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = response.headers.get('content-disposition')?.split('filename=')[1]?.replace(/['"]/g, '') || 'backup.zip';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
+          
+          // Create a form for direct download in a new tab
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/admin/backup/full';
+          form.target = '_blank'; // Open in new tab for large downloads
+          
+          // Add CSRF token
+          const csrfInput = document.createElement('input');
+          csrfInput.type = 'hidden';
+          csrfInput.name = '_token';
+          csrfInput.value = document.querySelector('meta[name="csrf-token"]').content;
+          form.appendChild(csrfInput);
+          
+          // Add exclude vendor parameter
+          const excludeInput = document.createElement('input');
+          excludeInput.type = 'hidden';
+          excludeInput.name = 'exclude_vendor';
+          excludeInput.value = '1';
+          form.appendChild(excludeInput);
+          
+          // Add direct download parameter
+          const downloadInput = document.createElement('input');
+          downloadInput.type = 'hidden';
+          downloadInput.name = 'direct_download';
+          downloadInput.value = '1';
+          form.appendChild(downloadInput);
+          
+          // Submit the form
+          document.body.appendChild(form);
+          form.submit();
+          
+          // Remove the form after submission
+          setTimeout(() => form.remove(), 100);
+          
+          // Show success message
+          setTimeout(() => {
+            clearTimeout(timeoutId);
+            document.getElementById('backupModal')?.remove();
             
-            // Show success message
             const successMsg = document.createElement('div');
             successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50';
-            successMsg.textContent = 'Backup created and downloaded successfully!';
+            successMsg.innerHTML = `
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Backup created! Check your browser for download</span>
+              </div>
+              <div class="mt-2 text-sm">
+                <button onclick="retryFullBackup()" class="underline hover:text-white">Download didn't start? Click here</button>
+              </div>
+            `;
             document.body.appendChild(successMsg);
-            setTimeout(() => successMsg.remove(), 5000);
-          });
+            
+            // Remove success message after 30 seconds
+            setTimeout(() => successMsg.remove(), 30000);
+          }, 3000);
         })
         .catch(error => {
+          // Clear timeout and remove the modal
           clearTimeout(timeoutId);
-          clearTimeout(timeoutMessage);
-          
-          // Remove the modal
           document.getElementById('backupModal')?.remove();
 
-          // Show error message in a modal
+          // Show error message
           const errorModalHtml = `
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
               <div class="bg-darker p-6 rounded-lg max-w-2xl w-full mx-4" onclick="event.stopPropagation()">
                 <h3 class="text-xl font-bold text-red-500 mb-4">Backup Failed</h3>
                 <div class="bg-red-900 bg-opacity-20 p-4 rounded overflow-auto max-h-96">
-                  <pre class="text-sm text-red-100 whitespace-pre-wrap">${
-                    error.name === 'AbortError' 
-                      ? 'The backup process timed out after 5 minutes. Your project might be too large for a single backup.\nTry excluding some directories or contact support for assistance.'
-                      : error.message
-                  }</pre>
+                  <pre class="text-sm text-red-100 whitespace-pre-wrap">${error.message}</pre>
                 </div>
                 <div class="mt-4 flex justify-end">
                   <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="this.closest('.fixed').remove()">Close</button>
@@ -404,6 +446,57 @@
         });
       }
 
+      // Function to retry full backup download
+      function retryFullBackup() {
+        // Create a form for direct download in a new tab
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/backup/full';
+        form.target = '_blank';
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = document.querySelector('meta[name="csrf-token"]').content;
+        form.appendChild(csrfInput);
+        
+        // Add exclude vendor parameter
+        const excludeInput = document.createElement('input');
+        excludeInput.type = 'hidden';
+        excludeInput.name = 'exclude_vendor';
+        excludeInput.value = '1';
+        form.appendChild(excludeInput);
+        
+        // Add direct download parameter
+        const downloadInput = document.createElement('input');
+        downloadInput.type = 'hidden';
+        downloadInput.name = 'direct_download';
+        downloadInput.value = '1';
+        form.appendChild(downloadInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+        
+        // Show info message
+        const infoMsg = document.createElement('div');
+        infoMsg.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded shadow-lg z-50';
+        infoMsg.innerHTML = `
+          <div class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Download retry initiated in new tab</span>
+          </div>
+        `;
+        document.body.appendChild(infoMsg);
+        setTimeout(() => {
+          infoMsg.remove();
+          form.remove();
+        }, 5000);
+      }
+
       function restoreBackup(filename) {
         if (!confirm('Are you sure you want to restore this backup? This will overwrite your current database.')) {
           return;
@@ -412,6 +505,25 @@
         const confirmButton = event.target;
         confirmButton.disabled = true;
         confirmButton.textContent = "Restoring...";
+
+        // Show loading modal
+        const modalHtml = `
+          <div id="restoreModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-darker p-6 rounded-lg max-w-md w-full mx-4">
+              <h3 class="text-xl font-bold text-white mb-4">Restoring Backup</h3>
+              <div class="space-y-4">
+                <div class="flex items-center justify-center">
+                  <svg class="animate-spin h-8 w-8 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <p class="text-center text-white">Restoring database from backup...</p>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
 
         fetch(`/admin/backups/${filename}/restore`, {
           method: 'POST',
@@ -422,14 +534,64 @@
         })
         .then(response => response.json())
         .then(data => {
+          // Remove loading modal
+          document.getElementById('restoreModal')?.remove();
+          
           if (data.success) {
-            alert('Database restored successfully!');
+            // Show success notification
+            const successMsg = document.createElement('div');
+            successMsg.id = 'restoreSuccessMsg';
+            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50 transform transition-transform duration-300';
+            successMsg.style.opacity = '0';
+            successMsg.innerHTML = `
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Database restored successfully!</span>
+              </div>
+            `;
+            document.body.appendChild(successMsg);
+            
+            // Animate in
+            setTimeout(() => {
+              successMsg.style.opacity = '1';
+            }, 10);
+            
+            // Remove success message after 3 seconds and reload
+            setTimeout(() => {
+              const msg = document.getElementById('restoreSuccessMsg');
+              if (msg) {
+                msg.style.opacity = '0';
+                setTimeout(() => {
+                  msg.remove();
+                  window.location.reload(); // Refresh page after notification
+                }, 500);
+              }
+            }, 3000);
           } else {
-            alert('Failed to restore backup: ' + data.message);
+            throw new Error(data.message || 'Restore failed');
           }
         })
         .catch(error => {
-          alert('Error restoring backup: ' + error);
+          // Remove loading modal
+          document.getElementById('restoreModal')?.remove();
+          
+          // Show error message
+          const errorModalHtml = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
+              <div class="bg-darker p-6 rounded-lg max-w-2xl w-full mx-4" onclick="event.stopPropagation()">
+                <h3 class="text-xl font-bold text-red-500 mb-4">Restore Failed</h3>
+                <div class="bg-red-900 bg-opacity-20 p-4 rounded overflow-auto max-h-96">
+                  <pre class="text-sm text-red-100 whitespace-pre-wrap">${error.message}</pre>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="this.closest('.fixed').remove()">Close</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.insertAdjacentHTML('beforeend', errorModalHtml);
         })
         .finally(() => {
           confirmButton.disabled = false;
@@ -442,6 +604,11 @@
           return;
         }
 
+        // Show loading indicator
+        const deleteButton = event.target;
+        deleteButton.disabled = true;
+        deleteButton.textContent = "Deleting...";
+
         fetch(`/admin/backups/${filename}`, {
           method: 'DELETE',
           headers: {
@@ -452,13 +619,61 @@
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            window.location.reload(); // Refresh the page to update the list
+            // Show success notification
+            const successMsg = document.createElement('div');
+            successMsg.id = 'deleteSuccessMsg';
+            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50 transform transition-transform duration-300';
+            successMsg.style.opacity = '0';
+            successMsg.innerHTML = `
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Backup deleted successfully!</span>
+              </div>
+            `;
+            document.body.appendChild(successMsg);
+            
+            // Animate in
+            setTimeout(() => {
+              successMsg.style.opacity = '1';
+            }, 10);
+            
+            // Remove success message after 2 seconds and reload
+            setTimeout(() => {
+              const msg = document.getElementById('deleteSuccessMsg');
+              if (msg) {
+                msg.style.opacity = '0';
+                setTimeout(() => {
+                  msg.remove();
+                  window.location.reload(); // Refresh the page to update the list
+                }, 500);
+              }
+            }, 2000);
           } else {
-            alert('Failed to delete backup: ' + data.message);
+            throw new Error(data.message || 'Delete failed');
           }
         })
         .catch(error => {
-          alert('Error deleting backup: ' + error);
+          // Show error message
+          const errorModalHtml = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
+              <div class="bg-darker p-6 rounded-lg max-w-2xl w-full mx-4" onclick="event.stopPropagation()">
+                <h3 class="text-xl font-bold text-red-500 mb-4">Delete Failed</h3>
+                <div class="bg-red-900 bg-opacity-20 p-4 rounded overflow-auto max-h-96">
+                  <pre class="text-sm text-red-100 whitespace-pre-wrap">${error.message}</pre>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="this.closest('.fixed').remove()">Close</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.insertAdjacentHTML('beforeend', errorModalHtml);
+        })
+        .finally(() => {
+          deleteButton.disabled = false;
+          deleteButton.textContent = "Delete";
         });
       }
 
