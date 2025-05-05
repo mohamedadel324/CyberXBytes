@@ -26,7 +26,7 @@ class UserChallangeController extends Controller
             'flag' => 'required|array',
             'challange_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
             'answer_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
-            'notes' => 'required|nullable',
+            'notes' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
