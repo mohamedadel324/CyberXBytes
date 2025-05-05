@@ -264,7 +264,8 @@ class EventChallengeController extends Controller
                     'user_uuid' => Auth::user()->uuid,
                     'submission' => $request->submission,
                     'solved' => true,
-                    'solved_at' => now()
+                    'solved_at' => now(),
+                    'ip' => $request->ip(),
                 ]);
                 
                 // Calculate points and check for first blood
@@ -301,7 +302,9 @@ class EventChallengeController extends Controller
                 'event_challange_id' => $challenge->id,
                 'user_uuid' => Auth::user()->uuid,
                 'submission' => $request->submission,
-                'solved' => false
+                'solved' => false,
+                'ip' => $request->ip(),
+
             ]);
 
             return response()->json([
