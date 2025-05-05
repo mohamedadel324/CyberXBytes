@@ -46,6 +46,6 @@ class EventChallenge extends Model
 
     public function submissions()
     {
-        return $this->hasMany(EventChallengeSubmission::class, 'event_challenge_id', 'id');
+        return $this->hasMany(EventChallangeSubmission::class, 'event_challenge_id', 'id');
     }
 }

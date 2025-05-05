@@ -19,7 +19,8 @@ class EventChallangeSubmission extends Model
         'submission',
         'solved',
         'attempts',
-        'solved_at'
+        'solved_at',
+        'ip',
     ];
 
     protected $casts = [

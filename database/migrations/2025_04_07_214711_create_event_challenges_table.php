@@ -35,6 +35,7 @@ return new class extends Migration
             $table->boolean('solved')->default(false);
             $table->integer('attempts')->default(0);
             $table->timestamp('solved_at')->nullable();
+            $table->string('ip');
             $table->timestamps();
         });
     }

@@ -4,7 +4,7 @@ namespace App\Filament\Resources\EventResource\Widgets;
 
 use Filament\Widgets\ChartWidget;
 use App\Models\EventChallange;
-use App\Models\EventChallengeSubmission;
+use App\Models\EventChallangeSubmission;
 
 class ChallengesSolvedWidget extends ChartWidget
 {
@@ -43,7 +43,7 @@ class ChallengesSolvedWidget extends ChartWidget
         
         // Count how many challenges have been solved at least once
         foreach ($challenges as $challenge) {
-            $hasSolves = EventChallengeSubmission::where('event_challange_id', $challenge->id)
+            $hasSolves = EventChallangeSubmission::where('event_challange_id', $challenge->id)
                 ->where('solved', 1)
                 ->exists();
                 

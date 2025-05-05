@@ -54,7 +54,7 @@ class EventTeam extends Model
 
     public function submissions()
     {
-        return $this->hasMany(EventChallengeSubmission::class, 'team_uuid', 'id');
+        return $this->hasMany(EventChallangeSubmission::class, 'team_uuid', 'id');
     }
 
     protected static function boot()
