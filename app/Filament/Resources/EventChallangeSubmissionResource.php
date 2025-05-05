@@ -40,6 +40,9 @@ class EventChallangeSubmissionResource extends Resource
                     ->required()
                     ->numeric()
                     ->default(0),
+                    Forms\Components\TextInput::make('ip')
+                    ->required()
+                    ->default(0),
                     Forms\Components\DateTimePicker::make('solved_at'),
                     Forms\Components\Toggle::make('solved')
                         ->required(),
