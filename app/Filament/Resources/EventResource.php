@@ -76,8 +76,8 @@ class EventResource extends Resource
                                                 $record->save();
                                             }
                                             
-                                            Http::get('http://213.136.91.209:3000/api/freeze', [
-                                                'freeze' => $state ? 'true' : 'false',
+                                            Http::post('http://213.136.91.209:3000/api/freeze?eventId=' . $eventId, [
+                                                'freeze' => $state ? true : false,
                                                 'eventId' => $eventId,
                                                 'key' => 'cb209876540331298765'
                                             ]);
