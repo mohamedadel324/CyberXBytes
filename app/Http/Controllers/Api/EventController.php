@@ -309,10 +309,16 @@ class EventController extends Controller
         ]);
     }
 
-    public function recentEventActivities()
+    public function recentEventActivities($uuid)
     {
-        // Get the 100 most recent solved submissions
-        $recentSubmissions = EventChallangeSubmission::where('solved', true)
+        // Find the event by UUID
+        $event = Event::where('uuid', $uuid)->firstOrFail();
+        
+        // Get the 100 most recent solved submissions for this specific event
+        $recentSubmissions = EventChallangeSubmission::whereHas('eventChallange', function($query) use ($event) {
+                $query->where('event_id', $event->id);
+            })
+            ->where('solved', true)
             ->with(['eventChallange', 'eventChallange.event', 'eventChallange.flags', 'user'])
             ->orderBy('created_at', 'desc')
             ->take(150) // Fetch more than needed to ensure we have 100 valid submissions after filtering
