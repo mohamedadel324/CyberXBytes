@@ -30,6 +30,7 @@ class Event extends Model
         'team_minimum_members',
         'team_maximum_members',
         'invited_emails',
+        'freeze'
     ];
 
     protected $casts = [
@@ -43,6 +44,7 @@ class Event extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'invited_emails' => 'array',
+        'freeze' => 'boolean',
     ];
 
     protected static function boot()

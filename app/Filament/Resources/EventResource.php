@@ -25,6 +25,7 @@ use App\Models\User;
 use App\Models\EventRegistration;
 use App\Mail\EventRegistrationMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
 
 class EventResource extends Resource
 {
@@ -62,6 +63,23 @@ class EventResource extends Resource
                                         ->imageEditor()
                                         ->image()
                                         ->columnSpanFull(),
+                                    Forms\Components\Toggle::make('freeze')
+                                    ->label('Freeze')
+                                    ->required()
+                                    ->afterStateUpdated(function ($state) {
+                                        try {
+                                            Http::post('http://213.136.91.209:3000/api/freeze', [
+                                                'freeze' => $state,
+                                                'key' => 'cb209876540331298765'
+                                            ]);
+                                        } catch (\Exception $e) {
+                                            Notification::make()
+                                                ->title('Error updating freeze status')
+                                                ->body($e->getMessage())
+                                                ->danger()
+                                                ->send();
+                                        }
+                                    }),
                                     Forms\Components\Toggle::make('is_private')
                                         ->label('Private Event')
                                         ->helperText('If enabled, only invited users can register')

@@ -36,6 +36,9 @@ return new class extends Migration
             $table->boolean('requires_team')->default(true);
             $table->integer('team_minimum_members');
             $table->integer('team_maximum_members');
+            //freeze
+            $table->boolean('freeze')->default(false);
+
 
             $table->timestamps();
         });
