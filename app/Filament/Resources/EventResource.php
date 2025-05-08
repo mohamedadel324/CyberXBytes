@@ -65,7 +65,6 @@ class EventResource extends Resource
                                         ->columnSpanFull(),
                                     Forms\Components\Toggle::make('freeze')
                                     ->label('Freeze')
-                                    ->required()
                                     ->afterStateUpdated(function ($state, $record) {
                                         try {
                                             $eventId = $record->uuid;
