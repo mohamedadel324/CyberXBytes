@@ -38,6 +38,7 @@ return new class extends Migration
             $table->integer('team_maximum_members');
             //freeze
             $table->boolean('freeze')->default(false);
+            $table->timestamp('freeze_time')->nullable();
 
 
             $table->timestamps();

@@ -66,10 +66,19 @@ class EventResource extends Resource
                                     Forms\Components\Toggle::make('freeze')
                                     ->label('Freeze')
                                     ->required()
-                                    ->afterStateUpdated(function ($state) {
+                                    ->afterStateUpdated(function ($state, $record) {
                                         try {
-                                            Http::post('http://213.136.91.209:3000/api/freeze', [
-                                                'freeze' => $state,
+                                            $eventId = $record->uuid;
+                                            
+                                            // Set freeze_time when freezing
+                                            if ($state) {
+                                                $record->freeze_time = now();
+                                                $record->save();
+                                            }
+                                            
+                                            Http::get('http://213.136.91.209:3000/api/freeze', [
+                                                'freeze' => $state ? 'true' : 'false',
+                                                'eventId' => $eventId,
                                                 'key' => 'cb209876540331298765'
                                             ]);
                                         } catch (\Exception $e) {
