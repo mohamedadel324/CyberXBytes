@@ -315,8 +315,8 @@ class EventController extends Controller
         $event = Event::where('uuid', $uuid)->firstOrFail();
         
         // Get the 100 most recent solved submissions for this specific event
-        $recentSubmissions = EventChallangeSubmission::whereHas('eventChallange', function($query) use ($event) {
-                $query->where('event_id', $event->id);
+        $recentSubmissions = EventChallangeSubmission::whereHas('eventChallange', function($query) use ($uuid) {
+                $query->where('event_uuid', $uuid);
             })
             ->where('solved', true)
             ->with(['eventChallange', 'eventChallange.event', 'eventChallange.flags', 'user'])
