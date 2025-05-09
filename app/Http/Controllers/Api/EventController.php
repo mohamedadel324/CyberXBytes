@@ -354,7 +354,9 @@ class EventController extends Controller
                 $activities[] = [
                     'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                    'team_name' => $user->team ? $user->team->name : null,
+                    'team_name' => \App\Models\EventTeam::whereHas('members', function($query) use ($user) {
+                        $query->where('user_uuid', $user->uuid);
+                    })->first()?->name,
                     'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
                     'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                     'event_name' => $challenge->event ? $challenge->event->title : null,
@@ -437,7 +439,9 @@ class EventController extends Controller
                     $activities[] = [
                         'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                         'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                        'team_name' => $user->team ? $user->team->name : null,
+                        'team_name' => \App\Models\EventTeam::whereHas('members', function($query) use ($user) {
+                            $query->where('user_uuid', $user->uuid);
+                        })->first()?->name,
                         'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
                         'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                         'event_name' => $challenge->event ? $challenge->event->title : null,
@@ -487,7 +491,9 @@ class EventController extends Controller
                 $activities[] = [
                     'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                    'team_name' => $user->team ? $user->team->name : null,
+                    'team_name' => \App\Models\EventTeam::whereHas('members', function($query) use ($user) {
+                        $query->where('user_uuid', $user->uuid);
+                    })->first()?->name,
                     'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title . ' - ' . ($flag->name ?? 'Flag'),
                     'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                     'event_name' => $challenge->event ? $challenge->event->title : null,
