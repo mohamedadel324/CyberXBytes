@@ -327,6 +327,7 @@ class EventController extends Controller
         $activities = [];
         $count = 0;
         $processedMultipleAllChallenges = []; // Track processed multiple_all challenges
+        $freezeTime = $event->freeze_time ? new \DateTime($event->freeze_time) : null;
         
         foreach ($recentSubmissions as $submission) {
             if (!$submission->eventChallange || !$submission->user) {
@@ -336,6 +337,10 @@ class EventController extends Controller
             $challenge = $submission->eventChallange;
             $user = $submission->user;
             $submissionFlag = $submission->submission;
+            $solvedAt = new \DateTime($submission->created_at);
+            
+            // Check if submission is after freeze time
+            $isAfterFreeze = $freezeTime && $solvedAt > $freezeTime;
             
             // For single-flag challenges or default flag type
             if ($challenge->flag_type !== 'multiple_individual' && $challenge->flag_type !== 'multiple_all') {
@@ -346,21 +351,18 @@ class EventController extends Controller
                     ->first()
                     ->user_uuid === $user->uuid;
                 
-                // Format date
-                $solvedAt = new \DateTime($submission->created_at);
-                
                 $activities[] = [
-                    'user_name' => $user->user_name,
+                    'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                    'challenge_title' => $challenge->title,
-                    'challenge_uuid' => $challenge->id,
+                    'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
+                    'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                     'event_name' => $challenge->event ? $challenge->event->title : null,
                     'event_uuid' => $challenge->event ? $challenge->event->uuid : null,
                     'difficulty' => $challenge->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $challenge->bytes,
+                    'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $challenge->bytes),
                     'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $challenge->firstBloodBytes : 0,
-                    'total_bytes' => $isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes,
+                    'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : 0),
+                    'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes),
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                     'attempts' => $submission->attempts,
                     'ip' => $submission->ip,
@@ -429,19 +431,20 @@ class EventController extends Controller
                     }
                     
                     $solvedAt = new \DateTime($lastSolvedTime);
+                    $isAfterFreeze = $freezeTime && $solvedAt > $freezeTime;
                     
                     $activities[] = [
-                        'user_name' => $user->user_name,
+                        'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                         'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                        'challenge_title' => $challenge->title,
-                        'challenge_uuid' => $challenge->id,
+                        'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
+                        'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                         'event_name' => $challenge->event ? $challenge->event->title : null,
                         'event_uuid' => $challenge->event ? $challenge->event->uuid : null,
                         'difficulty' => $challenge->difficulty,
-                        'bytes' => $isFirstBlood ? 0 : $challenge->bytes,
+                        'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $challenge->bytes),
                         'is_first_blood' => $isFirstBlood,
-                        'first_blood_bytes' => $isFirstBlood ? $challenge->firstBloodBytes : 0,
-                        'total_bytes' => $isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes,
+                        'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : 0),
+                        'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes),
                         'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                         'attempts' => $submission->attempts,
                         'ip' => $submission->ip,
@@ -477,26 +480,25 @@ class EventController extends Controller
                     ->first()
                     ->user_uuid === $user->uuid;
                 
-                // Format date
-                $solvedAt = new \DateTime($submission->created_at);
+                $isAfterFreeze = $freezeTime && $solvedAt > $freezeTime;
                 
                 $activities[] = [
-                    'user_name' => $user->user_name,
+                    'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
-                    'challenge_title' => $challenge->title . ' - ' . ($flag->name ?? 'Flag'),
-                    'challenge_uuid' => $challenge->id,
+                    'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title . ' - ' . ($flag->name ?? 'Flag'),
+                    'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                     'event_name' => $challenge->event ? $challenge->event->title : null,
                     'event_uuid' => $challenge->event ? $challenge->event->uuid : null,
                     'difficulty' => $challenge->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $flag->bytes,
+                    'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $flag->bytes),
                     'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $flag->firstBloodBytes : 0,
-                    'total_bytes' => $isFirstBlood ? $flag->firstBloodBytes : $flag->bytes,
+                    'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $flag->firstBloodBytes : 0),
+                    'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $flag->firstBloodBytes : $flag->bytes),
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                     'attempts' => $submission->attempts,
                     'ip' => $submission->ip,
                     'flag_type' => $challenge->flag_type,
-                    'flag_name' => $flag->name ?? 'Flag'
+                    'flag_name' => $isAfterFreeze ? '*****' : ($flag->name ?? 'Flag')
                 ];
                 
                 $count++;
