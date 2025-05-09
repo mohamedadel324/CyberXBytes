@@ -69,9 +69,12 @@ class EventResource extends Resource
                                         try {
                                             $eventId = $record->uuid;
                                             
-                                            // Set freeze_time when freezing
+                                            // Set freeze_time when freezing or set to null when unfreezing
                                             if ($state) {
                                                 $record->freeze_time = now();
+                                                $record->save();
+                                            } else {
+                                                $record->freeze_time = null;
                                                 $record->save();
                                             }
                                             
