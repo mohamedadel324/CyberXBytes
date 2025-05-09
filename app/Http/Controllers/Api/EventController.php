@@ -444,19 +444,11 @@ class EventController extends Controller
                         })->first()?->name,
                         'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
                         'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
-                        'event_name' => $challenge->event ? $challenge->event->title : null,
-                        'event_uuid' => $challenge->event ? $challenge->event->uuid : null,
-                        'difficulty' => $challenge->difficulty,
                         'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $challenge->bytes),
                         'is_first_blood' => $isFirstBlood,
                         'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : 0),
                         'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes),
                         'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                        'attempts' => $submission->attempts,
-                        'ip' => $submission->ip,
-                        'flag_type' => $challenge->flag_type . '_complete',
-                        'flags_total' => $totalFlags,
-                        'flags_solved' => count($solvedFlags)
                     ];
                     
                     $count++;
@@ -496,17 +488,11 @@ class EventController extends Controller
                     })->first()?->name,
                     'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title . ' - ' . ($flag->name ?? 'Flag'),
                     'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
-                    'event_name' => $challenge->event ? $challenge->event->title : null,
-                    'event_uuid' => $challenge->event ? $challenge->event->uuid : null,
-                    'difficulty' => $challenge->difficulty,
                     'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $flag->bytes),
                     'is_first_blood' => $isFirstBlood,
                     'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $flag->firstBloodBytes : 0),
                     'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $flag->firstBloodBytes : $flag->bytes),
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
-                    'attempts' => $submission->attempts,
-                    'ip' => $submission->ip,
-                    'flag_type' => $challenge->flag_type,
                     'flag_name' => $isAfterFreeze ? '*****' : ($flag->name ?? 'Flag')
                 ];
                 
