@@ -43,7 +43,7 @@ class EventController extends Controller
                     'team_maximum_members' => $event->team_maximum_members,
                     'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
                     'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
-                    'is_ended' => now() > $this->formatInUserTimezone($event->end_date, true),
+                    'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
                     
                 ];
             });
@@ -82,7 +82,7 @@ class EventController extends Controller
                 'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                 'is_registered' => $user ? $event->registrations()->where('user_uuid', $user->uuid)->exists() : false,
-                'is_ended' => now() > $this->formatInUserTimezone($event->end_date, true),
+                'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
             ]
         ]);
     }
@@ -263,7 +263,7 @@ class EventController extends Controller
                 'can_register' => $canRegister,
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                 'is_registered' => $isRegistered,
-                'is_ended' => now() > $this->formatInUserTimezone($event->end_date, true),
+                'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
             ]
         ]);
     }
@@ -305,7 +305,7 @@ class EventController extends Controller
                 'requires_team' => $event->requires_team,
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
-                'is_ended' => now() > $this->formatInUserTimezone($event->end_date, true),
+                'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
             ];
         }
         
