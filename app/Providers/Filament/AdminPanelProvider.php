@@ -75,12 +75,12 @@ class AdminPanelProvider extends PanelProvider
                         $user = auth()->guard('admin')->user();
                         
                         // Super admin can always access
-                        if ($user && ($user->id === 1 || $user->hasRole('Super Admin'))) {
+                        if ($user && ($user->id === 1 || method_exists($user, 'hasRole') && $user->hasRole('Super Admin'))) {
                             return true;
                         }
                         
                         // Check for backup permission
-                        return $user && $user->hasPermissionTo('manage_backup');
+                        return $user && method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('manage_backup');
                     }),
             ])
             ->authGuard('admin')
