@@ -476,28 +476,98 @@ class UserController extends Controller
         }
         
         // Calculate user's rank based on bytes - fixed version with proper subquery
+        $totalLeaderboardBytes = 0;
+        foreach ($solvedFlagSubmissions as $submission) {
+            if (!$submission->challange) {
+                continue;
+            }
+            
+            $challange = $submission->challange;
+            
+            // For single-flag challenges (default, simple)
+            if (!$challange->usesMultipleFlags()) {
+                // Skip if we've already processed this challenge for leaderboard calculation
+                if ($processedFlags->contains("leaderboard_{$submission->id}")) {
+                    continue;
+                }
+                $processedFlags->push("leaderboard_{$submission->id}");
+                
+                // Check if this is a first blood
+                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first()
+                    ->user_uuid === $user->uuid;
+                
+                // Add to total leaderboard bytes
+                if ($isFirstBlood) {
+                    $totalLeaderboardBytes += $challange->firstBloodBytes;
+                } else {
+                    $totalLeaderboardBytes += $challange->bytes;
+                }
+            }
+            // For multiple_individual challenges
+            else if ($challange->usesIndividualFlagPoints()) {
+                $submissionFlag = $submission->flag;
+                
+                foreach ($challange->flags as $flag) {
+                    if ($flag->flag === $submissionFlag && !$processedFlags->contains("leaderboard_flag_{$flag->id}")) {
+                        $processedFlags->push("leaderboard_flag_{$flag->id}");
+                        
+                        $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                            ->where('flag', $flag->flag)
+                            ->where('solved', true)
+                            ->orderBy('created_at')
+                            ->first()
+                            ->user_uuid === $user->uuid;
+                        
+                        if ($isFirstBlood) {
+                            $totalLeaderboardBytes += $flag->firstBloodBytes;
+                        } else {
+                            $totalLeaderboardBytes += $flag->bytes;
+                        }
+                    }
+                }
+            }
+            // For multiple_all challenges
+            else {
+                if ($processedFlags->contains("leaderboard_challenge_{$challange->id}")) {
+                    continue;
+                }
+                $processedFlags->push("leaderboard_challenge_{$challange->id}");
+                
+                $isFirstBlood = Submission::where('challange_uuid', $submission->challange_uuid)
+                    ->where('solved', true)
+                    ->orderBy('created_at')
+                    ->first()
+                    ->user_uuid === $user->uuid;
+                
+                if ($isFirstBlood) {
+                    $totalLeaderboardBytes += $challange->firstBloodBytes;
+                } else {
+                    $totalLeaderboardBytes += $challange->bytes;
+                }
+            }
+        }
+        
+        // Get user rank based on the same calculation used for the leaderboard
         $usersByBytes = User::join('submissions', 'users.uuid', '=', 'submissions.user_uuid')
             ->join('challanges', 'submissions.challange_uuid', '=', 'challanges.uuid')
             ->where('submissions.solved', true)
             ->groupBy('users.uuid')
-            ->select('users.uuid')
-            ->selectRaw('SUM(CASE WHEN submissions.is_first_blood = 1 THEN challanges.firstBloodBytes ELSE challanges.bytes END) as total_bytes')
+            ->select('users.uuid', 'users.user_name')
+            ->selectRaw('SUM(CASE 
+                WHEN submissions.is_first_blood = 1 THEN challanges.firstBloodBytes 
+                ELSE challanges.bytes 
+            END) as total_bytes')
             ->orderByDesc('total_bytes')
             ->get();
             
-        // Debug the rank calculation
         $userRank = 1;
-        $userTotalBytes = $totalBytes + $totalFirstBloodBytes;
-        
-        // Just set rank to 1 if the user has the highest bytes
-        if ($usersByBytes->count() > 0 && $usersByBytes[0]->uuid === $user->uuid) {
-            $userRank = 1;
-        } else {
-            foreach ($usersByBytes as $index => $item) {
-                if ($item->uuid === $user->uuid) {
-                    $userRank = $index + 1;
-                    break;
-                }
+        foreach ($usersByBytes as $index => $item) {
+            if ($item->uuid === $user->uuid) {
+                $userRank = $index + 1;
+                break;
             }
         }
         
@@ -833,7 +903,7 @@ class UserController extends Controller
                 'next_title' => $nextTitle,
                 'next_title_arabic' => $nextTitleArabic,
                 'percentage_for_next_title' => $percentageForNextTitle,
-                'total_bytes' => $totalBytes,
+                'total_bytes' => $totalLeaderboardBytes,
                 'total_firstblood_count' => $totalFirstBloodCount,
                 'rank' => $userRank,
                 'social_media' => $socialMedia,
