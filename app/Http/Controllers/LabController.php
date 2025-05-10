@@ -140,8 +140,8 @@ class LabController extends Controller
             // Add flag information
             $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
             
-            // Add solved count for this challenge
-            $challenge->solved_count = $challenge->submissions()
+            // Count distinct users who have solved, not all submissions
+            $solvedCount = $challenge->submissions()
                 ->where('solved', true)
                 ->distinct('user_uuid')
                 ->count('user_uuid');
@@ -361,7 +361,11 @@ class LabController extends Controller
         unset($challenge->category);
         $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
 
-        $solvedCount = $challenge->submissions()->where('solved', true)->count();
+        // Count distinct users who have solved, not all submissions
+        $solvedCount = $challenge->submissions()
+            ->where('solved', true)
+            ->distinct('user_uuid')
+            ->count('user_uuid');
         
         // Add flag information
         $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
