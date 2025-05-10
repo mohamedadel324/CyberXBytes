@@ -7,13 +7,13 @@ use App\Filament\Resources\LabCategoryResource\RelationManagers;
 use App\Models\LabCategory;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class LabCategoryResource extends Resource
+class LabCategoryResource extends BaseResource
 {
     protected static ?string $model = LabCategory::class;
 

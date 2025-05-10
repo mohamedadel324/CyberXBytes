@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             // Core users and permissions
+            PermissionSeeder::class,
             AdminSeeder::class,
             PlayerTitleSeeder::class,
 

@@ -11,6 +11,7 @@ use Filament\Support\Facades\FilamentView;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Routing\Router;
 use App\Http\Middleware\CheckTokenIP;
+use App\Providers\AuthServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->register(AuthServiceProvider::class);
     }
 
     /**

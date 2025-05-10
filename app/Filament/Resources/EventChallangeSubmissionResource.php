@@ -7,13 +7,13 @@ use App\Filament\Resources\EventChallangeSubmissionResource\RelationManagers;
 use App\Models\EventChallangeSubmission;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class EventChallangeSubmissionResource extends Resource
+class EventChallangeSubmissionResource extends BaseResource
 {
     protected static ?string $model = EventChallangeSubmission::class;
 

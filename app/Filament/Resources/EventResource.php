@@ -10,7 +10,7 @@ use App\Models\ChallangeCategory;
 use App\Models\EventInvitation;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
@@ -27,7 +27,7 @@ use App\Mail\EventRegistrationMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
 
-class EventResource extends Resource
+class EventResource extends BaseResource
 {
     protected static ?string $model = Event::class;
 
@@ -78,7 +78,7 @@ class EventResource extends Resource
                                                 $record->save();
                                             }
                                             
-                                            Http::post('http://213.136.91.209:3000/api/freeze?eventId=' . $eventId, [
+                                            Http::post('http://213.136.91.209:3000/api/broadcast-freeze?eventId=' . $eventId, [
                                                 'freeze' => $state ? true : false,
                                                 'eventId' => $eventId,
                                                 'key' => 'cb209876540331298765'

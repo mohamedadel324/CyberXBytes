@@ -10,7 +10,7 @@ use App\Models\Challange;
 use App\Models\EventChallange;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +20,7 @@ use Filament\Infolists\Components\Tabs;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 
-class UserResource extends Resource
+class UserResource extends BaseResource
 {
     protected static ?string $model = User::class;
 

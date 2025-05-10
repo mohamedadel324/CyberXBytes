@@ -6,11 +6,11 @@ use App\Filament\Resources\TermsPrivacyResource\Pages;
 use App\Models\TermsPrivacy;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class TermsPrivacyResource extends Resource
+class TermsPrivacyResource extends BaseResource
 {
     protected static ?string $model = TermsPrivacy::class;
 

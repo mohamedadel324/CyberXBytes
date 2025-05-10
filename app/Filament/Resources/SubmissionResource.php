@@ -7,13 +7,13 @@ use App\Filament\Resources\SubmissionResource\RelationManagers;
 use App\Models\Submission;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class SubmissionResource extends Resource
+class SubmissionResource extends BaseResource
 {
     protected static ?string $model = Submission::class;
 

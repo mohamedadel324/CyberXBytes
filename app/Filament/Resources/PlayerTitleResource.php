@@ -7,17 +7,22 @@ use App\Filament\Resources\PlayerTitleResource\RelationManagers;
 use App\Models\PlayerTitle;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class PlayerTitleResource extends Resource
+class PlayerTitleResource extends BaseResource
 {
     protected static ?string $model = PlayerTitle::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-trophy';
+    
+    public static function getNavigationGroup(): ?string
+    {
+        return 'User Management';
+    }
 
     protected static ?string $navigationGroup = 'User Management';
 

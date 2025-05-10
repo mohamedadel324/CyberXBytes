@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Models\Admin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -19,6 +20,8 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 use Filament\Navigation\NavigationItem;
+use Filament\Navigation\NavigationBuilder;
+use Illuminate\Database\Eloquent\Model;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -56,7 +59,6 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class
-
             ])
             ->authMiddleware([
                 Authenticate::class,
@@ -66,11 +68,22 @@ class AdminPanelProvider extends PanelProvider
                     ->url('/admin/backup')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->group('Settings')
-                    ->sort(1),
+                    ->sort(1)
+                    ->visible(function() {
+                        $user = auth()->guard('admin')->user();
+                        
+                        // Super admin can always access
+                        if ($user->id === 1 || $user->hasRole('Super Admin')) {
+                            return true;
+                        }
+                        
+                        // Check for backup permission
+                        return $user->hasPermissionTo('manage_backup');
+                    }),
             ])
-            ->spa()
             ->authGuard('admin')
             ->profile()
+            ->spa()
             ->sidebarCollapsibleOnDesktop();
     }
 }

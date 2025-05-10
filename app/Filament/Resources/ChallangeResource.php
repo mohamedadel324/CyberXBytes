@@ -7,7 +7,7 @@ use App\Filament\Resources\ChallangeResource\RelationManagers;
 use App\Models\Challange;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
+// // use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +20,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Toggle;
 
-class ChallangeResource extends Resource
+class ChallangeResource extends BaseResource
 {
     protected static ?string $model = Challange::class;
 

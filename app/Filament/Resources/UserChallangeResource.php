@@ -8,22 +8,23 @@ use App\Models\UserChallange;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use App\Models\ChallangeCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class UserChallangeResource extends Resource
+class UserChallangeResource extends BaseResource
 {
     protected static ?string $model = UserChallange::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    
     public static function getNavigationGroup(): ?string
     {
         return 'User Management';
     }
+    
     public static function form(Form $form): Form
     {
         return $form
