@@ -250,7 +250,7 @@ class LabController extends Controller
         }
 
         $lastChallenge = $challenges->last();
-        $solvedPercentage = $totalChallenges > 0 ? round(($userSolvedChallenges / $totalChallenges) * 100, 2) : 0;
+        $solvedPercentage = $totalBytes > 0 ? round(($userEarnedBytes / $totalBytes) * 100, 2) : 0;
         
         return response()->json([
             'status' => 'success',
