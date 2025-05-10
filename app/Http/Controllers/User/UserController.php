@@ -550,47 +550,37 @@ class UserController extends Controller
             }
         }
         
-        // Get user rank based on the same calculation used for the leaderboard
-        $usersByBytes = User::join('submissions as s', 'users.uuid', '=', 's.user_uuid')
+        // Get all users and their bytes to do manual ranking
+        $allUsers = User::join('submissions as s', 'users.uuid', '=', 's.user_uuid')
             ->join('challanges as c', 's.challange_uuid', '=', 'c.uuid')
             ->where('s.solved', true)
             ->groupBy('users.uuid')
-            ->select('users.uuid')
+            ->select('users.uuid', 'users.user_name')
             ->selectRaw('SUM(c.bytes) as total_bytes')
-            ->orderByDesc('total_bytes')
-            ->get();
+            ->get()
+            ->toArray();
         
-        // Debugging: Find the top user and their bytes
-        $topUser = null;
-        $topBytes = 0;
-        $currentUserBytes = 0;
-        $currentUserFound = false;
+        // Sort users by bytes manually to ensure correct ordering
+        usort($allUsers, function($a, $b) {
+            // Sort by bytes in descending order
+            return $b['total_bytes'] - $a['total_bytes'];
+        });
         
-        if ($usersByBytes->count() > 0) {
-            $topUser = $usersByBytes[0]->uuid;
-            $topBytes = $usersByBytes[0]->total_bytes;
-        }
+        // Find the user's rank manually
+        $userRank = 0;
+        $foundUser = false;
         
-        foreach ($usersByBytes as $index => $item) {
-            if ($item->uuid === $user->uuid) {
-                $currentUserBytes = $item->total_bytes;
-                $currentUserFound = true;
+        foreach ($allUsers as $index => $userData) {
+            if ($userData['uuid'] === $user->uuid) {
+                $userRank = $index + 1; // 1-based ranking
+                $foundUser = true;
                 break;
             }
         }
         
-        // Calculate normal rank
-        $calculatedRank = 1;
-        foreach ($usersByBytes as $index => $item) {
-            if ($item->uuid === $user->uuid) {
-                $calculatedRank = $index + 1;
-                break;
-            }
-        }
-        
-        // FINAL FORCE OVERRIDE - If user appears to be top user but rank isn't 1, force it
-        if ($topUser === $user->uuid && $calculatedRank !== 1) {
-            $calculatedRank = 1;
+        // If somehow user wasn't found, default to last place
+        if (!$foundUser && count($allUsers) > 0) {
+            $userRank = count($allUsers);
         }
         
         // Get challenges by category
@@ -927,7 +917,7 @@ class UserController extends Controller
                 'percentage_for_next_title' => $percentageForNextTitle,
                 'total_bytes' => $totalLeaderboardBytes,
                 'total_firstblood_count' => $totalFirstBloodCount,
-                'rank' => $user->user_name === 'Rootx' ? 1 : $calculatedRank,
+                'rank' => $userRank,
                 'social_media' => $socialMedia,
             ],
             'challenges' => [
