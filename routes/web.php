@@ -4,7 +4,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BackupController;
 use App\Models\User;
 use Carbon\Carbon;
-use App\Http\Middleware\CustomUnauthorizedRedirectMiddleware;
 
 Route::get('/', function () {
     return view('welcome');
@@ -12,7 +11,7 @@ Route::get('/', function () {
 
 // Backup routes
 Route::prefix('admin')
-    ->middleware(['web', 'auth:admin', CustomUnauthorizedRedirectMiddleware::class])
+    ->middleware(['web', 'auth:admin', 'handle.unauthorized'])
     ->group(function () {
         Route::middleware(['permission:manage_backup'])
             ->group(function () {
