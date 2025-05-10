@@ -262,6 +262,7 @@ class EventResource extends BaseResource
                                 ->defaultItems(0)
                                 ->addActionLabel('Add Challenge')
                                 ->columnSpanFull()
+                                ->collapsed()
                                 ->relationship('challenges')
                                 ->afterStateHydrated(function ($component, $state, $record) {
                                     if ($record) {
