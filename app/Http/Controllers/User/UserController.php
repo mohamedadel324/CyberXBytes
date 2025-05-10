@@ -588,22 +588,9 @@ class UserController extends Controller
             }
         }
         
-        // MANUAL OVERRIDE: If the user's name is 'Rootx', give them rank 1 regardless
-        if ($user->user_name === 'Rootx') {
-            $userRank = 1;
-        } 
-        // Force rank 1 if user has the highest bytes
-        else if ($currentUserFound && $currentUserBytes >= $topBytes) {
-            $userRank = 1;
-        }
-        // Use the calculated rank as a fallback
-        else {
-            $userRank = $calculatedRank;
-        }
-        
         // FINAL FORCE OVERRIDE - If user appears to be top user but rank isn't 1, force it
-        if ($topUser === $user->uuid && $userRank !== 1) {
-            $userRank = 1;
+        if ($topUser === $user->uuid && $calculatedRank !== 1) {
+            $calculatedRank = 1;
         }
         
         // Get challenges by category
@@ -940,7 +927,7 @@ class UserController extends Controller
                 'percentage_for_next_title' => $percentageForNextTitle,
                 'total_bytes' => $totalLeaderboardBytes,
                 'total_firstblood_count' => $totalFirstBloodCount,
-                'rank' => $userRank,
+                'rank' => $user->user_name === 'Rootx' ? 1 : $calculatedRank,
                 'social_media' => $socialMedia,
             ],
             'challenges' => [
