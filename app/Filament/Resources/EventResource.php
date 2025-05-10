@@ -264,6 +264,7 @@ class EventResource extends BaseResource
                                 ->columnSpanFull()
                                 ->collapsed()
                                 ->relationship('challenges')
+                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
                                 ->afterStateHydrated(function ($component, $state, $record) {
                                     if ($record) {
                                         // Load flags for each challenge
