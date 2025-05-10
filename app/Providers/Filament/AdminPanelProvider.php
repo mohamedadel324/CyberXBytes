@@ -59,27 +59,12 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                \Hasnayeen\Themes\Http\Middleware\SetTheme::class
+                \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
+                \App\Http\Middleware\HandleFilamentNotifications::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->bootingCallback(function () {
-                // Show session flash messages as Filament notifications
-                if (session()->has('error')) {
-                    Notification::make()
-                        ->danger()
-                        ->title(session('error'))
-                        ->send();
-                }
-                
-                if (session()->has('success')) {
-                    Notification::make()
-                        ->success()
-                        ->title(session('success'))
-                        ->send();
-                }
-            })
             ->navigationItems([
                 NavigationItem::make('BackUps')
                     ->url('/admin/backup')
@@ -90,12 +75,12 @@ class AdminPanelProvider extends PanelProvider
                         $user = auth()->guard('admin')->user();
                         
                         // Super admin can always access
-                        if ($user->id === 1 || $user->hasRole('Super Admin')) {
+                        if ($user && ($user->id === 1 || $user->hasRole('Super Admin'))) {
                             return true;
                         }
                         
                         // Check for backup permission
-                        return $user->hasPermissionTo('manage_backup');
+                        return $user && $user->hasPermissionTo('manage_backup');
                     }),
             ])
             ->authGuard('admin')
