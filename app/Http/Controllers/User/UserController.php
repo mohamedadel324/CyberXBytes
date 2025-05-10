@@ -556,10 +556,7 @@ class UserController extends Controller
             ->where('submissions.solved', true)
             ->groupBy('users.uuid')
             ->select('users.uuid', 'users.user_name')
-            ->selectRaw('SUM(CASE 
-                WHEN submissions.is_first_blood = 1 THEN challanges.firstBloodBytes 
-                ELSE challanges.bytes 
-            END) as total_bytes')
+            ->selectRaw('SUM(challanges.bytes) as total_bytes')
             ->orderByDesc('total_bytes')
             ->get();
             
