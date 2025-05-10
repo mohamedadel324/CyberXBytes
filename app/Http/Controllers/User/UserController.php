@@ -555,7 +555,7 @@ class UserController extends Controller
             ->join('challanges', 'submissions.challange_uuid', '=', 'challanges.uuid')
             ->where('submissions.solved', true)
             ->groupBy('users.uuid')
-            ->select('users.uuid', 'users.user_name')
+            ->select('users.uuid')
             ->selectRaw('SUM(challanges.bytes) as total_bytes')
             ->orderByDesc('total_bytes')
             ->get();
