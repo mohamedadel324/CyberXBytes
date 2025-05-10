@@ -385,6 +385,7 @@ class UserController extends Controller
         // Get total bytes and firstblood bytes
         $totalBytes = 0;
         $totalFirstBloodBytes = 0;
+        $totalFirstBloodCount = 0;
         $processedFlags = collect(); // Track processed flags to avoid duplicates
         
         foreach ($solvedFlagSubmissions as $submission) {
@@ -412,6 +413,7 @@ class UserController extends Controller
                 if ($isFirstBlood) {
                     // User gets firstblood bytes only
                     $totalFirstBloodBytes += $challange->firstBloodBytes;
+                    $totalFirstBloodCount++;
                 } else {
                     // User gets regular bytes
                     $totalBytes += $challange->bytes;
@@ -439,6 +441,7 @@ class UserController extends Controller
                         if ($isFirstBlood) {
                             // User gets firstblood bytes only
                             $totalFirstBloodBytes += $flag->firstBloodBytes;
+                            $totalFirstBloodCount++;
                         } else {
                             // User gets regular bytes
                             $totalBytes += $flag->bytes;
@@ -464,6 +467,7 @@ class UserController extends Controller
                 if ($isFirstBlood) {
                     // User gets firstblood bytes only
                     $totalFirstBloodBytes += $challange->firstBloodBytes;
+                    $totalFirstBloodCount++;
                 } else {
                     // User gets regular bytes
                     $totalBytes += $challange->bytes;
@@ -471,18 +475,23 @@ class UserController extends Controller
             }
         }
         
-        // Calculate user's rank based on bytes
-        $userRank = User::join('submissions', 'users.uuid', '=', 'submissions.user_uuid')
+        // Calculate user's rank based on bytes - fixed version with proper subquery
+        $usersByBytes = User::join('submissions', 'users.uuid', '=', 'submissions.user_uuid')
             ->join('challanges', 'submissions.challange_uuid', '=', 'challanges.uuid')
             ->where('submissions.solved', true)
             ->groupBy('users.uuid')
             ->select('users.uuid')
             ->selectRaw('SUM(challanges.bytes) as total_bytes')
             ->orderByDesc('total_bytes')
-            ->get()
-            ->search(function ($item) use ($user) {
-                return $item->uuid === $user->uuid;
-            }) + 1;
+            ->get();
+            
+        $userRank = 1;
+        foreach ($usersByBytes as $index => $item) {
+            if ($item->uuid === $user->uuid) {
+                $userRank = $index + 1;
+                break;
+            }
+        }
         
         // Get challenges by category
         $challengesByCategory = [];
@@ -817,7 +826,7 @@ class UserController extends Controller
                 'next_title_arabic' => $nextTitleArabic,
                 'percentage_for_next_title' => $percentageForNextTitle,
                 'total_bytes' => $totalBytes,
-                'total_firstblood_bytes' => $totalFirstBloodBytes,
+                'total_firstblood_count' => $totalFirstBloodCount,
                 'rank' => $userRank,
                 'social_media' => $socialMedia,
             ],
