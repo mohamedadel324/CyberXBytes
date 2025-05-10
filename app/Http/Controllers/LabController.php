@@ -140,8 +140,8 @@ class LabController extends Controller
             // Add flag information
             $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
             
-            // Count distinct users who have solved, not all submissions
-            $solvedCount = $challenge->submissions()
+            // Add solved count for this challenge
+            $challenge->solved_count = $challenge->submissions()
                 ->where('solved', true)
                 ->distinct('user_uuid')
                 ->count('user_uuid');
