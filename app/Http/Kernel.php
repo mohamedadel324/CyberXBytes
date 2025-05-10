@@ -63,5 +63,6 @@ class Kernel extends HttpKernel
         'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         'handle.unauthorized' => \App\Http\Middleware\HandleUnauthorizedMiddleware::class,
+        'backup.access' => \App\Http\Middleware\BackupAccessMiddleware::class,
     ];
 } 
