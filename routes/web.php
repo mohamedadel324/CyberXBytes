@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BackupController;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Http\Middleware\HandleUnauthorizedMiddleware;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
 Route::get('/', function () {
     return view('welcome');
@@ -11,9 +13,9 @@ Route::get('/', function () {
 
 // Backup routes
 Route::prefix('admin')
-    ->middleware(['web', 'auth:admin', 'handle.unauthorized'])
+    ->middleware(['web', 'auth:admin', HandleUnauthorizedMiddleware::class])
     ->group(function () {
-        Route::middleware(['permission:manage_backup'])
+        Route::middleware([PermissionMiddleware::class . ':manage_backup'])
             ->group(function () {
                 Route::get('/backup', [BackupController::class, 'index'])->name('backups.index');
                 Route::post('/backups', [BackupController::class, 'create'])->name('backups.create');
