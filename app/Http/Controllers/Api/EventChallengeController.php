@@ -1519,7 +1519,7 @@ class EventChallengeController extends Controller
             ->whereHas('members', function($query) use ($user) {
                 $query->where('user_uuid', $user->uuid);
             })
-            ->with(['members.uuid', 'members.user_name', 'members.profile_image'])
+            ->with(['members'])
             ->first();
             
         if (!$team) {
@@ -1530,7 +1530,10 @@ class EventChallengeController extends Controller
         }
         
         // Create a map of team members for easy lookup
-        $teamMembers = $team->members->keyBy('uuid');
+        $teamMembers = collect();
+        foreach ($team->members as $member) {
+            $teamMembers->put($member->uuid, $member);
+        }
         
         // Collect the results
         $results = collect();
@@ -1546,7 +1549,36 @@ class EventChallengeController extends Controller
                 ->where('solved', true)
                 ->get();
             
+            // If no submissions, return empty results
+            if ($submissions->isEmpty()) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'team' => [
+                            'name' => $team->name,
+                            'icon' => $team->icon_url,
+                            'member_count' => $team->members->count()
+                        ],
+                        'challenge' => [
+                            'id' => $challenge->id,
+                            'title' => $challenge->title,
+                            'flag_type' => $challenge->flag_type,
+                            'flag_type_description' => $this->getFlagTypeDescription($challenge->flag_type),
+                            'bytes' => $challenge->bytes,
+                            'first_blood_bytes' => $challenge->firstBloodBytes,
+                            'total_flags' => $challenge->flags->count()
+                        ],
+                        'members' => [],
+                        'total_solvers' => 0,
+                        'frozen' => $isFrozen,
+                        'freeze_time' => $freezeTime ? $this->formatInUserTimezone($freezeTime) : null,
+                        'last_updated' => $this->formatInUserTimezone(now())
+                    ]
+                ]);
+            }
+                
             // Get first blood info (respecting freeze time if applicable)
+            $firstSolverSubmission = null;
             if ($isFrozen) {
                 $firstSolverSubmission = EventChallangeSubmission::where('event_challange_id', $challenge->id)
                     ->where('solved', true)
@@ -1606,6 +1638,7 @@ class EventChallengeController extends Controller
                 ->where('solved', true)
                 ->get();
             
+            // If no submissions, return empty results
             if ($flagSubmissions->isEmpty()) {
                 return response()->json([
                     'status' => 'success',
