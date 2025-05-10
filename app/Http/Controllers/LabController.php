@@ -125,8 +125,14 @@ class LabController extends Controller
             }
         }
         
+        // Track which challenges and flags have already been processed to prevent double-counting
+        $processedChallenges = [];
+        $processedFlags = [];
+        
         // Now calculate user-specific statistics
         foreach ($challenges as $challenge) {
+            $challengeUuid = $challenge->uuid;
+            
             $challenge->category_icon = $challenge->category->icon ?? null;
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
@@ -137,6 +143,11 @@ class LabController extends Controller
             // Check user solved status and calculate earned bytes
             if ($user) {
                 if ($challenge->flag_type === 'single') {
+                    // Skip if already processed this challenge
+                    if (in_array($challengeUuid, $processedChallenges)) {
+                        continue;
+                    }
+                    
                     // For single flag type, check if user solved it
                     $isSolved = $challenge->submissions()
                         ->where('user_uuid', $user->uuid)
@@ -157,7 +168,15 @@ class LabController extends Controller
                             $userEarnedBytes += $challenge->firstBloodBytes;
                         }
                     }
+                    
+                    // Mark as processed
+                    $processedChallenges[] = $challengeUuid;
                 } else if ($challenge->flag_type === 'multiple_all') {
+                    // Skip if already processed this challenge
+                    if (in_array($challengeUuid, $processedChallenges)) {
+                        continue;
+                    }
+                    
                     // For multiple_all, count users who solved all flags
                     $totalFlags = $challenge->flags->count();
                     
@@ -192,11 +211,22 @@ class LabController extends Controller
                             }
                         }
                     }
+                    
+                    // Mark as processed
+                    $processedChallenges[] = $challengeUuid;
                 } else if ($challenge->flag_type === 'multiple_individual') {
                     // For multiple_individual, check each flag individually
                     $hasAtLeastOneFlag = false;
                     
                     foreach ($challenge->flags as $flag) {
+                        // Create a unique key for this flag
+                        $flagKey = $challengeUuid . '-' . $flag->flag;
+                        
+                        // Skip if already processed this flag
+                        if (in_array($flagKey, $processedFlags)) {
+                            continue;
+                        }
+                        
                         $isFlagSolved = $challenge->submissions()
                             ->where('user_uuid', $user->uuid)
                             ->where('flag', $flag->flag)
@@ -218,11 +248,17 @@ class LabController extends Controller
                                 $userEarnedBytes += $flag->firstBloodBytes;
                             }
                         }
+                        
+                        // Mark this flag as processed
+                        $processedFlags[] = $flagKey;
                     }
                     
                     if ($hasAtLeastOneFlag) {
                         $userSolvedChallenges++;
                     }
+                    
+                    // Mark the challenge as processed
+                    $processedChallenges[] = $challengeUuid;
                 }
             }
             
@@ -250,7 +286,15 @@ class LabController extends Controller
         }
 
         $lastChallenge = $challenges->last();
-        $solvedPercentage = $totalBytes > 0 ? round(($userEarnedBytes / $totalBytes) * 100, 2) : 0;
+        
+        // Ensure percentage never exceeds 100%
+        $solvedPercentage = $totalBytes > 0 ? min(100, round(($userEarnedBytes / $totalBytes) * 100, 2)) : 0;
+        
+        // Ensure solved challenges never exceeds total challenges
+        $userSolvedChallenges = min($userSolvedChallenges, $totalChallenges);
+        
+        // Ensure earned bytes never exceeds total bytes
+        $userEarnedBytes = min($userEarnedBytes, $totalBytes);
         
         return response()->json([
             'status' => 'success',
