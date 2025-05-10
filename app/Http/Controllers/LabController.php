@@ -1598,17 +1598,23 @@ class LabController extends Controller
                     $solvedFlagsList = $user->submissions
                         ->pluck('flag')
                         ->unique()
-                        ->values();
+                        ->values()
+                        ->toArray();
                         
                     // Check if all required flags are solved
-                    $allFlagsSolved = true;
-                    $requiredFlagsCount = $challenge->flags->count();
+                    $requiredFlags = $challenge->flags->pluck('flag')->toArray();
+                    $requiredFlagsCount = count($requiredFlags);
                     
-                    if ($solvedFlagsList->count() < $requiredFlagsCount) {
+                    // Check if user has solved all flags
+                    $allFlagsSolved = true;
+                    
+                    // First check count
+                    if (count($solvedFlagsList) < $requiredFlagsCount) {
                         $allFlagsSolved = false;
                     } else {
-                        foreach ($challenge->flags as $flag) {
-                            if (!$solvedFlagsList->contains($flag->flag)) {
+                        // Then check each required flag is in the solved list
+                        foreach ($requiredFlags as $requiredFlag) {
+                            if (!in_array($requiredFlag, $solvedFlagsList)) {
                                 $allFlagsSolved = false;
                                 break;
                             }
@@ -1630,7 +1636,7 @@ class LabController extends Controller
                         }
                     }
                     
-                    // Only award points if all flags are solved
+                    // Always add points based on solved flags, full points if all solved
                     if ($allFlagsSolved) {
                         // Get the latest solved time (when all flags were completed)
                         $solvedAt = $user->submissions->max('created_at');
@@ -1656,6 +1662,11 @@ class LabController extends Controller
                         } else {
                             $points = $challenge->bytes;
                         }
+                    } else {
+                        // Add partial points if not all flags are solved
+                        // This ensures users show up on the leaderboard with the flags they've solved
+                        $points = 0; // We'll still set this to 0 but show the user with their solved flags
+                        $solvedAt = $user->submissions->max('created_at');
                     }
                 }
                 // Handle multiple_individual flag type
@@ -1718,10 +1729,11 @@ class LabController extends Controller
                     'flags_count' => count($solvedFlags)
                 ];
             })
+            // Include all users who have attempted the challenge, not just those with full points
             ->filter(function($user) use ($challenge) {
-                // For multiple_all challenges, only include users who have solved all flags
                 if ($challenge->flag_type === 'multiple_all') {
-                    return $user['points'] > 0; // Only users who got points (solved all flags)
+                    // Include all users who have solved at least one flag
+                    return count($user['solved_flags']) > 0;
                 }
                 return true; // Include all users for other challenge types
             })
