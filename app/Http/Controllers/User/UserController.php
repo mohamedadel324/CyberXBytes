@@ -551,20 +551,45 @@ class UserController extends Controller
         }
         
         // Get user rank based on the same calculation used for the leaderboard
-        $usersByBytes = User::join('submissions', 'users.uuid', '=', 'submissions.user_uuid')
-            ->join('challanges', 'submissions.challange_uuid', '=', 'challanges.uuid')
-            ->where('submissions.solved', true)
+        $usersByBytes = User::join('submissions as s', 'users.uuid', '=', 's.user_uuid')
+            ->join('challanges as c', 's.challange_uuid', '=', 'c.uuid')
+            ->where('s.solved', true)
             ->groupBy('users.uuid')
             ->select('users.uuid')
-            ->selectRaw('SUM(challanges.bytes) as total_bytes')
+            ->selectRaw('SUM(c.bytes) as total_bytes')
             ->orderByDesc('total_bytes')
             ->get();
-            
-        $userRank = 1;
+        
+        // Debugging: Find the top user and their bytes
+        $topUser = null;
+        $topBytes = 0;
+        $currentUserBytes = 0;
+        $currentUserFound = false;
+        
         foreach ($usersByBytes as $index => $item) {
+            // Save top user info
+            if ($index === 0) {
+                $topUser = $item->uuid;
+                $topBytes = $item->total_bytes;
+            }
+            
+            // Save current user info
             if ($item->uuid === $user->uuid) {
-                $userRank = $index + 1;
-                break;
+                $currentUserBytes = $item->total_bytes;
+                $currentUserFound = true;
+            }
+        }
+        
+        // Force rank 1 if current user has the same bytes as top user
+        if ($currentUserFound && $currentUserBytes >= $topBytes) {
+            $userRank = 1;
+        } else {
+            $userRank = 1;
+            foreach ($usersByBytes as $index => $item) {
+                if ($item->uuid === $user->uuid) {
+                    $userRank = $index + 1;
+                    break;
+                }
             }
         }
         
