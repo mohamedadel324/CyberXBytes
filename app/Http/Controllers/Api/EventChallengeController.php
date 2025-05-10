@@ -1416,7 +1416,6 @@ class EventChallengeController extends Controller
                                 'id' => $flag->id,
                                 'name' => $flag->name,
                                 'points' => $flagPoints,
-                                'first_blood_points' => $flagFirstBloodPoints,
                                 'is_first_blood' => $flagFirstBloodPoints > 0,
                                 'solved_at' => $this->formatInUserTimezone($flag->pivot->solved_at)
                             ];
@@ -1684,6 +1683,7 @@ class EventChallengeController extends Controller
             }
             
             // Prepare member data, masking it if they solved after freeze time
+            // Important: we mask ALL users who solved after freeze, even the current authenticated user
             $memberData = [
                 'user_uuid' => $solvedAfterFreeze ? 'hidden' : $member->uuid,
                 'user_name' => $solvedAfterFreeze ? '*****' : $member->user_name,
@@ -1695,7 +1695,7 @@ class EventChallengeController extends Controller
                 'solved_flags' => $solvedFlagsData,
                 'flags_count' => count($solvedFlagsData),
                 'all_flags_solved' => $challenge->flag_type !== 'multiple_all' || 
-                                    ($challenge->flags->count() > 0 && count($solvedFlagsData) === $challenge->flags->count()),
+                                     ($challenge->flags->count() > 0 && count($solvedFlagsData) === $challenge->flags->count()),
                 'solved_after_freeze' => $solvedAfterFreeze
             ];
             
