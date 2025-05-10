@@ -113,7 +113,20 @@ class LabController extends Controller
         $userEarnedBytes = 0;
         $user = auth('api')->user();
         
-        $challenges->each(function ($challenge) use (&$totalBytes, &$userSolvedChallenges, &$userEarnedBytes, $user) {
+        // First calculate total bytes correctly
+        foreach ($challenges as $challenge) {
+            if ($challenge->flag_type === 'single' || $challenge->flag_type === 'multiple_all') {
+                $totalBytes += $challenge->bytes;
+            } else if ($challenge->flag_type === 'multiple_individual' && $challenge->flags) {
+                // For multiple_individual, sum up bytes for each flag
+                foreach ($challenge->flags as $flag) {
+                    $totalBytes += $flag->bytes;
+                }
+            }
+        }
+        
+        // Now calculate user-specific statistics
+        foreach ($challenges as $challenge) {
             $challenge->category_icon = $challenge->category->icon ?? null;
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
@@ -121,24 +134,10 @@ class LabController extends Controller
             // Add flag information
             $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
             
-            // Add to total bytes
-            if ($challenge->flag_type === 'single' || $challenge->flag_type === 'multiple_all') {
-                $totalBytes += $challenge->bytes;
-            } else if ($challenge->flag_type === 'multiple_individual' && $challenge->flags) {
-                // For multiple_individual, sum up bytes for each flag
-                $totalBytes += $challenge->flags->sum('bytes');
-            }
-            
-            // Get solved count for the challenge
-            if ($challenge->flag_type === 'single') {
-                // For single flag type, count unique users who solved it
-                $challenge->solved_count = $challenge->submissions()
-                    ->where('solved', true)
-                    ->distinct('user_uuid')
-                    ->count('user_uuid');
-                
-                // Check if current user has solved this challenge
-                if ($user) {
+            // Check user solved status and calculate earned bytes
+            if ($user) {
+                if ($challenge->flag_type === 'single') {
+                    // For single flag type, check if user solved it
                     $isSolved = $challenge->submissions()
                         ->where('user_uuid', $user->uuid)
                         ->where('solved', true)
@@ -158,58 +157,43 @@ class LabController extends Controller
                             $userEarnedBytes += $challenge->firstBloodBytes;
                         }
                     }
-                }
-            } else if ($challenge->flag_type === 'multiple_all') {
-                // For multiple_all, count users who solved all flags
-                $totalFlags = $challenge->flags->count();
-                $challenge->solved_count = $challenge->submissions()
-                    ->select('user_uuid')
-                    ->where('solved', true)
-                    ->groupBy('user_uuid')
-                    ->havingRaw('COUNT(DISTINCT flag) = ?', [$totalFlags])
-                    ->count();
-                
-                // Check if current user has solved all flags
-                if ($user && $totalFlags > 0) {
-                    $userSolvedFlags = $challenge->submissions()
-                        ->where('user_uuid', $user->uuid)
-                        ->where('solved', true)
-                        ->distinct('flag')
-                        ->count('flag');
+                } else if ($challenge->flag_type === 'multiple_all') {
+                    // For multiple_all, count users who solved all flags
+                    $totalFlags = $challenge->flags->count();
                     
-                    if ($userSolvedFlags === $totalFlags) {
-                        $userSolvedChallenges++;
-                        $userEarnedBytes += $challenge->bytes;
+                    if ($totalFlags > 0) {
+                        $userSolvedFlags = $challenge->submissions()
+                            ->where('user_uuid', $user->uuid)
+                            ->where('solved', true)
+                            ->distinct('flag')
+                            ->count('flag');
                         
-                        // Check if user got first blood for all flags
-                        $isFirstBlood = true;
-                        foreach ($challenge->flags as $flag) {
-                            $firstSolver = $challenge->submissions()
-                                ->where('flag', $flag->flag)
-                                ->where('solved', true)
-                                ->orderBy('created_at', 'asc')
-                                ->first();
+                        if ($userSolvedFlags === $totalFlags) {
+                            $userSolvedChallenges++;
+                            $userEarnedBytes += $challenge->bytes;
                             
-                            if (!$firstSolver || $firstSolver->user_uuid !== $user->uuid) {
-                                $isFirstBlood = false;
-                                break;
+                            // Check if user got first blood for all flags
+                            $isFirstBlood = true;
+                            foreach ($challenge->flags as $flag) {
+                                $firstSolver = $challenge->submissions()
+                                    ->where('flag', $flag->flag)
+                                    ->where('solved', true)
+                                    ->orderBy('created_at', 'asc')
+                                    ->first();
+                                
+                                if (!$firstSolver || $firstSolver->user_uuid !== $user->uuid) {
+                                    $isFirstBlood = false;
+                                    break;
+                                }
+                            }
+                            
+                            if ($isFirstBlood) {
+                                $userEarnedBytes += $challenge->firstBloodBytes;
                             }
                         }
-                        
-                        if ($isFirstBlood) {
-                            $userEarnedBytes += $challenge->firstBloodBytes;
-                        }
                     }
-                }
-            } else if ($challenge->flag_type === 'multiple_individual') {
-                // For multiple_individual, count unique users who solved at least one flag
-                $challenge->solved_count = $challenge->submissions()
-                    ->where('solved', true)
-                    ->distinct('user_uuid')
-                    ->count('user_uuid');
-                
-                // Check if current user has solved any flags and count bytes earned
-                if ($user && $challenge->flags) {
+                } else if ($challenge->flag_type === 'multiple_individual') {
+                    // For multiple_individual, check each flag individually
                     $hasAtLeastOneFlag = false;
                     
                     foreach ($challenge->flags as $flag) {
@@ -263,7 +247,7 @@ class LabController extends Controller
                 });
                 $challenge->flags_count = $challenge->flags->count();
             }
-        });
+        }
 
         $lastChallenge = $challenges->last();
         $solvedPercentage = $totalChallenges > 0 ? round(($userSolvedChallenges / $totalChallenges) * 100, 2) : 0;
