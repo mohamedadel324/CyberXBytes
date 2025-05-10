@@ -409,16 +409,30 @@ class LabController extends Controller
             else if ($challenge->flag_type === 'multiple_all') {
                 $flagsData = [];
                 
+                // For multiple_all, check if the user has solved all flags
+                $allFlagsSolved = false;
+                $user = auth('api')->user();
+                
+                if ($user) {
+                    $totalFlags = $challenge->flags->count();
+                    $userSolvedFlags = $challenge->submissions()
+                        ->where('user_uuid', $user->uuid)
+                        ->where('solved', true)
+                        ->distinct('flag')
+                        ->count('flag');
+                    
+                    $allFlagsSolved = ($userSolvedFlags === $totalFlags);
+                }
+                
                 foreach ($challenge->flags as $flag) {
                     $flagsData[] = [
                         'id' => $flag->id,
                         'name' => $flag->name,
                         'ar_name' => $flag->ar_name,
-
                         'description'=> $flag->description,
                         'bytes' => $challenge->bytes,
                         'first_blood_bytes' => $challenge->firstBloodBytes,
-                        'solved_count' => $solvedCount,
+                        'solved_count' => $allFlagsSolved ? $solvedCount : 0, // Only count as solved if all flags are solved
                         'first_blood' => $firstBlood,
                     ];
                 }
@@ -431,11 +445,12 @@ class LabController extends Controller
                 $flagsData = [];
                 
                 foreach ($challenge->flags as $flag) {
-                    // Get solved count for this flag
+                    // Get solved count for this specific flag
                     $flagSolvedCount = $challenge->submissions()
                         ->where('flag', $flag->flag)
                         ->where('solved', true)
-                        ->count();
+                        ->distinct('user_uuid')
+                        ->count('user_uuid');
                     
                     // Get first blood for this flag
                     $flagFirstBlood = null;
@@ -462,7 +477,6 @@ class LabController extends Controller
                         'id' => $flag->id,
                         'name' => $flag->name,
                         'ar_name' => $flag->ar_name,
-
                         'description' => $flag->description,
                         'bytes' => $flag->bytes,
                         'first_blood_bytes' => $flag->firstBloodBytes,
