@@ -1508,6 +1508,11 @@ class EventChallengeController extends Controller
             ], 404);
         }
         
+        // Get the event to check if it's frozen
+        $event = Event::find($challenge->event_uuid);
+        $isFrozen = $event && $event->is_frozen;
+        $freezeTime = $event ? $event->freeze_time : null;
+        
         // Get team members who solved this challenge
         $teamMembers = collect();
         
@@ -1521,6 +1526,7 @@ class EventChallengeController extends Controller
             $solvedAt = null;
             $isFirstBlood = false;
             $hasSolved = false;
+            $solvedAfterFreeze = false;
             
             // Check if member solved the challenge (single flag type)
             if ($challenge->flag_type === 'single') {
@@ -1532,6 +1538,12 @@ class EventChallengeController extends Controller
                 if ($solvedChallenge) {
                     $hasSolved = true;
                     $solvedAt = $solvedChallenge->solved_at;
+                    
+                    // Check if solved after freeze
+                    if ($isFrozen && $freezeTime && $solvedAt > $freezeTime) {
+                        $solvedAfterFreeze = true;
+                    }
+                    
                     $points = $challenge->bytes;
                     
                     // Check if this was first blood
@@ -1557,6 +1569,16 @@ class EventChallengeController extends Controller
                 
                 if ($solvedFlags->isNotEmpty()) {
                     $hasSolved = true;
+                    
+                    // Check if any flag was solved after freeze
+                    if ($isFrozen && $freezeTime) {
+                        foreach ($solvedFlags as $flag) {
+                            if ($flag->solved_at > $freezeTime) {
+                                $solvedAfterFreeze = true;
+                                break;
+                            }
+                        }
+                    }
                 }
                 
                 // For multiple_all type
@@ -1637,8 +1659,8 @@ class EventChallengeController extends Controller
             
             $teamMembers->push([
                 'user_uuid' => $member->uuid,
-                'user_name' => $member->user_name,
-                'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
+                'user_name' => $solvedAfterFreeze ? '*****' : $member->user_name,
+                'profile_image' => $solvedAfterFreeze ? null : ($member->profile_image ? url('storage/' . $member->profile_image) : null),
                 'points' => $points,
                 'first_blood_points' => $firstBloodPoints,
                 'is_first_blood' => $isFirstBlood,
@@ -1673,7 +1695,6 @@ class EventChallengeController extends Controller
             ]
         ]);
     }
-    
     /**
      * Get flag type description 
      * 
