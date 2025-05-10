@@ -1511,7 +1511,7 @@ class EventChallengeController extends Controller
         // Get the event to check if it's frozen
         $event = Event::find($challenge->event_uuid);
         $isFrozen = $event && $event->is_frozen;
-        $freezeTime = $event ? $event->freeze_time : null;
+        $freezeTime = $event && $event->freeze_time ? \Carbon\Carbon::parse($event->freeze_time) : null;
         
         // Get team members who solved this challenge
         $teamMembers = collect();
@@ -1528,6 +1528,9 @@ class EventChallengeController extends Controller
             $hasSolved = false;
             $solvedAfterFreeze = false;
             
+            // Get user's timezone
+            $userTimezone = $member->time_zone ?? config('app.timezone');
+            
             // Check if member solved the challenge (single flag type)
             if ($challenge->flag_type === 'single') {
                 $solvedChallenge = EventChallangeSubmission::where('event_challange_id', $challenge->id)
@@ -1539,9 +1542,14 @@ class EventChallengeController extends Controller
                     $hasSolved = true;
                     $solvedAt = $solvedChallenge->solved_at;
                     
-                    // Check if solved after freeze
-                    if ($isFrozen && $freezeTime && $solvedAt > $freezeTime) {
-                        $solvedAfterFreeze = true;
+                    // Check if solved after freeze, considering user's timezone
+                    if ($isFrozen && $freezeTime) {
+                        $solvedAtCarbon = \Carbon\Carbon::parse($solvedAt)->setTimezone($userTimezone);
+                        $freezeTimeInUserTz = $freezeTime->copy()->setTimezone($userTimezone);
+                        
+                        if ($solvedAtCarbon->gt($freezeTimeInUserTz)) {
+                            $solvedAfterFreeze = true;
+                        }
                     }
                     
                     $points = $challenge->bytes;
@@ -1570,10 +1578,13 @@ class EventChallengeController extends Controller
                 if ($solvedFlags->isNotEmpty()) {
                     $hasSolved = true;
                     
-                    // Check if any flag was solved after freeze
+                    // Check if any flag was solved after freeze, considering user's timezone
                     if ($isFrozen && $freezeTime) {
+                        $freezeTimeInUserTz = $freezeTime->copy()->setTimezone($userTimezone);
+                        
                         foreach ($solvedFlags as $flag) {
-                            if ($flag->solved_at > $freezeTime) {
+                            $flagSolvedAt = \Carbon\Carbon::parse($flag->solved_at)->setTimezone($userTimezone);
+                            if ($flagSolvedAt->gt($freezeTimeInUserTz)) {
                                 $solvedAfterFreeze = true;
                                 break;
                             }
@@ -1695,6 +1706,7 @@ class EventChallengeController extends Controller
             ]
         ]);
     }
+    
     /**
      * Get flag type description 
      * 
