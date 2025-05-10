@@ -668,9 +668,6 @@ class EventChallengeController extends Controller
         $challenge = EventChallange::with([
             'flags' => function($query) {
                 $query->orderBy('order', 'asc');
-            },
-            'flags.solvedBy' => function($query) {
-                $query->where('user_uuid', Auth::user()->uuid);
             }
         ])->where('id', $eventChallengeUuid)->first();
         
@@ -686,10 +683,27 @@ class EventChallengeController extends Controller
         if ($validationResponse) {
             return $validationResponse;
         }
+        
+        // Check if the event is frozen
+        $event = Event::where('uuid', $challenge->event_uuid)->first();
+        $freezeTime = null;
+        if ($event && $event->freeze && $event->freeze_time) {
+            $freezeTime = $event->freeze_time;
+        }
 
         // For single flag challenges
         if ($challenge->flag_type === 'single') {
-            $isSolved = $challenge->solvedBy->contains('uuid', Auth::user()->uuid);
+            // Query with freeze time consideration
+            $submissionQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                ->where('user_uuid', Auth::user()->uuid)
+                ->where('solved', true);
+                
+            if ($freezeTime) {
+                $submissionQuery->where('solved_at', '<', $freezeTime);
+            }
+            
+            $submission = $submissionQuery->first();
+            $isSolved = $submission !== null;
             
             return response()->json([
                 'status' => 'success',
@@ -698,15 +712,27 @@ class EventChallengeController extends Controller
                     'challenge_title' => $challenge->title,
                     'flag_type' => 'single',
                     'solved' => $isSolved,
-                    'solved_at' => $isSolved ? $this->formatInUserTimezone($challenge->solvedBy->first()->pivot->solved_at) : null
+                    'solved_at' => $isSolved ? $this->formatInUserTimezone($submission->solved_at) : null,
+                    'frozen' => $event && $event->freeze,
+                    'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null
                 ]
             ]);
         }
         
         // For multiple flag challenges
-        $flags = $challenge->flags->map(function($flag) {
-            $isFlagSolved = $flag->solvedBy->isNotEmpty();
-            $solvedAt = $isFlagSolved ? $this->formatInUserTimezone($flag->solvedBy->first()->pivot->solved_at) : null;
+        $flags = $challenge->flags->map(function($flag) use ($freezeTime) {
+            // Query with freeze time consideration
+            $flagSubmissionQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                ->where('user_uuid', Auth::user()->uuid)
+                ->where('solved', true);
+                
+            if ($freezeTime) {
+                $flagSubmissionQuery->where('solved_at', '<', $freezeTime);
+            }
+            
+            $submission = $flagSubmissionQuery->first();
+            $isFlagSolved = $submission !== null;
+            $solvedAt = $isFlagSolved ? $this->formatInUserTimezone($submission->solved_at) : null;
             
             // Base flag data
             $flagData = [
@@ -740,7 +766,9 @@ class EventChallengeController extends Controller
                 'total_flags' => $challenge->flags->count(),
                 'solved_flags' => $solvedCount,
                 'all_flags_solved' => $allFlagsSolved,
-                'flags' => $flags
+                'flags' => $flags,
+                'frozen' => $event && $event->freeze,
+                'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null
             ]
         ]);
     }
@@ -756,7 +784,7 @@ class EventChallengeController extends Controller
         $user = Auth::user();
         
         // Get the event challenge
-        $challenge = EventChallange::with(['flags', 'solvedBy', 'flags.solvedBy'])->where('id', $eventChallengeUuid)->firstOrFail();
+        $challenge = EventChallange::with(['flags'])->where('id', $eventChallengeUuid)->firstOrFail();
         
         // Validate event and team requirements
         $validationResponse = $this->validateEventAndTeamRequirements($challenge->event_uuid, true);
@@ -764,33 +792,41 @@ class EventChallengeController extends Controller
             return $validationResponse;
         }
         
+        // Check if the event is frozen
+        $event = Event::where('uuid', $challenge->event_uuid)->first();
+        $freezeTime = null;
+        if ($event && $event->freeze && $event->freeze_time) {
+            $freezeTime = $event->freeze_time;
+        }
+        
         // For single flag challenges
         if ($challenge->flag_type === 'single') {
-            $isSolved = $challenge->solvedBy->contains('uuid', $user->uuid);
-            $submission = null;
-            
-            if ($isSolved) {
-                $submission = $challenge->solvedBy->where('uuid', $user->uuid)->first()->pivot;
+            // Query with freeze time consideration
+            $submissionQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                ->where('user_uuid', $user->uuid)
+                ->where('solved', true);
+                
+            if ($freezeTime) {
+                $submissionQuery->where('solved_at', '<', $freezeTime);
             }
             
+            $submission = $submissionQuery->first();
+            $isSolved = $submission !== null;
+            
             // Get first blood if there are any solvers
-            $firstBlood = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+            $firstBloodQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
                 ->where('solved', true)
-                ->oldest('solved_at')
-                ->first();
+                ->oldest('solved_at');
+                
+            if ($freezeTime) {
+                $firstBloodQuery->where('solved_at', '<', $freezeTime);
+            }
+            
+            $firstBlood = $firstBloodQuery->first();
             
             $isFirstBlood = false;
             if ($isSolved && $submission && $firstBlood) {
-                // Convert to date objects if needed
-                $solvedAt = $submission->solved_at instanceof \Carbon\Carbon 
-                    ? $submission->solved_at 
-                    : \Carbon\Carbon::parse($submission->solved_at);
-                
-                $firstBloodSolvedAt = $firstBlood->solved_at instanceof \Carbon\Carbon 
-                    ? $firstBlood->solved_at 
-                    : \Carbon\Carbon::parse($firstBlood->solved_at);
-                
-                $isFirstBlood = $solvedAt->eq($firstBloodSolvedAt);
+                $isFirstBlood = $submission->user_uuid === $firstBlood->user_uuid;
             }
             
             return response()->json([
@@ -812,7 +848,9 @@ class EventChallengeController extends Controller
                             'solved_at' => $submission->solved_at ? $this->formatInUserTimezone($submission->solved_at) : null,
                             'is_first_blood' => $isFirstBlood
                         ]
-                    ] : []
+                    ] : [],
+                    'frozen' => $event && $event->freeze,
+                    'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null
                 ]
             ]);
         }
@@ -823,29 +861,33 @@ class EventChallengeController extends Controller
         $firstBloodPoints = 0;
         
         foreach ($challenge->flags as $flag) {
-            $isFlagSolved = $flag->solvedBy->contains('uuid', $user->uuid);
+            // Query with freeze time consideration
+            $flagSubmissionQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                ->where('user_uuid', $user->uuid)
+                ->where('solved', true);
+                
+            if ($freezeTime) {
+                $flagSubmissionQuery->where('solved_at', '<', $freezeTime);
+            }
+            
+            $flagSubmission = $flagSubmissionQuery->first();
+            $isFlagSolved = $flagSubmission !== null;
             
             if ($isFlagSolved) {
-                $flagSubmission = $flag->solvedBy->where('uuid', $user->uuid)->first()->pivot;
-                
                 // Get first blood information
-                $firstBlood = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                $firstBloodQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
                     ->where('solved', true)
-                    ->oldest('solved_at')
-                    ->first();
+                    ->oldest('solved_at');
+                    
+                if ($freezeTime) {
+                    $firstBloodQuery->where('solved_at', '<', $freezeTime);
+                }
+                
+                $firstBlood = $firstBloodQuery->first();
                 
                 $isFirstBlood = false;
                 if ($flagSubmission && $firstBlood) {
-                    // Convert to date objects if needed
-                    $solvedAt = $flagSubmission->solved_at instanceof \Carbon\Carbon 
-                        ? $flagSubmission->solved_at 
-                        : \Carbon\Carbon::parse($flagSubmission->solved_at);
-                    
-                    $firstBloodSolvedAt = $firstBlood->solved_at instanceof \Carbon\Carbon 
-                        ? $firstBlood->solved_at 
-                        : \Carbon\Carbon::parse($firstBlood->solved_at);
-                    
-                    $isFirstBlood = $solvedAt->eq($firstBloodSolvedAt);
+                    $isFirstBlood = $flagSubmission->user_uuid === $firstBlood->user_uuid;
                 }
                 
                 if ($challenge->flag_type === 'multiple_individual') {
@@ -875,10 +917,15 @@ class EventChallengeController extends Controller
             // Check if user has first blood for all flags
             $hasAllFirstBlood = true;
             foreach ($challenge->flags as $flag) {
-                $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                $firstSolverQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
                     ->where('solved', true)
-                    ->oldest('solved_at')
-                    ->first();
+                    ->oldest('solved_at');
+                
+                if ($freezeTime) {
+                    $firstSolverQuery->where('solved_at', '<', $freezeTime);
+                }
+                
+                $firstSolver = $firstSolverQuery->first();
                 
                 if (!$firstSolver || $firstSolver->user_uuid !== $user->uuid) {
                     $hasAllFirstBlood = false;
@@ -901,7 +948,9 @@ class EventChallengeController extends Controller
                 'all_flags_solved' => $allFlagsSolved,
                 'points' => $points,
                 'first_blood_points' => $firstBloodPoints,
-                'solved_flags_data' => $solvedFlags
+                'solved_flags_data' => $solvedFlags,
+                'frozen' => $event && $event->freeze,
+                'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null
             ]
         ]);
     }
@@ -1152,35 +1201,70 @@ class EventChallengeController extends Controller
             return $validationResponse;
         }
         
+        // Check if the event is frozen
+        $event = Event::where('uuid', $challenge->event_uuid)->first();
+        $freezeTime = null;
+        if ($event && $event->freeze && $event->freeze_time) {
+            $freezeTime = $event->freeze_time;
+        }
+        
         $user = Auth::user();
         
         $result = [
             'flag_type' => $challenge->flag_type,
             'flag_type_description' => $this->getFlagTypeDescription($challenge->flag_type),
+            'frozen' => $event && $event->freeze,
+            'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null
         ];
         
         // For single flag type
         if ($challenge->flag_type === 'single') {
-            $solved = $challenge->solvedBy()->where('user_uuid', $user->uuid)->exists();
+            // Query with freeze time consideration
+            $submissionQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                ->where('user_uuid', $user->uuid)
+                ->where('solved', true);
+                
+            if ($freezeTime) {
+                $submissionQuery->where('solved_at', '<', $freezeTime);
+            }
+            
+            $submission = $submissionQuery->first();
+            $solved = $submission !== null;
                 
             $result['solved'] = $solved;
+            
+            // Get total solved count with freeze time consideration
+            $solvedCountQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                ->where('solved', true);
+                
+            if ($freezeTime) {
+                $solvedCountQuery->where('solved_at', '<', $freezeTime);
+            }
+            
+            $solvedCount = $solvedCountQuery->count();
             
             // Single flag data
             $result['flag_data'] = [
                 'bytes' => $challenge->bytes,
                 'first_blood_bytes' => $challenge->firstBloodBytes,
-                'solved_count' => $challenge->solvedBy()->count(),
+                'solved_count' => $solvedCount,
             ];
             
             // Add first blood information if solved
             if ($solved) {
-                $firstSolver = $challenge->solvedBy()->orderBy('event_challange_submission.created_at', 'asc')->first();
+                $firstSolverQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                    ->where('solved', true)
+                    ->orderBy('solved_at', 'asc');
                     
-                $result['is_first_blood'] = $firstSolver && $firstSolver->uuid === $user->uuid;
+                if ($freezeTime) {
+                    $firstSolverQuery->where('solved_at', '<', $freezeTime);
+                }
                 
-                $solvedAt = $challenge->solvedBy()->where('user_uuid', $user->uuid)->first()->pivot->solved_at;
+                $firstSolver = $firstSolverQuery->first();
                     
-                $result['solved_at'] = $this->formatInUserTimezone($solvedAt);
+                $result['is_first_blood'] = $firstSolver && $firstSolver->user_uuid === $user->uuid;
+                
+                $result['solved_at'] = $this->formatInUserTimezone($submission->solved_at);
             }
         } 
         // For multiple flag types
@@ -1188,7 +1272,27 @@ class EventChallengeController extends Controller
             $flagsData = [];
             
             foreach ($challenge->flags as $flag) {
-                $isSolved = $flag->solvedBy()->where('user_uuid', $user->uuid)->exists();
+                // Query with freeze time consideration
+                $flagSubmissionQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                    ->where('user_uuid', $user->uuid)
+                    ->where('solved', true);
+                    
+                if ($freezeTime) {
+                    $flagSubmissionQuery->where('solved_at', '<', $freezeTime);
+                }
+                
+                $submission = $flagSubmissionQuery->first();
+                $isSolved = $submission !== null;
+                
+                // Get total solved count with freeze time consideration
+                $solvedCountQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                    ->where('solved', true);
+                    
+                if ($freezeTime) {
+                    $solvedCountQuery->where('solved_at', '<', $freezeTime);
+                }
+                
+                $solvedCount = $solvedCountQuery->count();
                 
                 $flagData = [
                     'id' => $flag->id,
@@ -1197,19 +1301,25 @@ class EventChallengeController extends Controller
                     'bytes' => $flag->bytes,
                     'first_blood_bytes' => $flag->firstBloodBytes,
                     'solved' => $isSolved,
-                    'solved_count' => $flag->solvedBy()->count(),
+                    'solved_count' => $solvedCount,
                 ];
                 
                 // Add additional data if the flag is solved
                 if ($isSolved) {
-                    $flagSubmission = $flag->solvedBy()->where('user_uuid', $user->uuid)->first();
-                        
-                    $flagData['solved_at'] = $this->formatInUserTimezone($flagSubmission->pivot->solved_at);
+                    $flagData['solved_at'] = $this->formatInUserTimezone($submission->solved_at);
                     
                     // Check if this user got first blood for this flag
-                    $firstSolver = $flag->solvedBy()->orderBy('event_challange_flag_submission.solved_at', 'asc')->first();
+                    $firstSolverQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                        ->where('solved', true)
+                        ->orderBy('solved_at', 'asc');
                         
-                    $flagData['is_first_blood'] = $firstSolver && $firstSolver->uuid === $user->uuid;
+                    if ($freezeTime) {
+                        $firstSolverQuery->where('solved_at', '<', $freezeTime);
+                    }
+                    
+                    $firstSolver = $firstSolverQuery->first();
+                        
+                    $flagData['is_first_blood'] = $firstSolver && $firstSolver->user_uuid === $user->uuid;
                 }
                 
                 $flagsData[] = $flagData;
@@ -1270,6 +1380,13 @@ class EventChallengeController extends Controller
             ], 404);
         }
         
+        // Check if the event is frozen
+        $event = Event::where('uuid', $eventUuid)->first();
+        $freezeTime = null;
+        if ($event && $event->freeze && $event->freeze_time) {
+            $freezeTime = $event->freeze_time;
+        }
+        
         // Get all challenges for this event
         $challenges = EventChallange::where('event_uuid', $eventUuid)
             ->with(['flags'])
@@ -1277,60 +1394,72 @@ class EventChallengeController extends Controller
             
         // Get members' data with their solved challenges and flags
         $teamMembers = User::whereIn('uuid', $team->members->pluck('user_uuid'))
-            ->with(['solvedChallenges' => function($query) use ($eventUuid) {
-                $query->where('event_uuid', $eventUuid);
-            }, 'solvedFlags' => function($query) use ($challenges) {
-                $query->whereIn('id', $challenges->flatMap->flags->pluck('id'));
-            }])
             ->get()
-            ->map(function($member) use ($challenges) {
+            ->map(function($member) use ($challenges, $freezeTime) {
                 $totalPoints = 0;
                 $totalFirstBloodPoints = 0;
                 $solvedChallenges = [];
                 
                 // Process single flag type challenges
                 foreach ($challenges->where('flag_type', 'single') as $challenge) {
-                    $submission = $member->solvedChallenges
-                        ->where('id', $challenge->id)
-                        ->first();
+                    // Query with freeze time consideration
+                    $submissionQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                        ->where('user_uuid', $member->uuid)
+                        ->where('solved', true);
                         
+                    if ($freezeTime) {
+                        $submissionQuery->where('solved_at', '<', $freezeTime);
+                    }
+                    
+                    $submission = $submissionQuery->first();
+                    
                     if ($submission) {
                         $points = $challenge->bytes;
                         $firstBloodPoints = 0;
                         
                         // Check if this was first blood
-                        $firstSolver = EventChallangeSubmission::where('event_challange_id', $challenge->id)
+                        $firstSolverQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
                             ->where('solved', true)
-                            ->orderBy('solved_at')
-                            ->first();
+                            ->orderBy('solved_at');
                             
-                            if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
-                                $firstBloodPoints = $challenge->firstBloodBytes;
-                                $points += $firstBloodPoints;
-                            }
+                        if ($freezeTime) {
+                            $firstSolverQuery->where('solved_at', '<', $freezeTime);
+                        }
+                        
+                        $firstSolver = $firstSolverQuery->first();
                             
-                            $totalPoints += $points;
-                            $totalFirstBloodPoints += $firstBloodPoints;
+                        if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                            $firstBloodPoints = $challenge->firstBloodBytes;
+                            $points += $firstBloodPoints;
+                        }
                             
-                            $solvedChallenges[] = [
-                                'id' => $challenge->id,
-                                'title' => $challenge->title,
-                                'type' => 'single',
-                                'points' => $points,
-                                'first_blood_points' => $firstBloodPoints,
-                                'is_first_blood' => $firstBloodPoints > 0,
-                                'solved_at' => $this->formatInUserTimezone($submission->pivot->solved_at)
-                            ];
+                        $totalPoints += $points;
+                        $totalFirstBloodPoints += $firstBloodPoints;
+                        
+                        $solvedChallenges[] = [
+                            'id' => $challenge->id,
+                            'title' => $challenge->title,
+                            'type' => 'single',
+                            'points' => $points,
+                            'first_blood_points' => $firstBloodPoints,
+                            'is_first_blood' => $firstBloodPoints > 0,
+                            'solved_at' => $this->formatInUserTimezone($submission->solved_at)
+                        ];
                     }
                 }
                 
                 // Process multiple flags challenges
                 foreach ($challenges->whereIn('flag_type', ['multiple_all', 'multiple_individual']) as $challenge) {
-                    // Get solved flags for this challenge
-                    $solvedFlags = $member->solvedFlags
-                        ->filter(function($flag) use ($challenge) {
-                            return $challenge->flags->contains('id', $flag->id);
-                        });
+                    // Get solved flags for this challenge with freeze time consideration
+                    $solvedFlagsQuery = EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $challenge->flags->pluck('id'))
+                        ->where('user_uuid', $member->uuid)
+                        ->where('solved', true);
+                        
+                    if ($freezeTime) {
+                        $solvedFlagsQuery->where('solved_at', '<', $freezeTime);
+                    }
+                    
+                    $solvedFlags = $solvedFlagsQuery->get();
                         
                     if ($solvedFlags->isEmpty()) {
                         continue;
@@ -1343,7 +1472,7 @@ class EventChallengeController extends Controller
                     // For multiple_all type
                     if ($challenge->flag_type === 'multiple_all') {
                         // Check if all flags are solved
-                        $allFlagsSolved = $solvedFlags->count() === $challenge->flags->count();
+                        $allFlagsSolved = $solvedFlags->pluck('event_challange_flag_id')->unique()->count() === $challenge->flags->count();
                         
                         if ($allFlagsSolved) {
                             $points = $challenge->bytes;
@@ -1351,10 +1480,15 @@ class EventChallengeController extends Controller
                             // Check if this was first blood for all flags
                             $isFirstBlood = true;
                             foreach ($challenge->flags as $flag) {
-                                $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                                $firstSolverQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
                                     ->where('solved', true)
-                                    ->orderBy('solved_at')
-                                    ->first();
+                                    ->orderBy('solved_at');
+                                    
+                                if ($freezeTime) {
+                                    $firstSolverQuery->where('solved_at', '<', $freezeTime);
+                                }
+                                
+                                $firstSolver = $firstSolverQuery->first();
                                 
                                 if (!$firstSolver || $firstSolver->user_uuid !== $member->uuid) {
                                     $isFirstBlood = false;
@@ -1371,9 +1505,9 @@ class EventChallengeController extends Controller
                             
                             foreach ($solvedFlags as $flag) {
                                 $flagsData[] = [
-                                    'id' => $flag->id,
-                                    'name' => $flag->name,
-                                    'solved_at' => $this->formatInUserTimezone($flag->pivot->solved_at)
+                                    'id' => $flag->event_challange_flag_id,
+                                    'name' => $challenge->flags->firstWhere('id', $flag->event_challange_flag_id)->name,
+                                    'solved_at' => $this->formatInUserTimezone($flag->solved_at)
                                 ];
                             }
                             
@@ -1385,7 +1519,7 @@ class EventChallengeController extends Controller
                                 'first_blood_points' => $challengeFirstBloodPoints,
                                 'is_first_blood' => $isFirstBlood,
                                 'flags' => $flagsData,
-                                'solved_at' => collect($solvedFlags->pluck('pivot.solved_at'))->max()
+                                'solved_at' => $this->formatInUserTimezone($solvedFlags->max('solved_at'))
                             ];
                             
                             $totalPoints += $challengePoints;
@@ -1395,30 +1529,40 @@ class EventChallengeController extends Controller
                     // For multiple_individual type
                     else if ($challenge->flag_type === 'multiple_individual') {
                         foreach ($solvedFlags as $flag) {
-                            $flagPoints = $flag->bytes;
+                            $flagObj = $challenge->flags->firstWhere('id', $flag->event_challange_flag_id);
+                            if (!$flagObj) continue;
+                            
+                            $flagPoints = $flagObj->bytes;
                             $flagFirstBloodPoints = 0;
                             
                             // Check if this was first blood for this flag
-                            $firstSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                            $firstSolverQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->event_challange_flag_id)
                                 ->where('solved', true)
-                                ->orderBy('solved_at')
-                                ->first();
+                                ->orderBy('solved_at');
                                 
+                            if ($freezeTime) {
+                                $firstSolverQuery->where('solved_at', '<', $freezeTime);
+                            }
+                            
+                            $firstSolver = $firstSolverQuery->first();
+                                
+                            $isFirstBlood = false;
                             if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
-                                $flagFirstBloodPoints = $flag->firstBloodBytes;
+                                $flagFirstBloodPoints = $flagObj->firstBloodBytes;
                                 $flagPoints += $flagFirstBloodPoints;
+                                $isFirstBlood = true;
                             }
                             
                             $challengePoints += $flagPoints;
                             $challengeFirstBloodPoints += $flagFirstBloodPoints;
                             
                             $flagsData[] = [
-                                'id' => $flag->id,
-                                'name' => $flag->name,
+                                'id' => $flag->event_challange_flag_id,
+                                'name' => $flagObj->name,
                                 'points' => $flagPoints,
                                 'first_blood_points' => $flagFirstBloodPoints,
-                                'is_first_blood' => $flagFirstBloodPoints > 0,
-                                'solved_at' => $this->formatInUserTimezone($flag->pivot->solved_at)
+                                'is_first_blood' => $isFirstBlood,
+                                'solved_at' => $this->formatInUserTimezone($flag->solved_at)
                             ];
                         }
                         
@@ -1431,7 +1575,7 @@ class EventChallengeController extends Controller
                                 'first_blood_points' => $challengeFirstBloodPoints,
                                 'is_first_blood' => $challengeFirstBloodPoints > 0,
                                 'flags' => $flagsData,
-                                'solved_at' => collect($solvedFlags->pluck('pivot.solved_at'))->min()
+                                'solved_at' => $this->formatInUserTimezone($solvedFlags->min('solved_at'))
                             ];
                             
                             $totalPoints += $challengePoints;
@@ -1464,6 +1608,8 @@ class EventChallengeController extends Controller
                 'members' => $teamMembers,
                 'total_team_points' => $teamMembers->sum('total_points'),
                 'total_challenges' => $challenges->count(),
+                'frozen' => $event && $event->freeze,
+                'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null,
                 'last_updated' => now()->format('c')
             ]
         ]);
