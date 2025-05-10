@@ -140,6 +140,12 @@ class LabController extends Controller
             // Add flag information
             $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
             
+            // Add solved count for this challenge
+            $challenge->solved_count = $challenge->submissions()
+                ->where('solved', true)
+                ->distinct('user_uuid')
+                ->count('user_uuid');
+            
             // Check user solved status and calculate earned bytes
             if ($user) {
                 if ($challenge->flag_type === 'single') {
@@ -264,6 +270,9 @@ class LabController extends Controller
             
             // For multiple flag types, format the flags data
             if ($challenge->flag_type !== 'single' && $challenge->flags) {
+                $challenge->flags_count = $challenge->flags->count();
+                
+                // Only add metadata about flags, not the actual flags
                 $challenge->flags_data = $challenge->flags->map(function ($flag) use ($challenge) {
                     // Get solved count for this specific flag
                     $flagSolvedCount = $challenge->submissions()
@@ -281,8 +290,11 @@ class LabController extends Controller
                         'solved_count' => $flagSolvedCount
                     ];
                 });
-                $challenge->flags_count = $challenge->flags->count();
             }
+            
+            // Remove flag data that should not be exposed
+            unset($challenge->flag);
+            unset($challenge->flags);
         }
 
         $lastChallenge = $challenges->last();
