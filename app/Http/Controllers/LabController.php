@@ -137,6 +137,12 @@ class LabController extends Controller
             unset($challenge->category);
             $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
             
+            // Use a simple count for solved - this is used in multiple places
+            $solvedCount = $challenge->submissions()
+                ->where('solved', true)
+                ->distinct('user_uuid')
+                ->count('user_uuid');
+            
             // Add flag information
             $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
             
@@ -324,49 +330,13 @@ class LabController extends Controller
                 
                 // Only add metadata about flags, not the actual flags
                 $challenge->flags_data = $challenge->flags->map(function ($flag) use ($challenge) {
-                    // For multiple_all type, count users who solved ALL flags, not just this flag
-                    if ($challenge->flag_type === 'multiple_all') {
-                        // Get all unique users who submitted solutions
-                        $uniqueUsers = $challenge->submissions()
-                            ->where('solved', true)
-                            ->select('user_uuid')
-                            ->distinct()
-                            ->get()
-                            ->pluck('user_uuid');
-                        
-                        // Count users who solved all flags
-                        $completeSolverCount = 0;
-                        $flagCount = $challenge->flags->count();
-                        
-                        foreach ($uniqueUsers as $userUuid) {
-                            $userSolvedFlagsCount = $challenge->submissions()
-                                ->where('user_uuid', $userUuid)
-                                ->where('solved', true)
-                                ->distinct('flag')
-                                ->count('flag');
-                            
-                            if ($userSolvedFlagsCount >= $flagCount) {
-                                $completeSolverCount++;
-                            }
-                        }
-                        
-                        return [
-                            'id' => $flag->id,
-                            'name' => $flag->name,
-                            'description' => $flag->description,
-                            'bytes' => $flag->bytes,
-                            'first_blood_bytes' => $flag->firstBloodBytes,
-                            'solved_count' => $completeSolverCount
-                        ];
-                    }
-                    
-                    // For multiple_individual, count solvers per flag
+                    // Get solved count for this specific flag - for ALL flag types
                     $flagSolvedCount = $challenge->submissions()
                         ->where('flag', $flag->flag)
                         ->where('solved', true)
                         ->distinct('user_uuid')
                         ->count('user_uuid');
-                        
+                    
                     return [
                         'id' => $flag->id,
                         'name' => $flag->name,
@@ -447,61 +417,11 @@ class LabController extends Controller
         unset($challenge->category);
         $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
 
-        // Calculate solved count based on flag type
-        $solvedCount = 0;
-        if ($challenge->flag_type === 'single') {
-            // For single flag type, count unique users who solved it
-            $solvedCount = $challenge->submissions()
-                ->where('solved', true)
-                ->distinct('user_uuid')
-                ->count('user_uuid');
-        }
-        else if ($challenge->flag_type === 'multiple_all') {
-            // For multiple_all type, get all flags for this challenge
-            $allFlags = $challenge->flags->pluck('flag')->toArray();
-            $flagCount = count($allFlags);
-            
-            if ($flagCount > 0) {
-                // Get all users who submitted solutions
-                $uniqueUsers = $challenge->submissions()
-                    ->where('solved', true)
-                    ->select('user_uuid')
-                    ->distinct()
-                    ->get()
-                    ->pluck('user_uuid');
-                    
-                // For each user, check if they solved all flags
-                foreach ($uniqueUsers as $userUuid) {
-                    // Get all flags this user has solved
-                    $userFlags = $challenge->submissions()
-                        ->where('user_uuid', $userUuid)
-                        ->where('solved', true)
-                        ->pluck('flag')
-                        ->unique()
-                        ->toArray();
-                    
-                    // Check if user solved all required flags
-                    $solvedAll = true;
-                    foreach ($allFlags as $flag) {
-                        if (!in_array($flag, $userFlags)) {
-                            $solvedAll = false;
-                            break;
-                        }
-                    }
-                    
-                    if ($solvedAll) {
-                        $solvedCount++;
-                    }
-                }
-            }
-        }
-        else if ($challenge->flag_type === 'multiple_individual') {
-            // For multiple_individual, count unique users who solved at least one flag
-            $solvedCount = $challenge->submissions()
-                ->where('solved', true)
-                ->distinct('user_uuid')
-                ->count('user_uuid');
-        }
+        // Use a simple count for solved - this is used in multiple places
+        $solvedCount = $challenge->submissions()
+            ->where('solved', true)
+            ->distinct('user_uuid')
+            ->count('user_uuid');
         
         // Add flag information
         $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
@@ -549,31 +469,6 @@ class LabController extends Controller
             else if ($challenge->flag_type === 'multiple_all') {
                 $flagsData = [];
                 
-                // For multiple_all type, count users who completed ALL flags
-                // Get all unique users who submitted solutions
-                $uniqueUsers = $challenge->submissions()
-                    ->where('solved', true)
-                    ->select('user_uuid')
-                    ->distinct()
-                    ->get()
-                    ->pluck('user_uuid');
-                
-                // Count users who solved all flags
-                $completeSolverCount = 0;
-                $flagCount = $challenge->flags->count();
-                
-                foreach ($uniqueUsers as $userUuid) {
-                    $userSolvedFlagsCount = $challenge->submissions()
-                        ->where('user_uuid', $userUuid)
-                        ->where('solved', true)
-                        ->distinct('flag')
-                        ->count('flag');
-                    
-                    if ($userSolvedFlagsCount >= $flagCount) {
-                        $completeSolverCount++;
-                    }
-                }
-                
                 foreach ($challenge->flags as $flag) {
                     $flagsData[] = [
                         'id' => $flag->id,
@@ -582,7 +477,7 @@ class LabController extends Controller
                         'description'=> $flag->description,
                         'bytes' => $challenge->bytes,
                         'first_blood_bytes' => $challenge->firstBloodBytes,
-                        'solved_count' => $completeSolverCount, // Show users who solved all flags
+                        'solved_count' => $solvedCount,
                         'first_blood' => $firstBlood,
                     ];
                 }
@@ -599,7 +494,8 @@ class LabController extends Controller
                     $flagSolvedCount = $challenge->submissions()
                         ->where('flag', $flag->flag)
                         ->where('solved', true)
-                        ->count();
+                        ->distinct('user_uuid')
+                        ->count('user_uuid');
                     
                     // Get first blood for this flag
                     $flagFirstBlood = null;
@@ -626,7 +522,6 @@ class LabController extends Controller
                         'id' => $flag->id,
                         'name' => $flag->name,
                         'ar_name' => $flag->ar_name,
-
                         'description' => $flag->description,
                         'bytes' => $flag->bytes,
                         'first_blood_bytes' => $flag->firstBloodBytes,
