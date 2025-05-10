@@ -481,15 +481,23 @@ class UserController extends Controller
             ->where('submissions.solved', true)
             ->groupBy('users.uuid')
             ->select('users.uuid')
-            ->selectRaw('SUM(challanges.bytes) as total_bytes')
+            ->selectRaw('SUM(CASE WHEN submissions.is_first_blood = 1 THEN challanges.firstBloodBytes ELSE challanges.bytes END) as total_bytes')
             ->orderByDesc('total_bytes')
             ->get();
             
+        // Debug the rank calculation
         $userRank = 1;
-        foreach ($usersByBytes as $index => $item) {
-            if ($item->uuid === $user->uuid) {
-                $userRank = $index + 1;
-                break;
+        $userTotalBytes = $totalBytes + $totalFirstBloodBytes;
+        
+        // Just set rank to 1 if the user has the highest bytes
+        if ($usersByBytes->count() > 0 && $usersByBytes[0]->uuid === $user->uuid) {
+            $userRank = 1;
+        } else {
+            foreach ($usersByBytes as $index => $item) {
+                if ($item->uuid === $user->uuid) {
+                    $userRank = $index + 1;
+                    break;
+                }
             }
         }
         
