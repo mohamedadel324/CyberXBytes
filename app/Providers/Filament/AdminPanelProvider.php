@@ -22,6 +22,7 @@ use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 use Filament\Navigation\NavigationItem;
 use Filament\Navigation\NavigationBuilder;
 use Illuminate\Database\Eloquent\Model;
+use Filament\Notifications\Notification;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -63,6 +64,22 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->bootingCallback(function () {
+                // Show session flash messages as Filament notifications
+                if (session()->has('error')) {
+                    Notification::make()
+                        ->danger()
+                        ->title(session('error'))
+                        ->send();
+                }
+                
+                if (session()->has('success')) {
+                    Notification::make()
+                        ->success()
+                        ->title(session('success'))
+                        ->send();
+                }
+            })
             ->navigationItems([
                 NavigationItem::make('BackUps')
                     ->url('/admin/backup')
