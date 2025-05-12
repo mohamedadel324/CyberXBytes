@@ -132,6 +132,9 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
 
     Route::get('/ads', function(){
         $ads = Ad::all();
+        foreach($ads as $ad){
+            $ad->image = url('storage/' . $ad->image);
+        }
         return response()->json($ads);
     });
 });
