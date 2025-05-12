@@ -131,7 +131,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/challenge-categories/{uuid}', [ChallangeCategoryController::class, 'show']);
 
     Route::get('/ads', function(){
-        $ads = Ad::all();
+        $ads = Ad::all()->makeHidden('created_at', 'updated_at', 'id');
         foreach($ads as $ad){
             $ad->image = url('storage/' . $ad->image);
         }
