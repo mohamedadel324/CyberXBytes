@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Ad extends Model
 {
-    protected $filalble = [
+    protected $fillable = [
         'image',
         'link'
     ];
