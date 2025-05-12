@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\EventTeamController;
 use App\Http\Controllers\Api\EventChallengeController;
 use App\Http\Controllers\Api\UserChallangeController;
 use App\Http\Controllers\Api\ChallangeCategoryController;
+use App\Models\Ad;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
@@ -128,5 +129,10 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     // Challenge Categories
     Route::get('/challenge-categories', [ChallangeCategoryController::class, 'index']);
     Route::get('/challenge-categories/{uuid}', [ChallangeCategoryController::class, 'show']);
+
+    Route::get('/ads', function(){
+        $ads = Ad::all();
+        return response()->json($ads);
+    });
 });
 
