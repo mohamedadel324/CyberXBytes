@@ -12,7 +12,7 @@
                     <!-- Logo -->
                     <tr>
                         <td align="center" style="padding: 20px 0;">
-                            <img src="{{ asset('logo3.png') }}" alt="Logo" width="60" height="60" style="border-radius: 50%;">
+                            <img src="https://cyberxbytes.com/logo3.png" alt="Logo" width="60" height="60" style="border-radius: 50%;">
                         </td>
                     </tr>
                     
@@ -34,7 +34,7 @@
                                         <table cellpadding="0" cellspacing="0" border="0">
                                             <tr>
                                                 <td align="center" style="padding-bottom: 30px;">
-                                                    <img src="{{ $user->profile_image ?? asset('user.webp') }}" alt="Profile" width="80" height="80" style="border-radius: 50%; object-fit: cover;">
+                                                    <img src="{{ $user->profile_image ?? 'https://cyberxbytes.com/user.webp' }}" alt="Profile" width="80" height="80" style="border-radius: 50%; object-fit: cover;">
                                                 </td>
                                             </tr>
                                         </table>
