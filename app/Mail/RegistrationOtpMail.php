@@ -18,7 +18,7 @@ class RegistrationOtpMail extends Mailable
     {
         $this->user = $user;
         $this->otp = $otp;
-        $this->expiresIn = '2 minutes';
+        $this->expiresIn = '5 minutes';
     }
 
     public function build()

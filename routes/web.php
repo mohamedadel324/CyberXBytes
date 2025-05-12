@@ -24,3 +24,4 @@ Route::prefix('admin')
 
 Route::view('/admin/user/{user}','admin.users.user');
 
+Route::view('/register/otp', 'emails.registration-otp');
