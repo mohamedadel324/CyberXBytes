@@ -19,7 +19,7 @@
                     <!-- Header -->
                     <tr>
                         <td align="center" style="padding: 10px 0;">
-                            <h2 style="color: #ffffff; font-size: 22px; margin: 0;">Hi {{ $user->user_name ?? 'User' }}</h2>
+                            <h2 style="color: #ffffff; font-size: 22px; margin: 0;">{{ $headerText ?? 'Hi ' . ($user->user_name ?? 'User') }}</h2>
                             <p style="color: #ffffff; margin: 5px 0 0 0;">Reset your {{ config('app.name') }} password</p>
                         </td>
                     </tr>

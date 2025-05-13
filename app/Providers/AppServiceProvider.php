@@ -21,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->register(AuthServiceProvider::class);
+        $this->app->singleton(\App\Services\EmailTemplateService::class, function ($app) {
+            return new \App\Services\EmailTemplateService();
+        });
     }
 
     /**

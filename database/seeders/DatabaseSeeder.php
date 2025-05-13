@@ -19,5 +19,7 @@ class DatabaseSeeder extends Seeder
             LabCategorySeeder::class,
             ChallangeCategorySeeder::class,
         ]);
+
+        $this->call(EmailTemplateSeeder::class);
     }
 }

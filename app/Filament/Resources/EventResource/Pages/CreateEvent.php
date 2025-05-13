@@ -76,5 +76,29 @@ class CreateEvent extends CreateRecord
             // Clear the pending challenges
             session()->forget('pending_challenges');
         }
+
+        // Handle freeze functionality
+        try {
+            if ($this->record->freeze) {
+                $eventId = $event->uuid;
+                
+                // Set freeze_time
+                $event->freeze_time = now();
+                $event->save();
+                
+                // Broadcast freeze status
+                \Illuminate\Support\Facades\Http::post('http://213.136.91.209:3000/api/broadcast-freeze?eventId=' . $eventId, [
+                    'freeze' => $this->record->freeze,
+                    'eventId' => $eventId,
+                    'key' => 'cb209876540331298765'
+                ]);
+            }
+        } catch (\Exception $e) {
+            \Filament\Notifications\Notification::make()
+                ->title('Error updating freeze status')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+        }
     }
 }

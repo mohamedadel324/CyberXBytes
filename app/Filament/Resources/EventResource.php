@@ -64,33 +64,33 @@ class EventResource extends BaseResource
                                         ->image()
                                         ->columnSpanFull(),
                                     Forms\Components\Toggle::make('freeze')
-                                    ->label('Freeze')
-                                    ->afterStateUpdated(function ($state, $record) {
-                                        try {
-                                            $eventId = $record->uuid;
+                                    ->label('Freeze'),
+                                    // ->afterStateUpdated(function ($state, $record) {
+                                    //     try {
+                                    //         $eventId = $record->uuid;
                                             
-                                            // Set freeze_time when freezing or set to null when unfreezing
-                                            if ($state) {
-                                                $record->freeze_time = now();
-                                                $record->save();
-                                            } else {
-                                                $record->freeze_time = null;
-                                                $record->save();
-                                            }
+                                    //         // Set freeze_time when freezing or set to null when unfreezing
+                                    //         if ($state) {
+                                    //             $record->freeze_time = now();
+                                    //             $record->save();
+                                    //         } else {
+                                    //             $record->freeze_time = null;
+                                    //             $record->save();
+                                    //         }
                                             
-                                            Http::post('http://213.136.91.209:3000/api/broadcast-freeze?eventId=' . $eventId, [
-                                                'freeze' => $state ? true : false,
-                                                'eventId' => $eventId,
-                                                'key' => 'cb209876540331298765'
-                                            ]);
-                                        } catch (\Exception $e) {
-                                            Notification::make()
-                                                ->title('Error updating freeze status')
-                                                ->body($e->getMessage())
-                                                ->danger()
-                                                ->send();
-                                        }
-                                    }),
+                                    //         Http::post('http://213.136.91.209:3000/api/broadcast-freeze?eventId=' . $eventId, [
+                                    //             'freeze' => $state ? true : false,
+                                    //             'eventId' => $eventId,
+                                    //             'key' => 'cb209876540331298765'
+                                    //         ]);
+                                    //     } catch (\Exception $e) {
+                                    //         Notification::make()
+                                    //             ->title('Error updating freeze status')
+                                    //             ->body($e->getMessage())
+                                    //             ->danger()
+                                    //             ->send();
+                                    //     }
+                                    // }),
                                     Forms\Components\Toggle::make('is_private')
                                         ->label('Private Event')
                                         ->helperText('If enabled, only invited users can register')
