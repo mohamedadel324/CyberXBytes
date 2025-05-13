@@ -71,6 +71,7 @@ class SubmissionResource extends BaseResource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('challange_uuid')
                     ->relationship('challange', 'title')

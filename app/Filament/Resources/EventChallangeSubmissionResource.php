@@ -56,12 +56,9 @@ class EventChallangeSubmissionResource extends BaseResource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')
-                    ->label('ID')
+                Tables\Columns\TextColumn::make('eventChallange.title')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('event_challange_id')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('user_uuid')
+                Tables\Columns\TextColumn::make('user.user_name')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('solved')
                     ->boolean(),
@@ -80,6 +77,8 @@ class EventChallangeSubmissionResource extends BaseResource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('created_at', 'desc')
+
             ->filters([
                 //
             ])
