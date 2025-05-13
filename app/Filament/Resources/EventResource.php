@@ -112,7 +112,13 @@ class EventResource extends BaseResource
                                         ->required()
                                         ->timezone('Africa/Cairo')
                                         ->helperText('Registration closes at this date')
-                                        ->afterOrEqual('registration_start_date'),
+                                        ->afterOrEqual('registration_start_date')
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                            if ($state) {
+                                                $set('team_formation_start_date', $state);
+                                            }
+                                        }),
                                 ])->columns(2),
 
                             Forms\Components\Section::make('Team Formation Period')
@@ -127,7 +133,13 @@ class EventResource extends BaseResource
                                         ->required()
                                         ->timezone('Africa/Cairo')
                                         ->helperText('Team formation closes at this date')
-                                        ->afterOrEqual('team_formation_start_date'),
+                                        ->afterOrEqual('team_formation_start_date')
+                                        ->live()
+                                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                            if ($state) {
+                                                $set('start_date', $state);
+                                            }
+                                        }),
                                 ])->columns(2),
 
                             Forms\Components\Section::make('Event Period')
