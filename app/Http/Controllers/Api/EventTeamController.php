@@ -389,7 +389,8 @@ class EventTeamController extends Controller
         $isFrozen = false;
         $freezeTime = null;
         
-        if ($event->freeze_scoreboard && $event->freeze_time) {
+        // Use the event.freeze and event.freeze_time fields (not freeze_scoreboard)
+        if ($event->freeze && $event->freeze_time) {
             $freezeTime = strtotime($event->freeze_time);
             $isFrozen = $currentTime >= $freezeTime && !$event->freeze_unlocked;
             
@@ -397,7 +398,7 @@ class EventTeamController extends Controller
             \Illuminate\Support\Facades\Log::critical('SCOREBOARD FREEZE CHECK', [
                 'event_uuid' => $eventUuid,
                 'event_name' => $event->name,
-                'freeze_scoreboard_flag' => $event->freeze_scoreboard ? 'YES' : 'NO',
+                'freeze_flag' => $event->freeze ? 'YES' : 'NO', 
                 'freeze_time_raw' => $event->freeze_time,
                 'current_time' => date('Y-m-d H:i:s', $currentTime),
                 'current_timestamp' => $currentTime,
@@ -406,7 +407,7 @@ class EventTeamController extends Controller
                 'time_diff' => $freezeTime ? ($currentTime - $freezeTime) : 'N/A',
                 'is_frozen' => $isFrozen ? 'YES' : 'NO',
                 'freeze_unlocked' => $event->freeze_unlocked ? 'YES' : 'NO',
-                'user_id' => Auth::check() ? Auth::user()->uuid : 'none'
+                'user' => Auth::user()->email
             ]);
         }
         
@@ -698,12 +699,12 @@ class EventTeamController extends Controller
 
         // Build the response data
         $responseData = [
-            'uuid' => $team->uuid,
+            'uuid' => $team->id,
             'name' => $team->name,
             'icon_url' => $team->icon_url,
-            'is_locked' => $team->is_locked,
             'rank' => $teamRank,
             'scoreboard_frozen' => $isFrozen,
+            'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
             'event' => [
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
@@ -793,7 +794,8 @@ class EventTeamController extends Controller
         $isFrozen = false;
         $freezeTime = null;
         
-        if ($event->freeze_scoreboard && $event->freeze_time) {
+        // Use the event.freeze and event.freeze_time fields (not freeze_scoreboard)
+        if ($event->freeze && $event->freeze_time) {
             $freezeTime = strtotime($event->freeze_time);
             $isFrozen = $currentTime >= $freezeTime && !$event->freeze_unlocked;
             
@@ -802,7 +804,7 @@ class EventTeamController extends Controller
                 'team_uuid' => $teamUuid,
                 'event_uuid' => $eventUuid,
                 'event_name' => $event->name,
-                'freeze_scoreboard_flag' => $event->freeze_scoreboard ? 'YES' : 'NO',
+                'freeze_flag' => $event->freeze ? 'YES' : 'NO', 
                 'freeze_time_raw' => $event->freeze_time,
                 'current_time' => date('Y-m-d H:i:s', $currentTime),
                 'current_timestamp' => $currentTime,
@@ -1103,12 +1105,13 @@ class EventTeamController extends Controller
 
         // Build the response data
         $responseData = [
-            'uuid' => $team->uuid,
+            'uuid' => $team->id,
             'name' => $team->name,
             'icon_url' => $team->icon_url,
             'is_locked' => $team->is_locked,
             'rank' => $teamRank,
             'scoreboard_frozen' => $isFrozen,
+            'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
             'event' => [
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
@@ -1353,7 +1356,7 @@ class EventTeamController extends Controller
         if ($team->members->count() >= $team->event->team_maximum_members) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Team is already at maximum capacity'
+                'message' => 'Team is full'
             ], 400);
         }
 
