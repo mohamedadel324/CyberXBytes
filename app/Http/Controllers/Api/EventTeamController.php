@@ -412,28 +412,18 @@ class EventTeamController extends Controller
         }
         
         // Create a cut-off date string formatted for database queries
-        $freezeDateStr = $isFrozen && $freezeTime ? date('Y-m-d H:i:s', $freezeTime) : null;
+        $freezeDateStr = $freezeTime ? date('Y-m-d H:i:s', $freezeTime) : null;
         
-        // Get team ranking - first get all teams with their points
+        // Get all team data including submissions after freeze time to handle masking
         $allTeams = EventTeam::where('event_uuid', $eventUuid)
-            ->with(['members.eventSubmissions' => function($query) use ($eventUuid, $isFrozen, $freezeDateStr) {
+            ->with(['members.eventSubmissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
-                
-                // If frozen, only include submissions before freeze time
-                if ($isFrozen && $freezeDateStr) {
-                    $query->where('solved_at', '<', $freezeDateStr);
-                }
-            }, 'members.flagSubmissions' => function($query) use ($eventUuid, $isFrozen, $freezeDateStr) {
+            }, 'members.flagSubmissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallangeFlag.eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
-                
-                // If frozen, only include submissions before freeze time
-                if ($isFrozen && $freezeDateStr) {
-                    $query->where('solved_at', '<', $freezeDateStr);
-                }
             }])
             ->get();
             
@@ -445,8 +435,10 @@ class EventTeamController extends Controller
             foreach ($teamItem->members as $member) {
                 // Process challenge submissions
                 foreach ($member->eventSubmissions as $submission) {
-                    // If frozen, skip submissions after freeze time
-                    if ($isFrozen && $freezeTime && strtotime($submission->solved_at) >= $freezeTime) {
+                    $isBeforeFreezeTime = !$freezeTime || strtotime($submission->solved_at) < $freezeTime;
+                    
+                    // If frozen, only count points for submissions before freeze time
+                    if ($isFrozen && !$isBeforeFreezeTime) {
                         continue;
                     }
                     
@@ -459,7 +451,7 @@ class EventTeamController extends Controller
                             ->orderBy('solved_at')
                             ->first();
                             
-                        if (!$isFrozen && $firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                        if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
                             $points += $submission->eventChallange->firstBloodBytes ?? 0;
                         } else {
                             $points += $submission->eventChallange->bytes ?? 0;
@@ -469,8 +461,10 @@ class EventTeamController extends Controller
 
                 // Process flag submissions
                 foreach ($member->flagSubmissions as $flagSubmission) {
-                    // If frozen, skip submissions after freeze time
-                    if ($isFrozen && $freezeTime && strtotime($flagSubmission->solved_at) >= $freezeTime) {
+                    $isBeforeFreezeTime = !$freezeTime || strtotime($flagSubmission->solved_at) < $freezeTime;
+                    
+                    // If frozen, only count points for submissions before freeze time
+                    if ($isFrozen && !$isBeforeFreezeTime) {
                         continue;
                     }
                     
@@ -483,7 +477,7 @@ class EventTeamController extends Controller
                             ->orderBy('solved_at')
                             ->first();
                             
-                        if (!$isFrozen && $firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                        if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
                             $points += $flagSubmission->eventChallangeFlag->firstBloodBytes ?? 0;
                         } else {
                             $points += $flagSubmission->eventChallangeFlag->bytes ?? 0;
@@ -506,40 +500,34 @@ class EventTeamController extends Controller
         
         // Get members with their challenge completions and bytes
         $membersData = $team->members->map(function ($member) use ($eventUuid, $isFrozen, $freezeTime, $freezeDateStr) {
-            // Get all solved challenges for this member
+            // Get all solved challenges for this member - including after freeze time
             $solvedChallenges = [];
             $totalBytes = 0;
             $totalFirstBloodBytes = 0;
+            $totalMaskedBytes = 0;
             
-            // Get regular challenge completions
+            // Get all challenge completions
             $challengeCompletionsQuery = DB::table('event_challange_submissions')
                 ->join('event_challanges', 'event_challange_submissions.event_challange_id', '=', 'event_challanges.id')
                 ->where('event_challanges.event_uuid', $eventUuid)
                 ->where('event_challange_submissions.user_uuid', $member->uuid)
                 ->where('event_challange_submissions.solved', true);
-                
-            // If frozen, only include submissions before freeze time
-            if ($isFrozen && $freezeDateStr) {
-                $challengeCompletionsQuery->where('event_challange_submissions.solved_at', '<', $freezeDateStr);
-            }
             
             $challengeCompletions = $challengeCompletionsQuery->select(
-                    'event_challanges.id as challenge_uuid',
-                    'event_challanges.title as challenge_name',
-                    'event_challange_submissions.solved_at as completed_at',
-                    'event_challanges.bytes as normal_bytes',
-                    'event_challanges.firstBloodBytes as first_blood_bytes'
+                'event_challanges.id as challenge_uuid',
+                'event_challanges.title as challenge_name',
+                'event_challange_submissions.solved_at as completed_at',
+                'event_challanges.bytes as normal_bytes',
+                'event_challanges.firstBloodBytes as first_blood_bytes'
             )->get();
                 
             foreach ($challengeCompletions as $completion) {
+                $isBeforeFreezeTime = !$freezeTime || strtotime($completion->completed_at) < $freezeTime;
+                
                 // Check if this was first blood
                 $firstSolverQuery = EventChallangeSubmission::where('event_challange_id', $completion->challenge_uuid)
                     ->where('solved', true)
                     ->orderBy('solved_at');
-                    
-                if ($isFrozen && $freezeDateStr) {
-                    $firstSolverQuery->where('solved_at', '<', $freezeDateStr);
-                }
                 
                 $firstSolver = $firstSolverQuery->first();
                 $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $member->uuid;
@@ -547,19 +535,38 @@ class EventTeamController extends Controller
                 // If it's first blood, use first_blood_bytes, otherwise use normal_bytes
                 $bytes = $isFirstBlood ? 0 : $completion->normal_bytes;
                 $firstBloodBytes = $isFirstBlood ? $completion->first_blood_bytes : 0;
+                $totalPoints = $bytes + $firstBloodBytes;
                 
-                $solvedChallenges[] = [
-                    'challenge_uuid' => $completion->challenge_uuid,
-                    'challenge_name' => $completion->challenge_name,
-                    'completed_at' => $completion->completed_at,
-                    'is_first_blood' => $isFirstBlood,
-                    'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
-                    'normal_bytes' => $bytes,
-                    'first_blood_bytes' => $firstBloodBytes
-                ];
-                
-                $totalBytes += $bytes;
-                $totalFirstBloodBytes += $firstBloodBytes;
+                if ($isFrozen && !$isBeforeFreezeTime) {
+                    // Mask challenge details after freeze time
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => '********',
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => false,
+                        'bytes' => '****',
+                        'normal_bytes' => '****',
+                        'first_blood_bytes' => '****',
+                        'masked' => true
+                    ];
+                    
+                    // Only count bytes for ranking if before freeze time
+                    $totalMaskedBytes += $totalPoints;
+                } else {
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => $completion->challenge_name,
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => $isFirstBlood,
+                        'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
+                        'normal_bytes' => $bytes,
+                        'first_blood_bytes' => $firstBloodBytes,
+                        'masked' => false
+                    ];
+                    
+                    $totalBytes += $bytes;
+                    $totalFirstBloodBytes += $firstBloodBytes;
+                }
             }
             
             // Get flag challenge completions
@@ -569,31 +576,24 @@ class EventTeamController extends Controller
                 ->where('event_challanges.event_uuid', $eventUuid)
                 ->where('event_challange_flag_submissions.user_uuid', $member->uuid)
                 ->where('event_challange_flag_submissions.solved', true);
-                
-            // If frozen, only include submissions before freeze time
-            if ($isFrozen && $freezeDateStr) {
-                $flagCompletionsQuery->where('event_challange_flag_submissions.solved_at', '<', $freezeDateStr);
-            }
             
             $flagCompletions = $flagCompletionsQuery->select(
-                    'event_challanges.id as challenge_uuid',
-                    'event_challanges.title as challenge_name',
-                    'event_challange_flag_submissions.solved_at as completed_at',
-                    'event_challange_flags.bytes as normal_bytes',
-                    'event_challange_flags.firstBloodBytes as first_blood_bytes',
-                    'event_challange_flags.id as flag_id',
-                    'event_challange_flags.name as flag_name'
+                'event_challanges.id as challenge_uuid',
+                'event_challanges.title as challenge_name',
+                'event_challange_flag_submissions.solved_at as completed_at',
+                'event_challange_flags.bytes as normal_bytes',
+                'event_challange_flags.firstBloodBytes as first_blood_bytes',
+                'event_challange_flags.id as flag_id',
+                'event_challange_flags.name as flag_name'
             )->get();
                 
             foreach ($flagCompletions as $completion) {
+                $isBeforeFreezeTime = !$freezeTime || strtotime($completion->completed_at) < $freezeTime;
+                
                 // Check if this was first blood for the flag
                 $firstSolverQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $completion->flag_id)
                     ->where('solved', true)
                     ->orderBy('solved_at');
-                    
-                if ($isFrozen && $freezeDateStr) {
-                    $firstSolverQuery->where('solved_at', '<', $freezeDateStr);
-                }
                 
                 $firstSolver = $firstSolverQuery->first();
                 $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $member->uuid;
@@ -601,19 +601,38 @@ class EventTeamController extends Controller
                 // If it's first blood, use first_blood_bytes, otherwise use normal_bytes
                 $bytes = $isFirstBlood ? 0 : $completion->normal_bytes;
                 $firstBloodBytes = $isFirstBlood ? $completion->first_blood_bytes : 0;
+                $totalPoints = $bytes + $firstBloodBytes;
                 
-                $solvedChallenges[] = [
-                    'challenge_uuid' => $completion->challenge_uuid,
-                    'challenge_name' => $completion->challenge_name . ' - ' . $completion->flag_name,
-                    'completed_at' => $completion->completed_at,
-                    'is_first_blood' => $isFirstBlood,
-                    'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
-                    'normal_bytes' => $bytes,
-                    'first_blood_bytes' => $firstBloodBytes
-                ];
-                
-                $totalBytes += $bytes;
-                $totalFirstBloodBytes += $firstBloodBytes;
+                if ($isFrozen && !$isBeforeFreezeTime) {
+                    // Mask challenge details after freeze time
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => '******** - ********',
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => false,
+                        'bytes' => '****',
+                        'normal_bytes' => '****',
+                        'first_blood_bytes' => '****',
+                        'masked' => true
+                    ];
+                    
+                    // Only count bytes for ranking if before freeze time
+                    $totalMaskedBytes += $totalPoints;
+                } else {
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => $completion->challenge_name . ' - ' . $completion->flag_name,
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => $isFirstBlood,
+                        'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
+                        'normal_bytes' => $bytes,
+                        'first_blood_bytes' => $firstBloodBytes,
+                        'masked' => false
+                    ];
+                    
+                    $totalBytes += $bytes;
+                    $totalFirstBloodBytes += $firstBloodBytes;
+                }
             }
             
             return [
@@ -622,6 +641,7 @@ class EventTeamController extends Controller
                 'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
                 'role' => $member->pivot->role,
                 'total_bytes' => $totalBytes + $totalFirstBloodBytes,
+                'total_masked_bytes' => $totalMaskedBytes,
                 'challenge_completions' => $solvedChallenges
             ];
         });
@@ -636,19 +656,19 @@ class EventTeamController extends Controller
             ->where('event_challanges.event_uuid', $eventUuid)
             ->where('event_challange_submissions.solved', true);
             
-        // If frozen, only include submissions before freeze time
+        // If frozen, only include submissions before freeze time for first blood
         if ($isFrozen && $freezeDateStr) {
             $regularFirstBloodsQuery->where('event_challange_submissions.solved_at', '<', $freezeDateStr);
         }
         
         $regularFirstBloods = $regularFirstBloodsQuery->select(
-                'event_challanges.id as challenge_uuid',
-                'event_challanges.title as challenge_name',
-                'event_challange_submissions.user_uuid',
-                'event_challange_submissions.solved_at as first_blood_time',
-                DB::raw('ROW_NUMBER() OVER (PARTITION BY event_challange_submissions.event_challange_id ORDER BY event_challange_submissions.solved_at ASC) as row_num')
-            )
-            ->orderBy('event_challange_submissions.solved_at')
+            'event_challanges.id as challenge_uuid',
+            'event_challanges.title as challenge_name',
+            'event_challange_submissions.user_uuid',
+            'event_challange_submissions.solved_at as first_blood_time',
+            DB::raw('ROW_NUMBER() OVER (PARTITION BY event_challange_submissions.event_challange_id ORDER BY event_challange_submissions.solved_at ASC) as row_num')
+        )
+        ->orderBy('event_challange_submissions.solved_at')
             ->get();
             
         foreach ($regularFirstBloods as $firstBlood) {
@@ -670,21 +690,21 @@ class EventTeamController extends Controller
             ->where('event_challanges.event_uuid', $eventUuid)
             ->where('event_challange_flag_submissions.solved', true);
             
-        // If frozen, only include submissions before freeze time
+        // If frozen, only include submissions before freeze time for first blood
         if ($isFrozen && $freezeDateStr) {
             $flagFirstBloodsQuery->where('event_challange_flag_submissions.solved_at', '<', $freezeDateStr);
         }
         
         $flagFirstBloods = $flagFirstBloodsQuery->select(
-                'event_challanges.id as challenge_uuid',
-                'event_challanges.title as challenge_name',
-                'event_challange_flags.name as flag_name',
-                'event_challange_flag_submissions.user_uuid',
-                'event_challange_flag_submissions.solved_at as first_blood_time',
-                DB::raw('ROW_NUMBER() OVER (PARTITION BY event_challange_flag_submissions.event_challange_flag_id ORDER BY event_challange_flag_submissions.solved_at ASC) as row_num')
-            )
-            ->orderBy('event_challange_flag_submissions.solved_at')
-            ->get();
+            'event_challanges.id as challenge_uuid',
+            'event_challanges.title as challenge_name',
+            'event_challange_flags.name as flag_name',
+            'event_challange_flag_submissions.user_uuid',
+            'event_challange_flag_submissions.solved_at as first_blood_time',
+            DB::raw('ROW_NUMBER() OVER (PARTITION BY event_challange_flag_submissions.event_challange_flag_id ORDER BY event_challange_flag_submissions.solved_at ASC) as row_num')
+        )
+        ->orderBy('event_challange_flag_submissions.solved_at')
+        ->get();
             
         foreach ($flagFirstBloods as $firstBlood) {
             if ($firstBlood->row_num == 1) {
@@ -699,43 +719,46 @@ class EventTeamController extends Controller
 
         // Build the response data
         $responseData = [
-                'uuid' => $team->id,
-                'name' => $team->name,
-                'icon_url' => $team->icon_url,
-                'rank' => $teamRank,
+            'uuid' => $team->id,
+            'name' => $team->name,
+            'icon_url' => $team->icon_url,
+            'rank' => $teamRank,
             'scoreboard_frozen' => $isFrozen,
             'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
-                'event' => [
-                    'team_minimum_members' => $event->team_minimum_members,
-                    'team_maximum_members' => $event->team_maximum_members,
-                ],
-                'members' => $membersData,
-                'first_blood_times' => $firstBloodTimes,
-                'statistics' => [
-                    'total_bytes' => $membersData->sum('total_bytes'),
-                    'total_first_blood_count' => collect($firstBloodTimes)->filter(function($item) use ($team) {
-                        return $team->members->pluck('uuid')->contains($item['user_uuid']);
-                    })->count(),
-                    'total_challenges_solved' => collect($membersData)->flatMap(function($member) {
-                        return collect($member['challenge_completions'])->pluck('challenge_uuid')->unique();
-                    })->unique()->count(),
-                    'member_stats' => $membersData->map(function($member) {
-                        return [
-                            'username' => $member['username'],
-                            'total_bytes' => $member['total_bytes'],
-                            'challenges_solved' => count($member['challenge_completions']),
-                            'first_blood_count' => collect($member['challenge_completions'])->where('is_first_blood', true)->count(),
-                            'normal_bytes' => collect($member['challenge_completions'])->where('is_first_blood', false)->sum('bytes'),
-                            'first_blood_bytes' => collect($member['challenge_completions'])->where('is_first_blood', true)->sum('bytes')
-                        ];
-                    }),
-                    'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
-                ]
+            'event' => [
+                'team_minimum_members' => $event->team_minimum_members,
+                'team_maximum_members' => $event->team_maximum_members,
+            ],
+            'members' => $membersData,
+            'first_blood_times' => $firstBloodTimes,
+            'statistics' => [
+                'total_bytes' => $membersData->sum('total_bytes'),
+                'total_masked_bytes' => $membersData->sum('total_masked_bytes'),
+                'total_first_blood_count' => collect($firstBloodTimes)->filter(function($item) use ($team) {
+                    return $team->members->pluck('uuid')->contains($item['user_uuid']);
+                })->count(),
+                'total_challenges_solved' => collect($membersData)->flatMap(function($member) {
+                    return collect($member['challenge_completions'])->pluck('challenge_uuid')->unique();
+                })->unique()->count(),
+                'member_stats' => $membersData->map(function($member) {
+                    $normalCompletions = collect($member['challenge_completions'])->where('masked', false);
+                    return [
+                        'username' => $member['username'],
+                        'total_bytes' => $member['total_bytes'],
+                        'total_masked_bytes' => $member['total_masked_bytes'],
+                        'challenges_solved' => count($member['challenge_completions']),
+                        'first_blood_count' => $normalCompletions->where('is_first_blood', true)->count(),
+                        'normal_bytes' => $normalCompletions->where('is_first_blood', false)->sum('bytes'),
+                        'first_blood_bytes' => $normalCompletions->where('is_first_blood', true)->sum('bytes')
+                    ];
+                }),
+                'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
+            ]
         ];
         
         // If frozen, add a freezing message
         if ($isFrozen) {
-            $responseData['freeze_message'] = 'Scoreboard is frozen. Submissions after freeze time are not shown.';
+            $responseData['freeze_message'] = 'Scoreboard is frozen. Challenge details and points after the freeze time are masked.';
         }
 
         return response()->json([
@@ -790,30 +813,20 @@ class EventTeamController extends Controller
         }
         
         // Create a cut-off date string formatted for database queries
-        $freezeDateStr = $isFrozen && $freezeTime ? date('Y-m-d H:i:s', $freezeTime) : null;
+        $freezeDateStr = $freezeTime ? date('Y-m-d H:i:s', $freezeTime) : null;
         
-        // Get team ranking - first get all teams with their points
+        // Get all team data including submissions after freeze time
         $allTeams = EventTeam::where('event_uuid', $eventUuid)
-            ->with(['members.eventSubmissions' => function($query) use ($eventUuid, $isFrozen, $freezeDateStr) {
+            ->with(['members.eventSubmissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
-                
-                // If frozen, only include submissions before freeze time
-                if ($isFrozen && $freezeDateStr) {
-                    $query->where('solved_at', '<', $freezeDateStr);
-                }
-            }, 'members.flagSubmissions' => function($query) use ($eventUuid, $isFrozen, $freezeDateStr) {
+            }, 'members.flagSubmissions' => function($query) use ($eventUuid) {
                 $query->whereHas('eventChallangeFlag.eventChallange', function($q) use ($eventUuid) {
                     $q->where('event_uuid', $eventUuid);
                 })->where('solved', true);
-                
-                // If frozen, only include submissions before freeze time
-                if ($isFrozen && $freezeDateStr) {
-                    $query->where('solved_at', '<', $freezeDateStr);
-                }
             }])
-                ->get();
+            ->get();
                 
         // Calculate points for each team
         $teamsWithPoints = $allTeams->map(function($teamItem) use ($isFrozen, $freezeTime) {
@@ -823,8 +836,10 @@ class EventTeamController extends Controller
             foreach ($teamItem->members as $member) {
                 // Process challenge submissions
                 foreach ($member->eventSubmissions as $submission) {
-                    // If frozen, skip submissions after freeze time
-                    if ($isFrozen && $freezeTime && strtotime($submission->solved_at) >= $freezeTime) {
+                    $isBeforeFreezeTime = !$freezeTime || strtotime($submission->solved_at) < $freezeTime;
+                    
+                    // If frozen, only count points for submissions before freeze time
+                    if ($isFrozen && !$isBeforeFreezeTime) {
                         continue;
                     }
                     
@@ -837,7 +852,7 @@ class EventTeamController extends Controller
                             ->orderBy('solved_at')
                             ->first();
                             
-                        if (!$isFrozen && $firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                        if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
                             $points += $submission->eventChallange->firstBloodBytes ?? 0;
                         } else {
                             $points += $submission->eventChallange->bytes ?? 0;
@@ -847,8 +862,10 @@ class EventTeamController extends Controller
 
                 // Process flag submissions
                 foreach ($member->flagSubmissions as $flagSubmission) {
-                    // If frozen, skip submissions after freeze time
-                    if ($isFrozen && $freezeTime && strtotime($flagSubmission->solved_at) >= $freezeTime) {
+                    $isBeforeFreezeTime = !$freezeTime || strtotime($flagSubmission->solved_at) < $freezeTime;
+                    
+                    // If frozen, only count points for submissions before freeze time
+                    if ($isFrozen && !$isBeforeFreezeTime) {
                         continue;
                     }
                     
@@ -861,7 +878,7 @@ class EventTeamController extends Controller
                             ->orderBy('solved_at')
                             ->first();
                             
-                        if (!$isFrozen && $firstSolver && $firstSolver->user_uuid === $member->uuid) {
+                        if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
                             $points += $flagSubmission->eventChallangeFlag->firstBloodBytes ?? 0;
                         } else {
                             $points += $flagSubmission->eventChallangeFlag->bytes ?? 0;
@@ -884,22 +901,18 @@ class EventTeamController extends Controller
         
         // Get members with their challenge completions and bytes
         $membersData = $team->members->map(function ($member) use ($eventUuid, $isFrozen, $freezeTime, $freezeDateStr) {
-            // Get all solved challenges for this member
+            // Get all solved challenges for this member - including after freeze time
             $solvedChallenges = [];
             $totalBytes = 0;
             $totalFirstBloodBytes = 0;
+            $totalMaskedBytes = 0;
             
-            // Get regular challenge completions
+            // Get all challenge completions
             $challengeCompletionsQuery = DB::table('event_challange_submissions')
                 ->join('event_challanges', 'event_challange_submissions.event_challange_id', '=', 'event_challanges.id')
                 ->where('event_challanges.event_uuid', $eventUuid)
                 ->where('event_challange_submissions.user_uuid', $member->uuid)
                 ->where('event_challange_submissions.solved', true);
-                
-            // If frozen, only include submissions before freeze time
-            if ($isFrozen && $freezeDateStr) {
-                $challengeCompletionsQuery->where('event_challange_submissions.solved_at', '<', $freezeDateStr);
-            }
             
             $challengeCompletions = $challengeCompletionsQuery->select(
                 'event_challanges.id as challenge_uuid',
@@ -910,14 +923,12 @@ class EventTeamController extends Controller
             )->get();
                 
             foreach ($challengeCompletions as $completion) {
+                $isBeforeFreezeTime = !$freezeTime || strtotime($completion->completed_at) < $freezeTime;
+                
                 // Check if this was first blood
                 $firstSolverQuery = EventChallangeSubmission::where('event_challange_id', $completion->challenge_uuid)
                     ->where('solved', true)
                     ->orderBy('solved_at');
-                    
-                if ($isFrozen && $freezeDateStr) {
-                    $firstSolverQuery->where('solved_at', '<', $freezeDateStr);
-                }
                 
                 $firstSolver = $firstSolverQuery->first();
                 $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $member->uuid;
@@ -925,19 +936,38 @@ class EventTeamController extends Controller
                 // If it's first blood, use first_blood_bytes, otherwise use normal_bytes
                 $bytes = $isFirstBlood ? 0 : $completion->normal_bytes;
                 $firstBloodBytes = $isFirstBlood ? $completion->first_blood_bytes : 0;
+                $totalPoints = $bytes + $firstBloodBytes;
                 
-                $solvedChallenges[] = [
-                    'challenge_uuid' => $completion->challenge_uuid,
-                    'challenge_name' => $completion->challenge_name,
-                    'completed_at' => $completion->completed_at,
-                    'is_first_blood' => $isFirstBlood,
-                    'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
-                    'normal_bytes' => $bytes,
-                    'first_blood_bytes' => $firstBloodBytes
-                ];
-                
-                $totalBytes += $bytes;
-                $totalFirstBloodBytes += $firstBloodBytes;
+                if ($isFrozen && !$isBeforeFreezeTime) {
+                    // Mask challenge details after freeze time
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => '********',
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => false,
+                        'bytes' => '****',
+                        'normal_bytes' => '****',
+                        'first_blood_bytes' => '****',
+                        'masked' => true
+                    ];
+                    
+                    // Only count bytes for ranking if before freeze time
+                    $totalMaskedBytes += $totalPoints;
+                } else {
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => $completion->challenge_name,
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => $isFirstBlood,
+                        'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
+                        'normal_bytes' => $bytes,
+                        'first_blood_bytes' => $firstBloodBytes,
+                        'masked' => false
+                    ];
+                    
+                    $totalBytes += $bytes;
+                    $totalFirstBloodBytes += $firstBloodBytes;
+                }
             }
             
             // Get flag challenge completions
@@ -947,11 +977,6 @@ class EventTeamController extends Controller
                 ->where('event_challanges.event_uuid', $eventUuid)
                 ->where('event_challange_flag_submissions.user_uuid', $member->uuid)
                 ->where('event_challange_flag_submissions.solved', true);
-                
-            // If frozen, only include submissions before freeze time
-            if ($isFrozen && $freezeDateStr) {
-                $flagCompletionsQuery->where('event_challange_flag_submissions.solved_at', '<', $freezeDateStr);
-            }
             
             $flagCompletions = $flagCompletionsQuery->select(
                 'event_challanges.id as challenge_uuid',
@@ -964,14 +989,12 @@ class EventTeamController extends Controller
             )->get();
                 
             foreach ($flagCompletions as $completion) {
+                $isBeforeFreezeTime = !$freezeTime || strtotime($completion->completed_at) < $freezeTime;
+                
                 // Check if this was first blood for the flag
                 $firstSolverQuery = EventChallangeFlagSubmission::where('event_challange_flag_id', $completion->flag_id)
                     ->where('solved', true)
                     ->orderBy('solved_at');
-                    
-                if ($isFrozen && $freezeDateStr) {
-                    $firstSolverQuery->where('solved_at', '<', $freezeDateStr);
-                }
                 
                 $firstSolver = $firstSolverQuery->first();
                 $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $member->uuid;
@@ -979,19 +1002,38 @@ class EventTeamController extends Controller
                 // If it's first blood, use first_blood_bytes, otherwise use normal_bytes
                 $bytes = $isFirstBlood ? 0 : $completion->normal_bytes;
                 $firstBloodBytes = $isFirstBlood ? $completion->first_blood_bytes : 0;
+                $totalPoints = $bytes + $firstBloodBytes;
                 
-                $solvedChallenges[] = [
-                    'challenge_uuid' => $completion->challenge_uuid,
-                    'challenge_name' => $completion->challenge_name . ' - ' . $completion->flag_name,
-                    'completed_at' => $completion->completed_at,
-                    'is_first_blood' => $isFirstBlood,
-                    'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
-                    'normal_bytes' => $bytes,
-                    'first_blood_bytes' => $firstBloodBytes
-                ];
-                
-                $totalBytes += $bytes;
-                $totalFirstBloodBytes += $firstBloodBytes;
+                if ($isFrozen && !$isBeforeFreezeTime) {
+                    // Mask challenge details after freeze time
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => '******** - ********',
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => false,
+                        'bytes' => '****',
+                        'normal_bytes' => '****',
+                        'first_blood_bytes' => '****',
+                        'masked' => true
+                    ];
+                    
+                    // Only count bytes for ranking if before freeze time
+                    $totalMaskedBytes += $totalPoints;
+                } else {
+                    $solvedChallenges[] = [
+                        'challenge_uuid' => $completion->challenge_uuid,
+                        'challenge_name' => $completion->challenge_name . ' - ' . $completion->flag_name,
+                        'completed_at' => $completion->completed_at,
+                        'is_first_blood' => $isFirstBlood,
+                        'bytes' => $isFirstBlood ? $firstBloodBytes : $bytes,
+                        'normal_bytes' => $bytes,
+                        'first_blood_bytes' => $firstBloodBytes,
+                        'masked' => false
+                    ];
+                    
+                    $totalBytes += $bytes;
+                    $totalFirstBloodBytes += $firstBloodBytes;
+                }
             }
             
             return [
@@ -1000,6 +1042,7 @@ class EventTeamController extends Controller
                 'profile_image' => $member->profile_image ? url('storage/' . $member->profile_image) : null,
                 'role' => $member->pivot->role,
                 'total_bytes' => $totalBytes + $totalFirstBloodBytes,
+                'total_masked_bytes' => $totalMaskedBytes,
                 'challenge_completions' => $solvedChallenges
             ];
         });
@@ -1014,7 +1057,7 @@ class EventTeamController extends Controller
             ->where('event_challanges.event_uuid', $eventUuid)
             ->where('event_challange_submissions.solved', true);
             
-        // If frozen, only include submissions before freeze time
+        // If frozen, only include submissions before freeze time for first blood
         if ($isFrozen && $freezeDateStr) {
             $regularFirstBloodsQuery->where('event_challange_submissions.solved_at', '<', $freezeDateStr);
         }
@@ -1048,7 +1091,7 @@ class EventTeamController extends Controller
             ->where('event_challanges.event_uuid', $eventUuid)
             ->where('event_challange_flag_submissions.solved', true);
             
-        // If frozen, only include submissions before freeze time
+        // If frozen, only include submissions before freeze time for first blood
         if ($isFrozen && $freezeDateStr) {
             $flagFirstBloodsQuery->where('event_challange_flag_submissions.solved_at', '<', $freezeDateStr);
         }
@@ -1077,21 +1120,22 @@ class EventTeamController extends Controller
 
         // Build the response data
         $responseData = [
-                    'uuid' => $team->id,
-                    'name' => $team->name,
+            'uuid' => $team->id,
+            'name' => $team->name,
             'icon_url' => $team->icon_url,
             'is_locked' => $team->is_locked,
-                    'rank' => $teamRank,
+            'rank' => $teamRank,
             'scoreboard_frozen' => $isFrozen,
             'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
-                'event' => [
-                    'team_minimum_members' => $event->team_minimum_members,
-                    'team_maximum_members' => $event->team_maximum_members,
-                ],
+            'event' => [
+                'team_minimum_members' => $event->team_minimum_members,
+                'team_maximum_members' => $event->team_maximum_members,
+            ],
             'members' => $membersData,
             'first_blood_times' => $firstBloodTimes,
             'statistics' => [
                 'total_bytes' => $membersData->sum('total_bytes'),
+                'total_masked_bytes' => $membersData->sum('total_masked_bytes'),
                 'total_first_blood_count' => collect($firstBloodTimes)->filter(function($item) use ($team) {
                     return $team->members->pluck('uuid')->contains($item['user_uuid']);
                 })->count(),
@@ -1099,13 +1143,15 @@ class EventTeamController extends Controller
                     return collect($member['challenge_completions'])->pluck('challenge_uuid')->unique();
                 })->unique()->count(),
                 'member_stats' => $membersData->map(function($member) {
+                    $normalCompletions = collect($member['challenge_completions'])->where('masked', false);
                     return [
                         'username' => $member['username'],
                         'total_bytes' => $member['total_bytes'],
+                        'total_masked_bytes' => $member['total_masked_bytes'],
                         'challenges_solved' => count($member['challenge_completions']),
-                        'first_blood_count' => collect($member['challenge_completions'])->where('is_first_blood', true)->count(),
-                        'normal_bytes' => collect($member['challenge_completions'])->where('is_first_blood', false)->sum('bytes'),
-                        'first_blood_bytes' => collect($member['challenge_completions'])->where('is_first_blood', true)->sum('bytes')
+                        'first_blood_count' => $normalCompletions->where('is_first_blood', true)->count(),
+                        'normal_bytes' => $normalCompletions->where('is_first_blood', false)->sum('bytes'),
+                        'first_blood_bytes' => $normalCompletions->where('is_first_blood', true)->sum('bytes')
                     ];
                 }),
                 'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
@@ -1114,7 +1160,7 @@ class EventTeamController extends Controller
         
         // If frozen, add a freezing message
         if ($isFrozen) {
-            $responseData['freeze_message'] = 'Scoreboard is frozen. Submissions after freeze time are not shown.';
+            $responseData['freeze_message'] = 'Scoreboard is frozen. Challenge details and points after the freeze time are masked.';
         }
 
         return response()->json([
