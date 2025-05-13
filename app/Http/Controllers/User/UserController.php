@@ -1058,10 +1058,9 @@ class UserController extends Controller
                     'category' => $challange->category ? $challange->category->name : null,
                     'category_icon_url' => url('/storage/' . $challange->category->icon),
                     'difficulty' => $challange->difficulty,
-                    'bytes' => $isFirstBlood ? 0 : $challange->bytes,
+                    'bytes' => $challange->bytes,
                     'is_first_blood' => $isFirstBlood,
-                    'first_blood_bytes' => $isFirstBlood ? $challange->firstBloodBytes : 0,
-                    'total_bytes' => $isFirstBlood ? $challange->firstBloodBytes : $challange->bytes,
+                    'first_blood_bytes' => $challange->firstBloodBytes,
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
                     'timezone' => $userTimezone,
                     'flag_type' => $challange->flag_type
