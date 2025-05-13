@@ -711,11 +711,7 @@ class EventTeamController extends Controller
             ],
             'members' => $membersData,
             'first_blood_times' => $firstBloodTimes,
-        ];
-        
-        // Only include statistics if not frozen
-        if (!$isFrozen) {
-            $responseData['statistics'] = [
+            'statistics' => [
                 'total_bytes' => $membersData->sum('total_bytes'),
                 'total_first_blood_count' => collect($firstBloodTimes)->filter(function($item) use ($team) {
                     return $team->members->pluck('uuid')->contains($item['user_uuid']);
@@ -734,36 +730,12 @@ class EventTeamController extends Controller
                     ];
                 }),
                 'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
-            ];
-        } else {
-            // If frozen, provide empty/zero statistics
-            $responseData['statistics'] = [
-                'total_bytes' => 0,
-                'total_first_blood_count' => 0,
-                'total_challenges_solved' => 0,
-                'member_stats' => $membersData->map(function($member) {
-                    return [
-                        'username' => $member['username'],
-                        'total_bytes' => 0,
-                        'challenges_solved' => 0,
-                        'first_blood_count' => 0,
-                        'normal_bytes' => 0,
-                        'first_blood_bytes' => 0
-                    ];
-                }),
-                'top_performing_member' => null,
-                'freeze_message' => 'Statistics are hidden until the scoreboard is unfrozen'
-            ];
-            
-            // Clear challenge completions for all members when frozen
-            $responseData['members'] = $membersData->map(function($member) {
-                $member['challenge_completions'] = [];
-                $member['total_bytes'] = 0;
-                return $member;
-            });
-            
-            // Clear first blood times
-            $responseData['first_blood_times'] = [];
+            ]
+        ];
+        
+        // If frozen, add a freezing message
+        if ($isFrozen) {
+            $responseData['freeze_message'] = 'Scoreboard is frozen. Submissions after freeze time are not shown.';
         }
 
         return response()->json([
@@ -1118,11 +1090,7 @@ class EventTeamController extends Controller
             ],
             'members' => $membersData,
             'first_blood_times' => $firstBloodTimes,
-        ];
-        
-        // Only include statistics if not frozen
-        if (!$isFrozen) {
-            $responseData['statistics'] = [
+            'statistics' => [
                 'total_bytes' => $membersData->sum('total_bytes'),
                 'total_first_blood_count' => collect($firstBloodTimes)->filter(function($item) use ($team) {
                     return $team->members->pluck('uuid')->contains($item['user_uuid']);
@@ -1141,36 +1109,12 @@ class EventTeamController extends Controller
                     ];
                 }),
                 'top_performing_member' => $membersData->sortByDesc('total_bytes')->first()['username'] ?? null,
-            ];
-        } else {
-            // If frozen, provide empty/zero statistics
-            $responseData['statistics'] = [
-                'total_bytes' => 0,
-                'total_first_blood_count' => 0,
-                'total_challenges_solved' => 0,
-                'member_stats' => $membersData->map(function($member) {
-                    return [
-                        'username' => $member['username'],
-                        'total_bytes' => 0,
-                        'challenges_solved' => 0,
-                        'first_blood_count' => 0,
-                        'normal_bytes' => 0,
-                        'first_blood_bytes' => 0
-                    ];
-                }),
-                'top_performing_member' => null,
-                'freeze_message' => 'Statistics are hidden until the scoreboard is unfrozen'
-            ];
-            
-            // Clear challenge completions for all members when frozen
-            $responseData['members'] = $membersData->map(function($member) {
-                $member['challenge_completions'] = [];
-                $member['total_bytes'] = 0;
-                return $member;
-            });
-            
-            // Clear first blood times
-            $responseData['first_blood_times'] = [];
+            ]
+        ];
+        
+        // If frozen, add a freezing message
+        if ($isFrozen) {
+            $responseData['freeze_message'] = 'Scoreboard is frozen. Submissions after freeze time are not shown.';
         }
 
         return response()->json([
