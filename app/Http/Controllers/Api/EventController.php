@@ -359,6 +359,9 @@ class EventController extends Controller
                 $activities[] = [
                     'user_name' => $isAfterFreeze ? '****' : $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
+                    'team_uuid' => \App\Models\EventTeam::whereHas('members', function($query) use ($user) {
+                        $query->where('user_uuid', $user->uuid);
+                    })->first()?->id,
                     'team_name' => \App\Models\EventTeam::whereHas('members', function($query) use ($user) {
                         $query->where('user_uuid', $user->uuid);
                     })->first()?->name,
