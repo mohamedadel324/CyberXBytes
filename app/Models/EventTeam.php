@@ -57,6 +57,11 @@ class EventTeam extends Model
         return $this->hasMany(EventChallangeSubmission::class, 'team_uuid', 'id');
     }
 
+    public function joinSecrets()
+    {
+        return $this->hasMany(EventTeamJoinSecret::class, 'team_uuid', 'id');
+    }
+
     protected static function boot()
     {
         parent::boot();

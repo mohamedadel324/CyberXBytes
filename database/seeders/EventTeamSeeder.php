@@ -42,22 +42,22 @@ class EventTeamSeeder extends Seeder
             
             foreach ($selectedTeams as $team) {
                 $eventTeam = EventTeam::create([
-                    'event_id' => $event->id,
-                    'team_id' => $team->id,
+                    'event_uuid' => $event->uuid,
                     'name' => $team->name,
                     'description' => $team->description,
                     'leader_uuid' => $team->leader_uuid,
-                    'join_secret' => Str::random(10),
+                    'is_locked' => false,
                 ]);
+                
+                // Add leader as member
+                $eventTeam->members()->attach($team->leader_uuid, ['role' => 'leader']);
                 
                 // Add random team members (2-4 members including leader)
                 $potentialMembers = $users->where('uuid', '!=', $team->leader_uuid);
                 $selectedMembers = $potentialMembers->random(rand(1, 3));
                 
                 foreach ($selectedMembers as $member) {
-                    $eventTeam->members()->create([
-                        'user_uuid' => $member->uuid,
-                    ]);
+                    $eventTeam->members()->attach($member->uuid, ['role' => 'member']);
                 }
             }
         }

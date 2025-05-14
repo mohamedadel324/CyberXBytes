@@ -21,6 +21,7 @@ use App\Models\EventRegistration;
 use App\Models\EventInvitation;
 use App\Mail\EventRegistrationMail;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 
 class EventTeamController extends Controller
 {
@@ -101,7 +102,14 @@ class EventTeamController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:event_teams,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('event_teams', 'name')->where(function ($query) use ($eventUuid) {
+                    return $query->where('event_uuid', $eventUuid);
+                })
+            ],
         ]);
 
         if ($validator->fails()) {
@@ -318,7 +326,7 @@ class EventTeamController extends Controller
 
     public function leave($teamUuid)
     {
-        $team = EventTeam::where('uuid', $teamUuid)
+        $team = EventTeam::where('id', $teamUuid)
             ->whereHas('members', function ($query) {
                 $query->where('user_uuid', Auth::user()->uuid);
             })
@@ -1406,6 +1414,20 @@ class EventTeamController extends Controller
             ->first();
 
         if (!$joinSecret) {
+            // Check if the team name exists but doesn't match the secret
+            $teamExists = EventTeam::where('name', $request->team_name)
+                ->whereHas('joinSecrets', function($q) use($request) {
+                    $q->where('secret', '!=', $request->secret);
+                })
+                ->exists();
+                
+            if ($teamExists) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Team name exists but the provided secret is incorrect'
+                ], 400);
+            }
+                
             return response()->json([
                 'status' => 'error',
                 'message' => 'Invalid secret, team name, or secret already used'
@@ -1602,19 +1624,7 @@ class EventTeamController extends Controller
      */
     public function updateTeam(Request $request, $teamUuid)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'nullable|string|max:255',
-            'icon' => 'nullable|image|max:2048' // 2MB max
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $validator->errors()->first()
-            ], 422);
-        }
-
-        // Find the team and verify the current user is the leader
+        // Get the team first to use in validation
         $team = EventTeam::where('id', $teamUuid)
             ->where('leader_uuid', Auth::user()->uuid)
             ->first();
@@ -1624,6 +1634,27 @@ class EventTeamController extends Controller
                 'status' => 'error',
                 'message' => 'Team not found or you are not the leader'
             ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('event_teams', 'name')
+                    ->where(function ($query) use ($team) {
+                        return $query->where('event_uuid', $team->event_uuid);
+                    })
+                    ->ignore($team->id)
+            ],
+            'icon' => 'nullable|image|max:2048' // 2MB max
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first()
+            ], 422);
         }
 
         if ($request->hasFile('icon')) {
