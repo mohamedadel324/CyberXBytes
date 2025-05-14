@@ -44,6 +44,13 @@ class LabCategoryResource extends BaseResource
                         ->required()
                         ->columnSpanFull()
                         ->maxLength(255),
+                        Forms\Components\Textarea::make('desc')
+                        ->required()
+                        ->columnSpanFull(),
+                        Forms\Components\Textarea::make('ar_desc')
+                        ->required()
+                        ->columnSpanFull()
+ ,
                 Forms\Components\FileUpload::make('image')
                     ->required()
                     ->imageEditor()

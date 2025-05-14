@@ -1061,6 +1061,8 @@ class EventChallengeController extends Controller
 
         return response()->json([
             'status' => 'success',
+            'event_name' => Event::where('id', $challengeUuid)
+            ->first()->title,
             'data' => $challengeData
         ]);
     }

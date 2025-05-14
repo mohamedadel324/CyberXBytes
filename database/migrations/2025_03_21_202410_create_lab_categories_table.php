@@ -18,6 +18,9 @@ return new class extends Migration
             $table->longText('image'); 
             $table->string('title');
             $table->string('ar_title');
+            $table->text('desc');
+            $table->text('ar_desc');
+
 
             $table->timestamps();
         });

@@ -319,6 +319,8 @@ class LabController extends Controller
                 'uuid' => $labCategory->uuid,
                 'title' => $labCategory->title,
                 'ar_title' => $labCategory->ar_title,
+                'desc'=> $labCategory->desc,
+                'ar_desc'=> $labCategory->ar_desc,
                 'image' => $labCategory->image ? asset('storage/' . $labCategory->image) : null
             ],
      
