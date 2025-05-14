@@ -357,7 +357,7 @@ class EventController extends Controller
                     ->user_uuid === $user->uuid;
                 
                 $activities[] = [
-                    'user_name' => $isAfterFreeze ? '****' : $user->user_name,
+                    'user_name' => $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                     'team_uuid' => \App\Models\EventTeam::where('event_uuid', $uuid)
                         ->whereHas('members', function($query) use ($user) {
@@ -441,7 +441,7 @@ class EventController extends Controller
                     $isAfterFreeze = $freezeTime && $solvedAt > $freezeTime;
                     
                     $activities[] = [
-                        'user_name' => $isAfterFreeze ? '****' : $user->user_name,
+                        'user_name' => $user->user_name,
                         'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                         'team_uuid' => \App\Models\EventTeam::where('event_uuid', $uuid)
                             ->whereHas('members', function($query) use ($user) {
@@ -490,7 +490,7 @@ class EventController extends Controller
                 $isAfterFreeze = $freezeTime && $solvedAt > $freezeTime;
                 
                 $activities[] = [
-                    'user_name' => $isAfterFreeze ? '****' : $user->user_name,
+                    'user_name' => $user->user_name,
                     'user_profile_image' => $user->profile_image ? url('storage/' . $user->profile_image) : null,
                     'team_uuid' => \App\Models\EventTeam::where('event_uuid', $uuid)
                         ->whereHas('members', function($query) use ($user) {
