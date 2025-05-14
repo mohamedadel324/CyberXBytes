@@ -304,7 +304,7 @@ class EventResource extends BaseResource
                                         ->reactive(),
                                     Forms\Components\FileUpload::make('invitation_list')
                                         ->label('User List (CSV)')
-                                        ->helperText('Upload a CSV file with a list of user emails to add to this event. They will be automatically registered if their account exists.')
+                                        ->helperText('Upload a CSV file with user emails to add to this event. You can add more users later by uploading additional files - existing invitations will remain unchanged.')
                                         ->columnSpanFull()
                                         ->acceptedFileTypes(['text/csv'])
                                         ->directory('invitations')
@@ -342,11 +342,18 @@ class EventResource extends BaseResource
                                                 $import = new EventInvitationsImport($eventUuid);
                                                 Excel::import($import, $tmpFile);
                                                 
+                                                // Get import summary
+                                                $summary = $import->getSummary();
+                                                $totalProcessed = $summary['total'];
+                                                $newInvitations = $summary['new'];
+                                                $existingInvitations = $summary['existing'];
+                                                
                                                 // Clear the file input
                                                 $set('invitation_list', null);
                                                 
                                                 Notification::make()
-                                                    ->title('Users added and auto-registered successfully')
+                                                    ->title('CSV Import Completed')
+                                                    ->body("Processed {$totalProcessed} emails: {$newInvitations} new invitations, {$existingInvitations} already invited users.")
                                                     ->success()
                                                     ->send();
                                                     
@@ -372,7 +379,27 @@ class EventResource extends BaseResource
                                         ->placeholder('Enter email address and press Enter')
                                         ->visible(fn (Forms\Get $get) => $get('is_private'))
                                         ->default([])
-                                        ->dehydrated(true)
+                                        ->dehydrated(true),
+                                    Forms\Components\Section::make('Invited Users')
+                                        ->description('These users have already been invited to this event')
+                                        ->schema([
+                                            Forms\Components\Placeholder::make('existing_invitations')
+                                                ->content(function (Event $record) {
+                                                    if (!$record || !$record->exists) {
+                                                        return 'Save the event first to see existing invitations.';
+                                                    }
+                                                    
+                                                    $count = $record->invitations()->count();
+                                                    
+                                                    if ($count === 0) {
+                                                        return 'No users have been invited yet.';
+                                                    }
+                                                    
+                                                    return "{$count} users have been invited to this event.";
+                                                })
+                                        ])
+                                        ->visible(fn (Event $record) => $record && $record->exists && $record->is_private)
+                                        ->collapsible(),
                                 ]),
                         ]),
                 ])
@@ -435,6 +462,27 @@ class EventResource extends BaseResource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('exportInvitations')
+                    ->label('Export Invitations')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->action(function (Event $record) {
+                        // Create CSV content
+                        $csv = "email,registered_at\n";
+                        
+                        // Get all invitations for this event
+                        $invitations = $record->invitations()->get();
+                        
+                        foreach ($invitations as $invitation) {
+                            $registeredAt = $invitation->registered_at ? $invitation->registered_at->format('Y-m-d H:i:s') : '';
+                            $csv .= "{$invitation->email},{$registeredAt}\n";
+                        }
+                        
+                        // Return the CSV as a downloadable file
+                        return response()->streamDownload(function () use ($csv) {
+                            echo $csv;
+                        }, 'event-invitations-' . now()->format('Y-m-d') . '.csv');
+                    })
+                    ->visible(fn (Event $record) => $record->is_private),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

@@ -23,6 +23,8 @@ class EventInvitationsImport implements ToModel, WithHeadingRow, WithValidation,
     protected $eventUuid;
     protected $event;
     protected $rowCount = 0;
+    protected $newInvitations = 0;
+    protected $existingInvitations = 0;
 
     public function __construct($eventUuid)
     {
@@ -34,7 +36,6 @@ class EventInvitationsImport implements ToModel, WithHeadingRow, WithValidation,
     public function model(array $row)
     {
         $this->rowCount++;
-        Log::info('Processing row ' . $this->rowCount, $row);
         
         // Try different possible column names for email
         $email = $row['email'] ?? $row['e-mail'] ?? $row['e_mail'] ?? $row['mail'] ?? null;
@@ -44,16 +45,48 @@ class EventInvitationsImport implements ToModel, WithHeadingRow, WithValidation,
             throw new \Exception('No email column found in CSV');
         }
 
-        Log::info('Adding user for: ' . $email);
+        Log::info('Processing invite for: ' . $email);
         
         try {
-            // Use the direct method to add the user
-            $this->event->addUserByEmail($email);
+            // Check if invitation already exists
+            $exists = EventInvitation::where([
+                'event_uuid' => $this->eventUuid,
+                'email' => $email,
+            ])->exists();
+            
+            if ($exists) {
+                $this->existingInvitations++;
+                Log::info("Invitation already exists for {$email}, skipping but keeping the invitation");
+            } else {
+                $this->newInvitations++;
+                // Use the direct method to add the user
+                $this->event->addUserByEmail($email);
+            }
+            
+            // Every 100 records, log progress
+            if ($this->rowCount % 100 === 0) {
+                Log::info("CSV import progress: {$this->rowCount} rows processed. New: {$this->newInvitations}, Existing: {$this->existingInvitations}");
+            }
+            
             return null; // Don't return a model
         } catch (\Exception $e) {
             Log::error('Error adding user: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * Get a summary of the import
+     * 
+     * @return array
+     */
+    public function getSummary()
+    {
+        return [
+            'total' => $this->rowCount,
+            'new' => $this->newInvitations,
+            'existing' => $this->existingInvitations,
+        ];
     }
 
     public function rules(): array
