@@ -163,11 +163,29 @@ class UserChallangeController extends Controller
     }
 
     /**
-     * Get user's challenge streak and total approved challenges
+     * Get user's challenge streak and total approved challenges by username
+     * 
+     * @param string $user_name
+     * @return \Illuminate\Http\JsonResponse
      */
-    public function getUserChallengeStreak()
+    public function getUserChallengeStreak(string $user_name = null)
     {
-        $userUuid = Auth::user()->uuid;
+        if ($user_name) {
+            // Get the user by username
+            $user = \App\Models\User::where('user_name', $user_name)->first();
+            
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User not found'
+                ], 404);
+            }
+            
+            $userUuid = $user->uuid;
+        } else {
+            // Use authenticated user if no username provided
+            $userUuid = Auth::user()->uuid;
+        }
         
         // Get the user's approved challenges ordered by creation date
         $approvedChallenges = UserChallange::where('user_uuid', $userUuid)
