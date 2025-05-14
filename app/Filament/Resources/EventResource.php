@@ -311,11 +311,16 @@ class EventResource extends BaseResource
                                         ->preserveFilenames()
                                         ->visibility('private')
                                         ->live()
-                                        ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                        ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set, ?Event $record = null) {
                                             if (!$state) return;
                                             
                                             try {
-                                                $eventUuid = $get('uuid');
+                                                // First check if we have a record, otherwise we must be creating a new event
+                                                if (!$record || !$record->exists) {
+                                                    throw new \Exception('Event must be saved before adding users. Please save the event first, then upload your CSV file.');
+                                                }
+                                                
+                                                $eventUuid = $record->uuid ?? $get('uuid');
                                                 
                                                 if (empty($eventUuid)) {
                                                     throw new \Exception('Event UUID is missing. Please save the event first.');
@@ -384,7 +389,7 @@ class EventResource extends BaseResource
                                         ->description('These users have already been invited to this event')
                                         ->schema([
                                             Forms\Components\Placeholder::make('existing_invitations')
-                                                ->content(function (Event $record) {
+                                                ->content(function (?Event $record = null) {
                                                     if (!$record || !$record->exists) {
                                                         return 'Save the event first to see existing invitations.';
                                                     }
@@ -398,7 +403,7 @@ class EventResource extends BaseResource
                                                     return "{$count} users have been invited to this event.";
                                                 })
                                         ])
-                                        ->visible(fn (Event $record) => $record && $record->exists && $record->is_private)
+                                        ->visible(fn (?Event $record = null) => $record && $record->exists && $record->is_private)
                                         ->collapsible(),
                                 ]),
                         ]),
