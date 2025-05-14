@@ -44,10 +44,10 @@ class LabCategoryResource extends BaseResource
                         ->required()
                         ->columnSpanFull()
                         ->maxLength(255),
-                        Forms\Components\Textarea::make('desc')
+                        Forms\Components\Textarea::make('description')
                         ->required()
                         ->columnSpanFull(),
-                        Forms\Components\Textarea::make('ar_desc')
+                        Forms\Components\Textarea::make('ar_description')
                         ->required()
                         ->columnSpanFull()
  ,

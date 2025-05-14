@@ -11,8 +11,8 @@ class LabCategory extends Model
         'lab_uuid',
         'title',
         'ar_title',
-        'desc',
-        'ar_desc',
+        'description',
+        'ar_description',
         'image',
     ];
 
