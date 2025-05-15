@@ -1061,7 +1061,7 @@ class EventChallengeController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'event_name' => Event::where('id', $challengeUuid)
+            'event_name' => Event::where('uuid', $challenge->event_uuid)
             ->first()->title,
             'data' => $challengeData
         ]);
@@ -1270,6 +1270,16 @@ class EventChallengeController extends Controller
                 'status' => 'error',
                 'message' => 'You are not part of any team for this event'
             ], 404);
+        }
+        
+        // Get the event to check if it's frozen
+        $event = Event::where('uuid', $eventUuid)->first();
+        $isFrozen = false;
+        $freezeTime = null;
+        
+        if ($event && $event->freeze && $event->freeze_time) {
+            $isFrozen = true;
+            $freezeTime = $event->freeze_time;
         }
         
         // Get all challenges for this event
