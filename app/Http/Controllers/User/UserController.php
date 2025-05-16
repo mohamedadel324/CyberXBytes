@@ -45,7 +45,7 @@ class UserController extends Controller
         $validatedData = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'user_name' => 'sometimes|required|string|max:255|unique:users,user_name,' . auth('api')->user()->id,
-            'country' => 'sometimes|required|string|max:255',
+            'country' => 'sometimes|required|string|max:255|regex:/^[a-zA-Z0-9\s\-\,\.\']+$/',
             'time_zone' => 'sometimes|required|string|timezone',
         ]);
 
