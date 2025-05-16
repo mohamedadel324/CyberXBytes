@@ -42,17 +42,26 @@ class PublishDdosConfig extends Command
                 $ddosSettings .= "DDOS_WEB_DECAY_MINUTES=1\n";
                 $ddosSettings .= "DDOS_WEB_BLOCK_MINUTES=10\n";
                 $ddosSettings .= "DDOS_WEB_BLOCK_THRESHOLD=120\n";
-                $ddosSettings .= "DDOS_API_MAX_REQUESTS=30\n";
+                $ddosSettings .= "DDOS_API_MAX_REQUESTS=60\n";
                 $ddosSettings .= "DDOS_API_DECAY_MINUTES=1\n";
                 $ddosSettings .= "DDOS_API_BLOCK_MINUTES=15\n";
-                $ddosSettings .= "DDOS_API_BLOCK_THRESHOLD=60\n";
-                $ddosSettings .= "DDOS_API_ENDPOINT_MAX_REQUESTS=15\n";
+                $ddosSettings .= "DDOS_API_BLOCK_THRESHOLD=120\n";
+                $ddosSettings .= "DDOS_API_ENDPOINT_MAX_REQUESTS=30\n";
                 $ddosSettings .= "DDOS_API_ENDPOINT_DECAY_MINUTES=1\n";
                 
                 File::append($envFile, $ddosSettings);
                 $this->info('DDoS protection settings added to .env file.');
             } else {
                 $this->info('DDoS protection settings already exist in .env file.');
+                $this->info('Updating with new recommended values...');
+                
+                // Update existing values with new recommended settings
+                $envContent = preg_replace('/DDOS_API_MAX_REQUESTS=(\d+)/', 'DDOS_API_MAX_REQUESTS=60', $envContent);
+                $envContent = preg_replace('/DDOS_API_BLOCK_THRESHOLD=(\d+)/', 'DDOS_API_BLOCK_THRESHOLD=120', $envContent);
+                $envContent = preg_replace('/DDOS_API_ENDPOINT_MAX_REQUESTS=(\d+)/', 'DDOS_API_ENDPOINT_MAX_REQUESTS=30', $envContent);
+                
+                File::put($envFile, $envContent);
+                $this->info('DDoS protection settings updated in .env file.');
             }
         } else {
             $this->error('.env file not found.');

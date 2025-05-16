@@ -32,28 +32,26 @@ Route::prefix('auth')->middleware('api')->group(function () {
 });
 
 Route::prefix('user')->middleware(['auth:api', 'verified'])->group(function () {
-    Route::get('profile', [UserController::class, 'profile']);
-    Route::get('profile/{user_name}', [UserController::class, 'profileByUserName']);
-    Route::post('change-profile-data', [UserController::class, 'changeProfileData']);
+    // Apply extended timeout middleware to profile routes
+    Route::middleware(['extended-timeout'])->group(function () {
+        Route::get('profile', [UserController::class, 'profile']);
+        Route::get('profile/{user_name}', [UserController::class, 'profileByUserName']);
+        Route::post('change-profile-data', [UserController::class, 'changeProfileData']);
+        Route::get('stats/{user_name}', [UserController::class, 'userStats']);
+        Route::get('my-stats', [UserController::class, 'myStats']);
+        Route::get('activities/{user_name}', [UserController::class, 'userActivities']);
+        Route::get('my-activities', [UserController::class, 'myActivities']);
+    });
+    
+    // Regular routes
     Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('change-socialmedia-links', [UserController::class, 'changeSocialMediaLinks']);
     Route::post('unlink-socialmedia-links', [UserController::class, 'unlinkSocialMedia']);
     Route::post('update-last-seen', [UserController::class, 'updateLastSeen']);
     Route::get('online-users-count', [UserController::class, 'getOnlineUsersCount']);
     Route::post('change-profile-image', [UserController::class, 'changeProfileImage']);
-    
-    // Email change routes
     Route::post('request-email-change', [UserController::class, 'requestEmailChange']);
     Route::post('verify-email-change', [UserController::class, 'verifyEmailChange']);
-    
-    // User stats
-    Route::get('stats/{user_name}', [UserController::class, 'userStats']);
-    Route::get('my-stats', [UserController::class, 'myStats']);
-    
-    // User activities
-    Route::get('activities/{user_name}', [UserController::class, 'userActivities']);
-    Route::get('my-activities', [UserController::class, 'myActivities']);
-
     Route::get('recentPlatformActivities', [UserController::class, 'recentPlatformActivities']);
 });
 

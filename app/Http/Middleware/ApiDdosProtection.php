@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApiDdosProtection
@@ -29,9 +30,20 @@ class ApiDdosProtection
             return $next($request);
         }
         
+        // Get the current path
+        $path = $request->path();
+        
+        // Skip for excluded paths (like profile endpoints that may take longer)
+        $excludedPaths = Config::get('ddos.excluded_paths', []);
+        foreach ($excludedPaths as $excludedPath) {
+            if (Str::is($excludedPath, $path)) {
+                return $next($request);
+            }
+        }
+        
         // Create unique keys for this IP - one for general API and one endpoint-specific
         $generalKey = 'api_ddos_protection_' . md5($ip);
-        $endpointKey = 'api_endpoint_' . md5($ip . $request->path());
+        $endpointKey = 'api_endpoint_' . md5($ip . $path);
         
         // Check if this IP is already blocked
         if (Cache::has('api_blocked_' . $generalKey)) {
@@ -39,14 +51,14 @@ class ApiDdosProtection
         }
         
         // Get configuration values
-        $maxRequests = Config::get('ddos.api.max_requests', 30);
+        $maxRequests = Config::get('ddos.api.max_requests', 60);
         $decayMinutes = Config::get('ddos.api.decay_minutes', 1);
         $blockMinutes = Config::get('ddos.api.block_minutes', 15);
-        $blockThreshold = Config::get('ddos.api.block_threshold', 60);
-        $endpointMaxRequests = Config::get('ddos.api.endpoint_max_requests', 15);
+        $blockThreshold = Config::get('ddos.api.block_threshold', 120);
+        $endpointMaxRequests = Config::get('ddos.api.endpoint_max_requests', 30);
         $endpointDecayMinutes = Config::get('ddos.api.endpoint_decay_minutes', 1);
         
-        // General API rate limit (stricter than web routes)
+        // General API rate limit
         if (RateLimiter::tooManyAttempts($generalKey, $maxRequests)) {
             // If IP exceeds limits repeatedly, block for longer
             if (RateLimiter::attempts($generalKey) > $blockThreshold) {
