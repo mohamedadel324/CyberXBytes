@@ -984,12 +984,21 @@ class EventChallengeController extends Controller
             return $validationResponse;
         }
 
+        // Check if the event has a frozen scoreboard
+        $event = Event::where('uuid', $challenge->event_uuid)->first();
+        $isFrozen = $event && $event->freeze && $event->freeze_time;
+        $freezeTime = $isFrozen ? $event->freeze_time : null;
+
         $challenge->category_icon = $challenge->category->icon ?? null;
         unset($challenge->category);
         $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
 
         // Get solved count for the challenge
-        $solvedCount = $challenge->submissions()->where('solved', true)->count();
+        $solvedCountQuery = $challenge->submissions()->where('solved', true);
+        if ($isFrozen) {
+            $solvedCountQuery->where('created_at', '<=', $freezeTime);
+        }
+        $solvedCount = $solvedCountQuery->count();
         
         // Add flag information
         $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
@@ -997,19 +1006,33 @@ class EventChallengeController extends Controller
         // Get first blood information
         $firstBlood = null;
         if ($solvedCount > 0) {
-            $firstSolver = $challenge->submissions()
+            $firstSolverQuery = $challenge->submissions()
                 ->where('solved', true)
-                ->orderBy('created_at', 'asc')
-                ->first();
+                ->orderBy('created_at', 'asc');
+                
+            if ($isFrozen) {
+                $firstSolverQuery->where('created_at', '<=', $freezeTime);
+            }
+            
+            $firstSolver = $firstSolverQuery->first();
             
             if ($firstSolver) {
-                $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
-                if ($firstBloodUser) {
+                if ($isFrozen) {
+                    // Hide user identity in frozen scoreboard
                     $firstBlood = [
-                        'user_name' => $firstBloodUser->user_name,
-                        'profile_image' => $firstBloodUser->profile_image ? asset('storage/' . $firstBloodUser->profile_image) : null,
+                        'user_name' => '***',
+                        'profile_image' => null,
                         'solved_at' => $firstSolver->created_at,
                     ];
+                } else {
+                    $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
+                    if ($firstBloodUser) {
+                        $firstBlood = [
+                            'user_name' => $firstBloodUser->user_name,
+                            'profile_image' => $firstBloodUser->profile_image ? asset('storage/' . $firstBloodUser->profile_image) : null,
+                            'solved_at' => $firstSolver->created_at,
+                        ];
+                    }
                 }
             }
         }
@@ -1034,7 +1057,6 @@ class EventChallengeController extends Controller
                     'id' => $flag->id,
                     'name' => $flag->name,
                     'ar_name' => $flag->ar_name,
-
                     'description' => $flag->description,
                     'bytes' => $challenge->bytes,
                     'first_blood_bytes' => $challenge->firstBloodBytes,
@@ -1052,28 +1074,47 @@ class EventChallengeController extends Controller
             
             foreach ($challenge->flags as $flag) {
                 // Get solved count for this flag
-                $flagSolvedCount = $challenge->submissions()
+                $flagSolvedCountQuery = $challenge->submissions()
                     ->where('submission', $flag->flag)
-                    ->where('solved', true)
-                    ->count();
+                    ->where('solved', true);
+                    
+                if ($isFrozen) {
+                    $flagSolvedCountQuery->where('created_at', '<=', $freezeTime);
+                }
+                
+                $flagSolvedCount = $flagSolvedCountQuery->count();
                 
                 // Get first blood for this flag
                 $flagFirstBlood = null;
                 if ($flagSolvedCount > 0) {
-                    $flagFirstSolver = $challenge->submissions()
+                    $flagFirstSolverQuery = $challenge->submissions()
                         ->where('submission', $flag->flag)
                         ->where('solved', true)
-                        ->orderBy('solved_at', 'asc')
-                        ->first();
+                        ->orderBy('solved_at', 'asc');
+                        
+                    if ($isFrozen) {
+                        $flagFirstSolverQuery->where('solved_at', '<=', $freezeTime);
+                    }
+                    
+                    $flagFirstSolver = $flagFirstSolverQuery->first();
                     
                     if ($flagFirstSolver) {
-                        $flagFirstBloodUser = User::where('uuid', $flagFirstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
-                        if ($flagFirstBloodUser) {
+                        if ($isFrozen) {
+                            // Hide user identity in frozen scoreboard
                             $flagFirstBlood = [
-                                'user_name' => $flagFirstBloodUser->user_name,
-                                'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
+                                'user_name' => '***',
+                                'profile_image' => null,
                                 'solved_at' => $flagFirstSolver->solved_at,
                             ];
+                        } else {
+                            $flagFirstBloodUser = User::where('uuid', $flagFirstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
+                            if ($flagFirstBloodUser) {
+                                $flagFirstBlood = [
+                                    'user_name' => $flagFirstBloodUser->user_name,
+                                    'profile_image' => $flagFirstBloodUser->profile_image ? asset('storage/' . $flagFirstBloodUser->profile_image) : null,
+                                    'solved_at' => $flagFirstSolver->solved_at,
+                                ];
+                            }
                         }
                     }
                 }
@@ -1082,7 +1123,6 @@ class EventChallengeController extends Controller
                     'id' => $flag->id,
                     'name' => $flag->name,
                     'ar_name' => $flag->ar_name,
-
                     'description' => $flag->description,
                     'bytes' => $flag->bytes,
                     'first_blood_bytes' => $flag->firstBloodBytes,
@@ -1119,8 +1159,8 @@ class EventChallengeController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'event_name' => Event::where('uuid', $challenge->event_uuid)
-            ->first()->title,
+            'event_name' => $event->title,
+            'frozen' => $isFrozen,
             'data' => $challengeData
         ]);
     }
