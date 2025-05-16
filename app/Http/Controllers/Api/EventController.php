@@ -38,6 +38,9 @@ class EventController extends Controller
             })
             ->get()
             ->map(function ($event) use ($user) {
+                // Check if user is invited
+                $isInvited = $event->invitations()->where('email', $user->email)->exists();
+                
                 return [
                     'uuid' => $event->uuid,
                     'title' => $event->title,
@@ -53,10 +56,11 @@ class EventController extends Controller
                     'requires_team' => $event->requires_team,
                     'team_minimum_members' => $event->team_minimum_members,
                     'team_maximum_members' => $event->team_maximum_members,
-                    'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
+                    'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date) || $isInvited,
                     'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                     'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
                     'is_registered' => $event->registrations()->where('user_uuid', $user->uuid)->exists(),
+                    'is_invited' => $isInvited,
                 ];
             });
 
@@ -87,6 +91,9 @@ class EventController extends Controller
             })
             ->firstOrFail();
 
+        // Check if user is invited
+        $isInvited = $user && $event->invitations()->where('email', $user->email)->exists();
+
         return response()->json([
             'event' => [
                 'uuid' => $event->uuid,
@@ -103,10 +110,11 @@ class EventController extends Controller
                 'requires_team' => $event->requires_team,
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
-                'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
+                'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date) || $isInvited,
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                 'is_registered' => $user ? $event->registrations()->where('user_uuid', $user->uuid)->exists() : false,
                 'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
+                'is_invited' => $isInvited,
             ]
         ]);
     }
@@ -223,6 +231,7 @@ class EventController extends Controller
     public function mainEvent(Request $request)
     {
         $event = Event::main()->first();
+        $user = $request->user();
         
         if (!$event) {
             return response()->json([
@@ -244,9 +253,12 @@ class EventController extends Controller
 
         // Determine if the user is registered
         $isRegistered = Auth::check() && $event->registrations()->where('user_uuid', Auth::user()->uuid)->exists();
+        
+        // Check if user is invited
+        $isInvited = $user && $event->invitations()->where('email', $user->email)->exists();
 
-        // If registration is not possible (either not started yet or already ended)
-        if (!$canRegister) {
+        // If registration is not possible (either not started yet or already ended) AND user is not invited
+        if (!$canRegister && !$isInvited) {
             return response()->json([
                 'event' => [
                     'uuid' => $event->uuid,
@@ -255,11 +267,11 @@ class EventController extends Controller
                     'image' => url('storage/' . $event->image) ?: $event->image,
                     'status' => 'under_working',
                     'registration_start_date' => $this->formatInUserTimezone($event->registration_start_date),
-                'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
-                'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
-                'team_formation_end_date' => $this->formatInUserTimezone($event->team_formation_end_date),
-                'start_date' => $this->formatInUserTimezone($event->start_date),
-                'end_date' => $this->formatInUserTimezone($event->end_date),
+                    'registration_end_date' => $this->formatInUserTimezone($event->registration_end_date),
+                    'team_formation_start_date' => $this->formatInUserTimezone($event->team_formation_start_date),
+                    'team_formation_end_date' => $this->formatInUserTimezone($event->team_formation_end_date),
+                    'start_date' => $this->formatInUserTimezone($event->start_date),
+                    'end_date' => $this->formatInUserTimezone($event->end_date),
                     'team_minimum_members' => $event->team_minimum_members,
                     'team_maximum_members' => $event->team_maximum_members,
                     'is_registered' => $isRegistered,
@@ -267,7 +279,7 @@ class EventController extends Controller
             ]);
         }
 
-        // Otherwise return full event details
+        // Return full event details for users who can register or are invited
         return response()->json([
             'event' => [
                 'uuid' => $event->uuid,
@@ -284,10 +296,11 @@ class EventController extends Controller
                 'requires_team' => $event->requires_team,
                 'team_minimum_members' => $event->team_minimum_members,
                 'team_maximum_members' => $event->team_maximum_members,
-                'can_register' => $canRegister,
+                'can_register' => $canRegister || $isInvited,
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                 'is_registered' => $isRegistered,
                 'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
+                'is_invited' => $isInvited,
             ]
         ]);
     }
