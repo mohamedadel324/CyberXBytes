@@ -79,9 +79,26 @@ class EventLeaderboardWidget extends BaseWidget
                     ->keys()
                     ->toArray();
                 
-                // Use FIELD() to sort by our custom order
+                // Use manual sorting instead of FIELD() since we're working with UUIDs
                 if (!empty($sortedTeamIds)) {
-                    $query->orderByRaw('FIELD(id, "' . implode('","', $sortedTeamIds) . '")');
+                    // Convert the array to a position map for sorting
+                    $positions = array_flip($sortedTeamIds);
+                    
+                    // We'll use a subquery to add a sorting column
+                    $ids = array_map(function ($id) {
+                        return "'" . $id . "'";
+                    }, $sortedTeamIds);
+                    
+                    if (count($ids) > 0) {
+                        // Create a case statement for ordering
+                        $cases = [];
+                        foreach ($sortedTeamIds as $position => $id) {
+                            $cases[] = "WHEN id = '$id' THEN $position";
+                        }
+                        $orderByCase = "CASE " . implode(' ', $cases) . " ELSE " . count($sortedTeamIds) . " END";
+                        
+                        $query->orderByRaw($orderByCase);
+                    }
                 }
                 
                 return $query;
