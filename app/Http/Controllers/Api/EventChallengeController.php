@@ -1845,7 +1845,7 @@ class EventChallengeController extends Controller
             }
         }
         
-        // Return full response with all data
+        // Return full response with all data - change the sorting from sortByDesc to sortBy
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -1871,7 +1871,7 @@ class EventChallengeController extends Controller
                     'first_blood_bytes' => $challenge->firstBloodBytes,
                     'total_flags' => $challenge->flags->count()
                 ],
-                'members' => $results->sortByDesc('solved_at')->values()->all(),
+                'members' => $results->sortBy('solved_at')->values()->all(),
                 'total_solvers' => $results->count(),
                 'frozen' => $isFrozen,
                 'freeze_time' => $freezeTime ? $this->formatInUserTimezone($freezeTime) : null,
