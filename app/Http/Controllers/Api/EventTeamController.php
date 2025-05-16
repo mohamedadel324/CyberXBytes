@@ -1647,7 +1647,7 @@ class EventTeamController extends Controller
                     })
                     ->ignore($team->id)
             ],
-            'icon' => 'nullable|image|max:2048' // 2MB max
+            'icon' => 'nullable|image|max:5848' // 2MB max
         ]);
 
         if ($validator->fails()) {
