@@ -40,6 +40,7 @@ class EventController extends Controller
             ->map(function ($event) use ($user) {
                 // Check if user is invited
                 $isInvited = $event->invitations()->where('email', $user->email)->exists();
+                $isRegistered = $event->registrations()->where('user_uuid', $user->uuid)->exists();
                 
                 return [
                     'uuid' => $event->uuid,
@@ -59,7 +60,7 @@ class EventController extends Controller
                     'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date) || $isInvited,
                     'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                     'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
-                    'is_registered' => $event->registrations()->where('user_uuid', $user->uuid)->exists(),
+                    'is_registered' => $isRegistered,
                     'is_invited' => $isInvited,
                 ];
             });
@@ -93,6 +94,7 @@ class EventController extends Controller
 
         // Check if user is invited
         $isInvited = $user && $event->invitations()->where('email', $user->email)->exists();
+        $isRegistered = $user ? $event->registrations()->where('user_uuid', $user->uuid)->exists() : false;
 
         return response()->json([
             'event' => [
@@ -112,7 +114,7 @@ class EventController extends Controller
                 'team_maximum_members' => $event->team_maximum_members,
                 'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date) || $isInvited,
                 'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
-                'is_registered' => $user ? $event->registrations()->where('user_uuid', $user->uuid)->exists() : false,
+                'is_registered' => $isRegistered,
                 'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
                 'is_invited' => $isInvited,
             ]
