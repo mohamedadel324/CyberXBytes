@@ -517,7 +517,7 @@ class EventResource extends BaseResource
     public static function getWidgets(): array
     {
         return [
-            EventResource\Widgets\EventRegistrationsWidget::class,
+            EventResource\Widgets\EventLeaderboardWidget::class,
             EventResource\Widgets\TeamsWidget::class,
             EventResource\Widgets\ChallengesSolvedWidget::class,
         ];

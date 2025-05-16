@@ -8,7 +8,7 @@ use App\Models\EventInvitation;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Log;
-use App\Filament\Resources\EventResource\Widgets\EventRegistrationsWidget;
+use App\Filament\Resources\EventResource\Widgets\EventLeaderboardWidget;
 use App\Filament\Resources\EventResource\Widgets\TeamsWidget;
 use App\Filament\Resources\EventResource\Widgets\ChallengesSolvedWidget;
 
@@ -26,7 +26,7 @@ class EditEvent extends EditRecord
     protected function getHeaderWidgets(): array
     {
         return [
-            EventRegistrationsWidget::class,
+            EventLeaderboardWidget::class,
             TeamsWidget::class,
             ChallengesSolvedWidget::class,
         ];
