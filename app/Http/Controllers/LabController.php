@@ -7,6 +7,7 @@ use App\Models\Challange;
 use App\Models\LabCategory;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LabController extends Controller
 {
@@ -817,29 +818,133 @@ class LabController extends Controller
             'challange_uuid' => 'required|exists:challanges,uuid',
             'solution' => 'required|string',
         ]);
-        $challenge = Challange::where('uuid', $request->challange_uuid)->first();
-        if (!$challenge->available) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This challenge is not available',
-            ], 400);
-        }
-        // Check if user has already solved this challenge - only for single flag type
-        if ($challenge->flag_type === 'single' && 
-            $challenge->submissions()->where('user_uuid', auth('api')->user()->uuid)->where('solved', true)->exists()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You have already solved this challenge',
-                'data' => [
-                    'is_first_blood' => false
-                ]
-            ], 400);
-        }
         
-        // Handle single flag type
-        if ($challenge->flag_type === 'single') {
-            if($challenge->flag == $request->solution) {
-                // Create the submission
+        // Use a database transaction to prevent race conditions
+        return DB::transaction(function() use ($request) {
+            $challenge = Challange::where('uuid', $request->challange_uuid)->lockForUpdate()->first();
+            
+            if (!$challenge->available) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This challenge is not available',
+                ], 400);
+            }
+            
+            // Check if user has already solved this challenge - only for single flag type
+            if ($challenge->flag_type === 'single' && 
+                $challenge->submissions()->where('user_uuid', auth('api')->user()->uuid)->where('solved', true)->exists()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You have already solved this challenge',
+                    'data' => [
+                        'is_first_blood' => false
+                    ]
+                ], 400);
+            }
+            
+            // Handle single flag type
+            if ($challenge->flag_type === 'single') {
+                if($challenge->flag == $request->solution) {
+                    // Create the submission
+                    $submission = $challenge->submissions()->create([
+                        'flag' => $request->solution,
+                        'ip' => $request->getClientIp(),
+                        'user_uuid' => auth('api')->user()->uuid,
+                        'solved' => true
+                    ]);
+                    
+                    // Calculate points and check for first blood
+                    $points = $challenge->bytes;
+                    $firstBloodPoints = 0;
+                    
+                    // Get first solver for this challenge - must get correct submission
+                    $firstSolver = $challenge->submissions()
+                        ->where('solved', true)
+                        ->orderBy('created_at', 'asc')
+                        ->first();
+                    
+                    // Check if this user is the first solver
+                    $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
+                    if ($isFirstBlood) {
+                        $firstBloodPoints = $challenge->firstBloodBytes;
+                    }
+                    
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'The flag is correct',
+                        'data' => [
+                            'flag_type' => 'single',
+                            'points' => $points,
+                            'first_blood_points' => $firstBloodPoints,
+                            'is_first_blood' => $isFirstBlood
+                        ]
+                    ], 200);
+                }
+
+                $challenge->submissions()->create([
+                    'flag' => $request->solution,
+                    'ip' => $request->getClientIp(),
+                    'user_uuid' => auth('api')->user()->uuid,
+                    'solved' => false
+                ]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'The flag is incorrect',
+                    'data' => [
+                        'is_first_blood' => false
+                    ]
+                ], 400);
+            } 
+            // Handle multiple flag types
+            else {
+                // Load flags with a lock to prevent race conditions
+                $challenge->load(['flags' => function($query) {
+                    $query->lockForUpdate();
+                }]);
+                
+                // Find the flag that matches the submission
+                $matchedFlag = null;
+                foreach ($challenge->flags as $flag) {
+                    if ($request->solution === $flag->flag) {
+                        $matchedFlag = $flag;
+                        break;
+                    }
+                }
+                
+                if (!$matchedFlag) {
+                    // No matching flag found, record the attempt
+                    $challenge->submissions()->create([
+                        'flag' => $request->solution,
+                        'ip' => $request->getClientIp(),
+                        'user_uuid' => auth('api')->user()->uuid,
+                        'solved' => false
+                    ]);
+                    
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'The flag is incorrect',
+                        'data' => [
+                            'flag_type' => $challenge->flag_type,
+                            'is_first_blood' => false
+                        ]
+                    ], 400);
+                }
+                
+                // Check if user has already solved this flag
+                $flagSubmission = $challenge->submissions()
+                    ->where('user_uuid', auth('api')->user()->uuid)
+                    ->where('flag', $matchedFlag->flag)
+                    ->where('solved', true)
+                    ->first();
+
+                if ($flagSubmission) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'You have already solved this flag',
+                    ], 400);
+                }
+
+                // Record the solved flag
                 $submission = $challenge->submissions()->create([
                     'flag' => $request->solution,
                     'ip' => $request->getClientIp(),
@@ -847,145 +952,120 @@ class LabController extends Controller
                     'solved' => true
                 ]);
                 
-                // Calculate points and check for first blood
-                $points = $challenge->bytes;
+                // Check if all flags are solved for multiple_all type
+                $allFlagsSolved = false;
+                $points = 0;
                 $firstBloodPoints = 0;
+                $isFirstBlood = false;  // Initialize the flag for all cases
                 
-                // Get first solver for this challenge - must get correct submission
-                $firstSolver = $challenge->submissions()
-                    ->where('solved', true)
-                    ->orderBy('created_at', 'asc')
-                    ->first();
-                
-                // Check if this user is the first solver
-                $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
-                if ($isFirstBlood) {
-                    $firstBloodPoints = $challenge->firstBloodBytes;
-                }
-                
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'The flag is correct',
-                    'data' => [
-                        'flag_type' => 'single',
-                        'points' => $points,
-                        'first_blood_points' => $firstBloodPoints,
-                        'is_first_blood' => $isFirstBlood
-                    ]
-                ], 200);
-            }
+                if ($challenge->flag_type === 'multiple_all') {
+                    // Get all flags available for this challenge
+                    $allFlags = $challenge->flags->pluck('flag')->toArray();
+                    $totalFlags = count($allFlags);
+                    
+                    // Get all flags this specific user has solved
+                    $userSolvedFlags = $challenge->submissions()
+                        ->where('user_uuid', auth('api')->user()->uuid)
+                        ->where('solved', true)
+                        ->pluck('flag')
+                        ->unique()
+                        ->values()
+                        ->toArray();
+                    
+                    $userSolvedCount = count($userSolvedFlags);
+                    
+                    // Check if this user has solved all flags
+                    $allFlagsSolved = count(array_intersect($userSolvedFlags, $allFlags)) === $totalFlags;
+                    
+                    // Only award points if ALL flags are solved
+                    if ($allFlagsSolved) {
+                        // Always award base points for solving all flags
+                        $points = $challenge->bytes;
+                        
+                        // Check if this user was the first to solve all flags
+                        $isFirstBlood = true;
+                        
+                        foreach ($allFlags as $flag) {
+                            $firstSolver = $challenge->submissions()
+                                ->where('flag', $flag)
+                                ->where('solved', true)
+                                ->orderBy('created_at', 'asc')
+                                ->first();
+                                
+                            if (!$firstSolver || $firstSolver->user_uuid !== auth('api')->user()->uuid) {
+                                $isFirstBlood = false;
+                                break;
+                            }
+                        }
+                        
+                        if ($isFirstBlood) {
+                            $firstBloodPoints = $challenge->firstBloodBytes;
+                        }
+                        
+                        return response()->json([
+                            'status' => 'success',
+                            'message' => 'The flag is correct',
+                            'data' => [
+                                'flag_type' => $challenge->flag_type,
+                                'flag_name' => $matchedFlag->name,
+                                'all_flags_solved' => true,
+                                'points' => $points,
+                                'first_blood_points' => $firstBloodPoints,
+                                'is_first_blood' => $firstBloodPoints > 0,
+                            ]
+                        ], 200);
+                    } else {
+                        // If not all flags are solved, just return a message without data array
+                        return response()->json([
+                            'status' => 'success',
+                            'message' => 'The flag is correct',
+                            'flag_type' => $challenge->flag_type,
 
-            $challenge->submissions()->create([
-                'flag' => $request->solution,
-                'ip' => $request->getClientIp(),
-                'user_uuid' => auth('api')->user()->uuid,
-                'solved' => false
-            ]);
-            return response()->json([
-                'status' => 'error',
-                'message' => 'The flag is incorrect',
-                'data' => [
-                    'is_first_blood' => false
-                ]
-            ], 400);
-        } 
-        // Handle multiple flag types
-        else {
-            // Find the flag that matches the submission
-            $matchedFlag = null;
-            foreach ($challenge->flags as $flag) {
-                if ($request->solution === $flag->flag) {
-                    $matchedFlag = $flag;
-                    break;
-                }
-            }
-            
-            if (!$matchedFlag) {
-                // No matching flag found, record the attempt
-                $challenge->submissions()->create([
-                    'flag' => $request->solution,
-                    'ip' => $request->getClientIp(),
-                    'user_uuid' => auth('api')->user()->uuid,
-                    'solved' => false
-                ]);
-                
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'The flag is incorrect',
-                    'data' => [
-                        'flag_type' => $challenge->flag_type,
-                        'is_first_blood' => false
-                    ]
-                ], 400);
-            }
-            
-            // Check if user has already solved this flag
-            $flagSubmission = $challenge->submissions()
-                ->where('user_uuid', auth('api')->user()->uuid)
-                ->where('flag', $matchedFlag->flag)
-                ->where('solved', true)
-                ->first();
-
-            if ($flagSubmission) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'You have already solved this flag',
-                ], 400);
-            }
-
-            // Record the solved flag
-            $submission = $challenge->submissions()->create([
-                'flag' => $request->solution,
-                'ip' => $request->getClientIp(),
-                'user_uuid' => auth('api')->user()->uuid,
-                'solved' => true
-            ]);
-            
-            // Check if all flags are solved for multiple_all type
-            $allFlagsSolved = false;
-            $points = 0;
-            $firstBloodPoints = 0;
-            $isFirstBlood = false;  // Initialize the flag for all cases
-            
-            if ($challenge->flag_type === 'multiple_all') {
-                // Get all flags available for this challenge
-                $allFlags = $challenge->flags->pluck('flag')->toArray();
-                $totalFlags = count($allFlags);
-                
-                // Get all flags this specific user has solved
-                $userSolvedFlags = $challenge->submissions()
-                    ->where('user_uuid', auth('api')->user()->uuid)
-                    ->where('solved', true)
-                    ->pluck('flag')
-                    ->unique()
-                    ->values()
-                    ->toArray();
-                
-                $userSolvedCount = count($userSolvedFlags);
-                
-                // Check if this user has solved all flags
-                $allFlagsSolved = count(array_intersect($userSolvedFlags, $allFlags)) === $totalFlags;
-                
-                // Only award points if ALL flags are solved
-                if ($allFlagsSolved) {
-                    // Always award base points for solving all flags
+                        ], 200);
+                    }
+                } else if ($challenge->flag_type === 'multiple_individual') {
+                    // For multiple_individual, points are awarded immediately for each flag
+                    // Always award base points for solving the flag
+                    $points = $matchedFlag->bytes;
+                    
+                    // Check if this is first blood for this flag
+                    $firstSolver = $challenge->submissions()
+                        ->where('flag', $matchedFlag->flag)
+                        ->where('solved', true)
+                        ->orderBy('created_at', 'asc')
+                        ->first();
+                    
+                    // Check if the current user is the first solver
+                    $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
+                    
+                    if ($isFirstBlood) {
+                        $firstBloodPoints = $matchedFlag->firstBloodBytes;
+                    }
+                    
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'The flag is correct',
+                        'data' => [
+                            'flag_type' => $challenge->flag_type,
+                            'flag_name' => $matchedFlag->name,
+                            'points' => $points,
+                            'first_blood_points' => $firstBloodPoints,
+                            'is_first_blood' => $firstBloodPoints > 0,
+                        ]
+                    ], 200);
+                } else if ($challenge->flag_type === 'single') {
+                    // For single flag type, if we get here it means the flag was solved
+                    $allFlagsSolved = true;
                     $points = $challenge->bytes;
                     
-                    // Check if this user was the first to solve all flags
-                    $isFirstBlood = true;
+                    // Check if this is first blood
+                    $firstSolver = $challenge->submissions()
+                        ->where('solved', true)
+                        ->orderBy('created_at', 'asc')
+                        ->first();
                     
-                    foreach ($allFlags as $flag) {
-                        $firstSolver = $challenge->submissions()
-                            ->where('flag', $flag)
-                            ->where('solved', true)
-                            ->orderBy('created_at', 'asc')
-                            ->first();
-                            
-                        if (!$firstSolver || $firstSolver->user_uuid !== auth('api')->user()->uuid) {
-                            $isFirstBlood = false;
-                            break;
-                        }
-                    }
+                    // Check if the current user is the first solver
+                    $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
                     
                     if ($isFirstBlood) {
                         $firstBloodPoints = $challenge->firstBloodBytes;
@@ -997,94 +1077,26 @@ class LabController extends Controller
                         'data' => [
                             'flag_type' => $challenge->flag_type,
                             'flag_name' => $matchedFlag->name,
-                            'all_flags_solved' => true,
+                            'all_flags_solved' => $allFlagsSolved,
                             'points' => $points,
                             'first_blood_points' => $firstBloodPoints,
                             'is_first_blood' => $firstBloodPoints > 0,
                         ]
                     ], 200);
-                } else {
-                    // If not all flags are solved, just return a message without data array
-                    return response()->json([
-                        'status' => 'success',
-                        'message' => 'The flag is correct',
-                        'flag_type' => $challenge->flag_type,
-
-                    ], 200);
-                }
-            } else if ($challenge->flag_type === 'multiple_individual') {
-                // For multiple_individual, points are awarded immediately for each flag
-                // Always award base points for solving the flag
-                $points = $matchedFlag->bytes;
-                
-                // Check if this is first blood for this flag
-                $firstSolver = $challenge->submissions()
-                    ->where('flag', $matchedFlag->flag)
-                    ->where('solved', true)
-                    ->orderBy('created_at', 'asc')
-                    ->first();
-                
-                // Check if the current user is the first solver
-                $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
-                
-                if ($isFirstBlood) {
-                    $firstBloodPoints = $matchedFlag->firstBloodBytes;
                 }
                 
+                // This should never be reached, but added as a fallback
                 return response()->json([
                     'status' => 'success',
                     'message' => 'The flag is correct',
                     'data' => [
                         'flag_type' => $challenge->flag_type,
                         'flag_name' => $matchedFlag->name,
-                        'points' => $points,
-                        'first_blood_points' => $firstBloodPoints,
-                        'is_first_blood' => $firstBloodPoints > 0,
-                    ]
-                ], 200);
-            } else if ($challenge->flag_type === 'single') {
-                // For single flag type, if we get here it means the flag was solved
-                $allFlagsSolved = true;
-                $points = $challenge->bytes;
-                
-                // Check if this is first blood
-                $firstSolver = $challenge->submissions()
-                    ->where('solved', true)
-                    ->orderBy('created_at', 'asc')
-                    ->first();
-                
-                // Check if the current user is the first solver
-                $isFirstBlood = $firstSolver && $firstSolver->user_uuid === auth('api')->user()->uuid;
-                
-                if ($isFirstBlood) {
-                    $firstBloodPoints = $challenge->firstBloodBytes;
-                }
-                
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'The flag is correct',
-                    'data' => [
-                        'flag_type' => $challenge->flag_type,
-                        'flag_name' => $matchedFlag->name,
-                        'all_flags_solved' => $allFlagsSolved,
-                        'points' => $points,
-                        'first_blood_points' => $firstBloodPoints,
-                        'is_first_blood' => $firstBloodPoints > 0,
+                        'is_first_blood' => false,  // Add is_first_blood in the fallback case
                     ]
                 ], 200);
             }
-            
-            // This should never be reached, but added as a fallback
-            return response()->json([
-                'status' => 'success',
-                'message' => 'The flag is correct',
-                'data' => [
-                    'flag_type' => $challenge->flag_type,
-                    'flag_name' => $matchedFlag->name,
-                    'is_first_blood' => false,  // Add is_first_blood in the fallback case
-                ]
-            ], 200);
-        }
+        });
     }
 
     public function checkIfSolved(Request $request)
