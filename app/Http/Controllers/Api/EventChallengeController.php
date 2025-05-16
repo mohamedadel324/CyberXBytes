@@ -99,11 +99,21 @@ class EventChallengeController extends Controller
             return $validationResponse;
         }
 
+        // Get the event to check if it's frozen
+        $event = Event::where('uuid', $eventUuid)->first();
+        $isFrozen = false;
+        $freezeTime = null;
+        
+        if ($event && $event->freeze && $event->freeze_time) {
+            $isFrozen = true;
+            $freezeTime = $event->freeze_time;
+        }
+
         $challenges = EventChallange::with(['category:uuid,icon', 'flags'])
             ->where('event_uuid', $eventUuid)
             ->get();
 
-        $challenges->each(function ($challenge) {
+        $challenges->each(function ($challenge) use ($isFrozen, $freezeTime) {
             // Add id to the response
             $challenge->challenge_id = $challenge->id;
             
@@ -115,16 +125,29 @@ class EventChallengeController extends Controller
             $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
             
             // Get solved count for the challenge
-            $solvedCount = $challenge->submissions()->where('solved', true)->count();
+            $solvedCountQuery = $challenge->submissions()->where('solved', true);
+            
+            // If frozen, only count submissions before freeze time
+            if ($isFrozen) {
+                $solvedCountQuery->where('created_at', '<=', $freezeTime);
+            }
+            
+            $solvedCount = $solvedCountQuery->count();
             $challenge->solved_count = $solvedCount;
             
             // Get first blood information
             $firstBlood = null;
             if ($solvedCount > 0) {
-                $firstSolver = $challenge->submissions()
+                $firstSolverQuery = $challenge->submissions()
                     ->where('solved', true)
-                    ->orderBy('created_at', 'asc')
-                    ->first();
+                    ->orderBy('created_at', 'asc');
+                
+                // If frozen, only consider submissions before freeze time
+                if ($isFrozen) {
+                    $firstSolverQuery->where('created_at', '<=', $freezeTime);
+                }
+                
+                $firstSolver = $firstSolverQuery->first();
                 
                 if ($firstSolver) {
                     $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
@@ -154,19 +177,31 @@ class EventChallengeController extends Controller
                 
                 foreach ($challenge->flags as $flag) {
                     // Get solved count for this flag
-                    $flagSolvedCount = $challenge->submissions()
+                    $flagSolvedCountQuery = $challenge->submissions()
                         ->where('submission', $flag->flag)
-                        ->where('solved', true)
-                        ->count();
+                        ->where('solved', true);
+                    
+                    // If frozen, only count submissions before freeze time
+                    if ($isFrozen) {
+                        $flagSolvedCountQuery->where('created_at', '<=', $freezeTime);
+                    }
+                    
+                    $flagSolvedCount = $flagSolvedCountQuery->count();
                     
                     // Get first blood for this flag
                     $flagFirstBlood = null;
                     if ($flagSolvedCount > 0) {
-                        $flagFirstSolver = $challenge->submissions()
+                        $flagFirstSolverQuery = $challenge->submissions()
                             ->where('submission', $flag->flag)
                             ->where('solved', true)
-                            ->orderBy('solved_at', 'asc')
-                            ->first();
+                            ->orderBy('solved_at', 'asc');
+                        
+                        // If frozen, only consider submissions before freeze time
+                        if ($isFrozen) {
+                            $flagFirstSolverQuery->where('created_at', '<=', $freezeTime);
+                        }
+                        
+                        $flagFirstSolver = $flagFirstSolverQuery->first();
                         
                         if ($flagFirstSolver) {
                             $flagFirstBloodUser = User::where('uuid', $flagFirstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
@@ -205,7 +240,9 @@ class EventChallengeController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $challenges,
-            'count' => $challenges->count()
+            'count' => $challenges->count(),
+            'frozen' => $isFrozen,
+            'freeze_time' => $freezeTime ? $freezeTime->format('Y-m-d H:i:s') : null
         ]);
     }
 
