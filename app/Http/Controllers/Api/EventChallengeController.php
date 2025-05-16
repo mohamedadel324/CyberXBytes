@@ -488,12 +488,6 @@ class EventChallengeController extends Controller
 
     public function scoreboard($eventUuid)
     {
-        // Validate event and team requirements
-        $validationResponse = $this->validateEventAndTeamRequirements($eventUuid, true);
-        if ($validationResponse) {
-            return $validationResponse;
-        }
-
         // Get the event
         $event = Event::where('uuid', $eventUuid)->first();
         if (!$event) {
@@ -507,6 +501,40 @@ class EventChallengeController extends Controller
         $freezeTime = null;
         if ($event->freeze && $event->freeze_time) {
             $freezeTime = $event->freeze_time;
+        }
+
+        // Get user for authorization check
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        // Calculate event phase (registration, formation, or active)
+        $userNow = $this->convertToUserTimezone(now());
+        $eventStartDate = $this->convertToUserTimezone($event->start_date);
+        $eventEndDate = $this->convertToUserTimezone($event->end_date);
+        
+        $eventPhase = 'active';
+        
+        // Check if event has started
+        if ($userNow->lt($eventStartDate)) {
+            // Check if teams have been formed already
+            $teamsExist = EventTeam::where('event_uuid', $eventUuid)->exists();
+            $eventPhase = $teamsExist ? 'formation' : 'registration';
+        }
+
+        // For registration phase, return empty data
+        if ($eventPhase === 'registration') {
+            return response()->json([
+                'status' => 'success',
+                'data' => [],
+                'frozen' => $event->freeze,
+                'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
+                'event_phase' => $eventPhase
+            ]);
         }
 
         $teams = EventTeam::where('event_uuid', $eventUuid)
@@ -530,7 +558,25 @@ class EventChallengeController extends Controller
                 }
             }, 'members:uuid,user_name,profile_image'])
             ->get()
-            ->map(function($team) use ($freezeTime) {
+            ->map(function($team) use ($freezeTime, $eventPhase) {
+                // If in formation phase, just return team with zero points
+                if ($eventPhase === 'formation') {
+                    return [
+                        'team_uuid' => $team->id,
+                        'team_name' => $team->name,
+                        'team_icon' => $team->icon_url,
+                        'points' => 0,
+                        'challenges_solved' => 0,
+                        'first_blood_count' => 0,
+                        'members' => $team->members->map(function($member) {
+                            return [
+                                'user_name' => $member->user_name,
+                                'profile_image' => $member->profile_image ? asset('storage/' . $member->profile_image) : null
+                            ];
+                        })
+                    ];
+                }
+
                 $points = 0;
                 $firstBloodCount = 0;
                 $solvedChallenges = [];
@@ -658,7 +704,8 @@ class EventChallengeController extends Controller
             'status' => 'success',
             'data' => $teams,
             'frozen' => $event->freeze,
-            'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null
+            'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
+            'event_phase' => $eventPhase
         ]);
     }
     
@@ -1295,7 +1342,7 @@ class EventChallengeController extends Controller
                 $query->whereIn('id', $challenges->flatMap->flags->pluck('id'));
             }])
             ->get()
-            ->map(function($member) use ($challenges) {
+            ->map(function($member) use ($challenges, $isFrozen, $freezeTime) {
                 $totalPoints = 0;
                 $totalFirstBloodPoints = 0;
                 $solvedChallenges = [];
