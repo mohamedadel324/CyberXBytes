@@ -36,6 +36,7 @@ class EventController extends Controller
                         $q->where('email', $user->email);
                     });
             })
+            ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($event) use ($user) {
                 // Check if user is invited
