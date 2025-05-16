@@ -15,6 +15,7 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         // \App\Http\Middleware\TrustHosts::class,
+        \App\Http\Middleware\DdosProtection::class,
         \Illuminate\Http\Middleware\HandleCors::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
@@ -36,6 +37,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            \App\Http\Middleware\ApiDdosProtection::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
@@ -64,5 +66,9 @@ class Kernel extends HttpKernel
         'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         'handle.unauthorized' => \App\Http\Middleware\HandleUnauthorizedMiddleware::class,
         'backup.access' => \App\Http\Middleware\BackupAccessMiddleware::class,
+        
+        // DDoS Protection
+        'ddos.protect' => \App\Http\Middleware\DdosProtection::class,
+        'api.ddos.protect' => \App\Http\Middleware\ApiDdosProtection::class,
     ];
 } 

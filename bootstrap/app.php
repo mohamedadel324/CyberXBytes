@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
     )
+    ->withProviders([
+        \App\Providers\DdosServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
             'auth.last_seen' => \App\Http\Middleware\UpdateLastSeen::class,

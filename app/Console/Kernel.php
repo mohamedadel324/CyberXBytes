@@ -16,6 +16,7 @@ class Kernel extends ConsoleKernel
         // ... existing code ...
         \App\Console\Commands\SeedEmailTemplates::class,
         \App\Console\Commands\UpdateEmailTemplates::class,
+        \App\Console\Commands\PublishDdosConfig::class,
     ];
 
     /**
