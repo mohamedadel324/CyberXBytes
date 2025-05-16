@@ -48,7 +48,7 @@ class UserChallangeController extends Controller
         $userChallange->description = $request->description;
         $userChallange->category_uuid = $request->category_uuid;
         $userChallange->difficulty = $request->difficulty;
-        $userChallange->flag = json_encode($request->flag);
+        $userChallange->flag = $request->flag;
         $userChallange->challange_file = $challengeFilePath;
         $userChallange->answer_file = $answerFilePath;
         $userChallange->notes = $request->notes;
