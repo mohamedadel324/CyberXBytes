@@ -410,7 +410,7 @@ class EventController extends Controller
                     'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
                     'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
                     'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $challenge->bytes),
-                    'is_first_blood' => $isFirstBlood,
+                    'is_first_blood' => $isAfterFreeze ? false : $isFirstBlood,
                     'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : 0),
                     'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes),
                     'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
