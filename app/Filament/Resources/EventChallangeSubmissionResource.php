@@ -80,7 +80,16 @@ class EventChallangeSubmissionResource extends BaseResource
             ->defaultSort('created_at', 'desc')
 
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('event_challange_id')
+                    ->relationship('eventChallange', 'title')
+                    ->searchable()
+                    ->preload()
+                    ->label('Event Challenge'),
+                Tables\Filters\SelectFilter::make('user_uuid')
+                    ->relationship('user', 'user_name')
+                    ->searchable()
+                    ->preload()
+                    ->label('User'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
