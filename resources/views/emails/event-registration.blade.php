@@ -44,7 +44,7 @@
                     <!-- Logo -->
                     <tr>
                         <td align="center" style="padding: 20px 0;">
-                            <img src="https://red-armadillo-871677.hostingersite.com/logo3.png" alt="Logo" width="60" height="60" style="border-radius: 50%; display: block; border: 0;">
+                            <img src="{{ asset('logo3.png') }}" alt="Logo" width="60" height="60" style="border-radius: 50%; display: block; border: 0;">
                         </td>
                     </tr>
                     
