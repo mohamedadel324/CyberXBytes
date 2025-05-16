@@ -1855,7 +1855,7 @@ class EventChallengeController extends Controller
                     'first_blood_bytes' => $challenge->firstBloodBytes,
                     'total_flags' => $challenge->flags->count()
                 ],
-                'users' => $results->sortByDesc('solved_at')->values()->all(),
+                'members' => $results->sortByDesc('solved_at')->values()->all(),
                 'total_solvers' => $results->count(),
                 'frozen' => $isFrozen,
                 'freeze_time' => $freezeTime ? $this->formatInUserTimezone($freezeTime) : null,
