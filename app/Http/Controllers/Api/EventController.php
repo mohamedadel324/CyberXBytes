@@ -30,6 +30,10 @@ class EventController extends Controller
                     // OR events where the user is already registered
                     ->orWhereHas('registrations', function($q) use ($user) {
                         $q->where('user_uuid', $user->uuid);
+                    })
+                    // OR events where the user is invited (even if registration ended)
+                    ->orWhereHas('invitations', function($q) use ($user) {
+                        $q->where('email', $user->email);
                     });
             })
             ->get()
@@ -75,6 +79,10 @@ class EventController extends Controller
                     // OR events where the user is already registered
                     ->orWhereHas('registrations', function($q) use ($user) {
                         $q->where('user_uuid', $user->uuid);
+                    })
+                    // OR events where the user is invited (even if registration ended)
+                    ->orWhereHas('invitations', function($q) use ($user) {
+                        $q->where('email', $user->email);
                     });
             })
             ->firstOrFail();
