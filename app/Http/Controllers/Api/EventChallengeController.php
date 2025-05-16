@@ -1372,11 +1372,11 @@ class EventChallengeController extends Controller
                             $totalFirstBloodPoints += $firstBloodPoints;
                             
                             $solvedChallenges[] = [
-                                'id' => $challenge->id,
-                                'title' => $challenge->title,
-                                'type' => 'single',
-                                'points' => $points,
-                                'first_blood_points' => $firstBloodPoints,
+                                'id' => $isFrozen ? '*****' : $challenge->id,
+                                'title' => $isFrozen ? '*****' : $challenge->title,
+                                'type' => $isFrozen ? '*****' : 'single',
+                                'points' => $isFrozen ? '*****' : $points,
+                                'first_blood_points' => $isFrozen ? '*****' : $firstBloodPoints,
                                 'is_first_blood' => $firstBloodPoints > 0,
                                 'solved_at' => $this->formatInUserTimezone($submission->pivot->solved_at)
                             ];
@@ -1436,18 +1436,18 @@ class EventChallengeController extends Controller
                             
                             foreach ($solvedFlags as $flag) {
                                 $flagsData[] = [
-                                    'id' => $flag->id,
-                                    'name' => $flag->name,
+                                    'id' => $isFrozen ? '*****' : $flag->id,
+                                    'name' => $isFrozen ? '*****' : $flag->name,
                                     'solved_at' => $this->formatInUserTimezone($flag->pivot->solved_at)
                                 ];
                             }
                             
                             $solvedChallenges[] = [
-                                'id' => $challenge->id,
-                                'title' => $challenge->title,
-                                'type' => 'multiple_all',
-                                'points' => $challengePoints,
-                                'first_blood_points' => $challengeFirstBloodPoints,
+                                'id' => $isFrozen ? '*****' : $challenge->id,
+                                'title' => $isFrozen ? '*****' : $challenge->title,
+                                'type' => $isFrozen ? '*****' : 'multiple_all',
+                                'points' => $isFrozen ? '*****' : $challengePoints,
+                                'first_blood_points' => $isFrozen ? '*****' : $challengeFirstBloodPoints,
                                 'is_first_blood' => $isFirstBlood,
                                 'flags' => $flagsData,
                                 'solved_at' => collect($solvedFlags->pluck('pivot.solved_at'))->max()
@@ -1484,21 +1484,21 @@ class EventChallengeController extends Controller
                             $challengeFirstBloodPoints += $flagFirstBloodPoints;
                             
                             $flagsData[] = [
-                                'id' => $flag->id,
-                                'name' => $flag->name,
-                                'points' => $flagPoints,
-                            'is_first_blood' => $flagFirstBloodPoints > 0,
-                            'solved_at' => $this->formatInUserTimezone($flag->pivot->solved_at)
+                                'id' => $isFrozen ? '*****' : $flag->id,
+                                'name' => $isFrozen ? '*****' : $flag->name,
+                                'points' => $isFrozen ? '*****' : $flagPoints,
+                                'is_first_blood' => $flagFirstBloodPoints > 0,
+                                'solved_at' => $this->formatInUserTimezone($flag->pivot->solved_at)
                             ];
                         }
                         
                         if (!empty($flagsData)) {
                             $solvedChallenges[] = [
-                                'id' => $challenge->id,
-                                'title' => $challenge->title,
-                                'type' => 'multiple_individual',
-                                'points' => $challengePoints,
-                                'first_blood_points' => $challengeFirstBloodPoints,
+                                'id' => $isFrozen ? '*****' : $challenge->id,
+                                'title' => $isFrozen ? '*****' : $challenge->title,
+                                'type' => $isFrozen ? '*****' : 'multiple_individual',
+                                'points' => $isFrozen ? '*****' : $challengePoints,
+                                'first_blood_points' => $isFrozen ? '*****' : $challengeFirstBloodPoints,
                                 'is_first_blood' => $challengeFirstBloodPoints > 0,
                                 'flags' => $flagsData,
                                 'solved_at' => collect($solvedFlags->pluck('pivot.solved_at'))->min()
@@ -1514,13 +1514,16 @@ class EventChallengeController extends Controller
                     'user_uuid' => $member->uuid,
                     'user_name' => $member->user_name,
                     'profile_image' => $member->profile_image ? asset('storage/' . $member->profile_image) : null,
-                    'total_points' => $totalPoints,
-                    'first_blood_points' => $totalFirstBloodPoints,
+                    'total_points' => $isFrozen ? '*****' : $totalPoints,
+                    'first_blood_points' => $isFrozen ? '*****' : $totalFirstBloodPoints,
                     'challenges' => collect($solvedChallenges)->sortByDesc('solved_at')->values()->all(),
                     'solved_challenges_count' => count($solvedChallenges)
                 ];
             })
-            ->sortByDesc('total_points')
+            ->sortByDesc(function($member) use ($isFrozen) {
+                // Use solved_challenges_count for sorting during freeze, otherwise use total_points
+                return $isFrozen ? $member['solved_challenges_count'] : $member['total_points'];
+            })
             ->values();
             
         return response()->json([
@@ -1532,8 +1535,10 @@ class EventChallengeController extends Controller
                     'member_count' => $team->members->count()
                 ],
                 'members' => $teamMembers,
-                'total_team_points' => $teamMembers->sum('total_points'),
+                'total_team_points' => $isFrozen ? '*****' : $teamMembers->sum('total_points'),
                 'total_challenges' => $challenges->count(),
+                'frozen' => $isFrozen,
+                'freeze_time' => $freezeTime ? $this->formatInUserTimezone($freezeTime) : null,
                 'last_updated' => now()->format('c')
             ]
         ]);
