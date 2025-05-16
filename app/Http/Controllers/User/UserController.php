@@ -272,29 +272,10 @@ class UserController extends Controller
     }
 
     public function publicProfile($user_name){
-        // Sanitize and validate username
-        $sanitized_username = trim(preg_replace('/[^a-zA-Z0-9_\-.]/', '', $user_name));
-        
-        if (empty($sanitized_username)) {
-            return response()->json([
-                'error' => 'Invalid username',
-                'message' => 'The provided username contains invalid characters or is empty'
-            ], 400);
-        }
-        
-        $user = User::where('user_name', $sanitized_username)->first();
-        
-        if (!$user) {
-            return response()->json([
-                'error' => 'User not found',
-                'message' => "No user found with username '{$sanitized_username}'"
-            ], 404);
-        }
-        
+        $user = User::where('user_name', $user_name)->firstOrFail();
         if ($user->profile_image) {
             $user->profile_image = url('storage/' . $user->profile_image);
         }
-        
         return response()->json(['user' => $user]);
     }
 
@@ -306,25 +287,8 @@ class UserController extends Controller
      */
     public function userStats($user_name)
     {
-        // Sanitize and validate username
-        $sanitized_username = trim(preg_replace('/[^a-zA-Z0-9_\-.]/', '', $user_name));
-        
-        if (empty($sanitized_username)) {
-            return response()->json([
-                'error' => 'Invalid username',
-                'message' => 'The provided username contains invalid characters or is empty'
-            ], 400);
-        }
-        
         // Get the user
-        $user = User::where('user_name', $sanitized_username)->first();
-        
-        if (!$user) {
-            return response()->json([
-                'error' => 'User not found',
-                'message' => "No user found with username '{$sanitized_username}'"
-            ], 404);
-        }
+        $user = User::where('user_name', $user_name)->firstOrFail();
         
         // Get user's social media
         $socialMedia = $user->socialMedia()->first();
