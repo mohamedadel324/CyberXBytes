@@ -53,7 +53,9 @@ class UserChallangeResource extends BaseResource
                         'very_hard' => 'Very Hard',
                     ]),
                 Forms\Components\TagsInput::make('flag')
-                    ->required(),
+                    ->required()
+                    ->splitKeys(['Enter', 'Tab', ',', ' '])
+                    ->separator(','),
                 Forms\Components\FileUpload::make('challange_file')
                     ->required()
                     ->downloadable()
