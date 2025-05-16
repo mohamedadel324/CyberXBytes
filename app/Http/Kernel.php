@@ -40,11 +40,6 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\ApiDdosProtection::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
-        
-        // New middleware group for profile endpoints that need extended timeouts
-        'extended-timeout' => [
-            \App\Http\Middleware\ExtendedTimeoutMiddleware::class,
-        ],
     ];
 
     /**
@@ -75,6 +70,5 @@ class Kernel extends HttpKernel
         // DDoS Protection
         'ddos.protect' => \App\Http\Middleware\DdosProtection::class,
         'api.ddos.protect' => \App\Http\Middleware\ApiDdosProtection::class,
-        'extended-timeout' => \App\Http\Middleware\ExtendedTimeoutMiddleware::class,
     ];
 } 

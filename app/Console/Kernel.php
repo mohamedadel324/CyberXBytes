@@ -17,7 +17,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\SeedEmailTemplates::class,
         \App\Console\Commands\UpdateEmailTemplates::class,
         \App\Console\Commands\PublishDdosConfig::class,
-        \App\Console\Commands\FixApiTimeouts::class,
     ];
 
     /**
