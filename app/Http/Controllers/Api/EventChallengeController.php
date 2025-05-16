@@ -1365,6 +1365,7 @@ class EventChallengeController extends Controller
                 $totalPoints = 0;
                 $totalFirstBloodPoints = 0;
                 $solvedChallenges = [];
+                $earliestSolveTime = null;
                 
                 // Process single flag type challenges
                 foreach ($challenges->where('flag_type', 'single') as $challenge) {
@@ -1375,6 +1376,12 @@ class EventChallengeController extends Controller
                     if ($submission) {
                         $points = $challenge->bytes;
                         $firstBloodPoints = 0;
+                        $solvedAt = $submission->pivot->solved_at;
+                        
+                        // Track earliest solve time
+                        if (is_null($earliestSolveTime) || $solvedAt < $earliestSolveTime) {
+                            $earliestSolveTime = $solvedAt;
+                        }
                         
                         // Check if this was first blood
                         $firstSolverQuery = EventChallangeSubmission::where('event_challange_id', $challenge->id)
@@ -1403,7 +1410,7 @@ class EventChallengeController extends Controller
                             'points' => $points,
                             'first_blood_points' => $firstBloodPoints,
                             'is_first_blood' => $firstBloodPoints > 0,
-                            'solved_at' => $this->formatInUserTimezone($submission->pivot->solved_at)
+                            'solved_at' => $this->formatInUserTimezone($solvedAt)
                         ];
                     }
                 }
@@ -1418,6 +1425,14 @@ class EventChallengeController extends Controller
                         
                     if ($solvedFlags->isEmpty()) {
                         continue;
+                    }
+                    
+                    // Track earliest solve time from flags
+                    foreach ($solvedFlags as $flag) {
+                        $flagSolvedAt = $flag->pivot->solved_at;
+                        if (is_null($earliestSolveTime) || $flagSolvedAt < $earliestSolveTime) {
+                            $earliestSolveTime = $flagSolvedAt;
+                        }
                     }
                     
                     $challengePoints = 0;
@@ -1475,7 +1490,7 @@ class EventChallengeController extends Controller
                                 'first_blood_points' => $challengeFirstBloodPoints,
                                 'is_first_blood' => $isFirstBlood,
                                 'flags' => $flagsData,
-                                'solved_at' => collect($solvedFlags->pluck('pivot.solved_at'))->max()
+                                'solved_at' => $this->formatInUserTimezone(collect($solvedFlags->pluck('pivot.solved_at'))->max())
                             ];
                             
                             $totalPoints += $challengePoints;
@@ -1526,7 +1541,7 @@ class EventChallengeController extends Controller
                                 'first_blood_points' => $challengeFirstBloodPoints,
                                 'is_first_blood' => $challengeFirstBloodPoints > 0,
                                 'flags' => $flagsData,
-                                'solved_at' => collect($solvedFlags->pluck('pivot.solved_at'))->min()
+                                'solved_at' => $this->formatInUserTimezone(collect($solvedFlags->pluck('pivot.solved_at'))->min())
                             ];
                             
                             $totalPoints += $challengePoints;
@@ -1541,12 +1556,35 @@ class EventChallengeController extends Controller
                     'profile_image' => $member->profile_image ? asset('storage/' . $member->profile_image) : null,
                     'total_points' => $totalPoints,
                     'first_blood_points' => $totalFirstBloodPoints,
+                    'earliest_solve_time' => $earliestSolveTime,
                     'challenges' => collect($solvedChallenges)->sortByDesc('solved_at')->values()->all(),
                     'solved_challenges_count' => count($solvedChallenges)
                 ];
-            })
-            ->sortByDesc('total_points')
-            ->values();
+            });
+            
+        // Sort by total points first, then by earliest solve time when points are equal
+        $teamMembers = $teamMembers->sort(function ($a, $b) {
+            // First sort by total points (descending)
+            if ($a['total_points'] != $b['total_points']) {
+                return $b['total_points'] - $a['total_points'];
+            }
+            
+            // If points are equal, sort by earliest solve time (ascending)
+            if ($a['earliest_solve_time'] && $b['earliest_solve_time']) {
+                return strtotime($a['earliest_solve_time']) - strtotime($b['earliest_solve_time']);
+            }
+            
+            // If one has solve time and other doesn't, the one with solve time comes first
+            if ($a['earliest_solve_time'] && !$b['earliest_solve_time']) {
+                return -1;
+            }
+            
+            if (!$a['earliest_solve_time'] && $b['earliest_solve_time']) {
+                return 1;
+            }
+            
+            return 0;
+        })->values();
             
         return response()->json([
             'status' => 'success',
