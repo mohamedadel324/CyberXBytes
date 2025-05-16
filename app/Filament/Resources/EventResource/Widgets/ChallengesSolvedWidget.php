@@ -11,7 +11,8 @@ class ChallengesSolvedWidget extends ChartWidget
     protected static ?string $heading = 'Challenge Solve Status';
     
     public $record = null;
-    
+    protected int | string | array $columnSpan = 'full';
+
     protected static string $color = 'danger';
     
     protected static ?string $maxHeight = '200px';

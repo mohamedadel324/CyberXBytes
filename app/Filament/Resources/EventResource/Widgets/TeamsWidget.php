@@ -11,6 +11,8 @@ class TeamsWidget extends ChartWidget
     
     public $record = null;
     
+    protected int | string | array $columnSpan = 'full';
+
     protected static string $color = 'info';
     
     protected static ?string $maxHeight = '300px';

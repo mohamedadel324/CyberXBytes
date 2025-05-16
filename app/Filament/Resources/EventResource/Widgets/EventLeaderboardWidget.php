@@ -39,16 +39,7 @@ class EventLeaderboardWidget extends BaseWidget
                 }
                 
                 $eventUuid = $this->record->uuid;
-                $event = Event::where('uuid', $eventUuid)->first();
-                
-                // Check if scoreboard is frozen
-                $isFrozen = false;
-                $freezeTime = null;
-                
-                if ($event && $event->freeze && $event->freeze_time) {
-                    $isFrozen = true;
-                    $freezeTime = $event->freeze_time;
-                }
+                $event = Event::where('uuid', $eventUuid)->first();   
                 
                 // Get all teams for this event with their members
                 $query = EventTeam::where('event_uuid', $eventUuid)
