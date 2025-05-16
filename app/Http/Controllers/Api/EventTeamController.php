@@ -746,7 +746,10 @@ class EventTeamController extends Controller
                     return $team->members->pluck('uuid')->contains($item['user_uuid']);
                 })->count(),
                 'total_challenges_solved' => collect($membersData)->flatMap(function($member) {
-                    return collect($member['challenge_completions'])->pluck('challenge_uuid')->unique();
+                    return collect($member['challenge_completions'])
+                        ->where('masked', false)  // Only count non-masked (before freeze) challenges
+                        ->pluck('challenge_uuid')
+                        ->unique();
                 })->unique()->count(),
                 'member_stats' => $membersData->map(function($member) {
                     $normalCompletions = collect($member['challenge_completions'])->where('masked', false);
@@ -1148,7 +1151,10 @@ class EventTeamController extends Controller
                     return $team->members->pluck('uuid')->contains($item['user_uuid']);
                 })->count(),
                 'total_challenges_solved' => collect($membersData)->flatMap(function($member) {
-                    return collect($member['challenge_completions'])->pluck('challenge_uuid')->unique();
+                    return collect($member['challenge_completions'])
+                        ->where('masked', false)  // Only count non-masked (before freeze) challenges
+                        ->pluck('challenge_uuid')
+                        ->unique();
                 })->unique()->count(),
                 'member_stats' => $membersData->map(function($member) {
                     $normalCompletions = collect($member['challenge_completions'])->where('masked', false);
