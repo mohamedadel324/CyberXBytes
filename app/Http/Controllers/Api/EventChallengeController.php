@@ -1818,7 +1818,7 @@ class EventChallengeController extends Controller
                 
                 // Add to results
                 $results->push([
-                    'user_uuid' => $solvedAfterFreeze ? 'hidden' : $user->uuid,
+                    'user_uuid' => $user->uuid,
                     'user_name' => $user->user_name,
                     'profile_image' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
                     'team_name' => $userTeam ? $userTeam->name : null,
