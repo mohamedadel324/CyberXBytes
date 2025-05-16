@@ -24,6 +24,14 @@ class EventController extends Controller
                         $q->where('email', $user->email);
                     });
             })
+            ->where(function($query) use ($user) {
+                // Keep events where registration is still open
+                $query->where('registration_end_date', '>=', now())
+                    // OR events where the user is already registered
+                    ->orWhereHas('registrations', function($q) use ($user) {
+                        $q->where('user_uuid', $user->uuid);
+                    });
+            })
             ->get()
             ->map(function ($event) {
                 return [
@@ -44,7 +52,7 @@ class EventController extends Controller
                     'can_register' => $this->isNowBetween($event->registration_start_date, $event->registration_end_date),
                     'can_form_team' => $this->isNowBetween($event->team_formation_start_date, $event->team_formation_end_date),
                     'is_ended' => now() > $this->convertToUserTimezone($event->end_date),
-                    
+                    'is_registered' => $event->registrations()->where('user_uuid', $user->uuid)->exists(),
                 ];
             });
 
@@ -59,6 +67,14 @@ class EventController extends Controller
                 $query->where('is_private', 0)
                     ->orWhereHas('invitations', function($q) use ($user) {
                         $q->where('email', $user->email);
+                    });
+            })
+            ->where(function($query) use ($user) {
+                // Keep events where registration is still open
+                $query->where('registration_end_date', '>=', now())
+                    // OR events where the user is already registered
+                    ->orWhereHas('registrations', function($q) use ($user) {
+                        $q->where('user_uuid', $user->uuid);
                     });
             })
             ->firstOrFail();
