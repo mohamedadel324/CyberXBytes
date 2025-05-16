@@ -33,7 +33,7 @@ class EventController extends Controller
                     });
             })
             ->get()
-            ->map(function ($event) {
+            ->map(function ($event) use ($user) {
                 return [
                     'uuid' => $event->uuid,
                     'title' => $event->title,
