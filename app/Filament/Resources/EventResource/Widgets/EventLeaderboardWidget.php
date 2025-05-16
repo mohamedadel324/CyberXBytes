@@ -11,6 +11,7 @@ use App\Models\EventChallangeSubmission;
 use App\Models\Event;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class EventLeaderboardWidget extends BaseWidget
 {
@@ -22,6 +23,9 @@ class EventLeaderboardWidget extends BaseWidget
     
     // Cache for team points to avoid recalculating
     protected Collection $teamPointsCache;
+    
+    // Track the current sort direction
+    protected string $sortDirection = 'desc';
     
     public function table(Table $table): Table
     {
@@ -47,7 +51,7 @@ class EventLeaderboardWidget extends BaseWidget
                 }
                 
                 // Get all teams for this event with their members
-                $teams = EventTeam::where('event_uuid', $eventUuid)
+                $query = EventTeam::where('event_uuid', $eventUuid)
                     ->with(['members.eventSubmissions' => function($query) use ($eventUuid) {
                         $query->whereHas('eventChallange', function($q) use ($eventUuid) {
                             $q->where('event_uuid', $eventUuid);
@@ -58,13 +62,29 @@ class EventLeaderboardWidget extends BaseWidget
                         })->where('solved', true);
                     }]);
                 
-                // Pre-calculate points for all teams and store in cache
-                $teams->get()->each(function ($team) {
-                    $this->teamPointsCache[$team->id] = $this->calculateTeamPoints($team);
-                });
+                return $query;
+            })
+            ->modifyQueryUsing(function (Builder $query) {
+                // Load all teams
+                $teams = $query->get();
                 
-                // Return the query builder
-                return $teams;
+                // Calculate points for all teams
+                foreach ($teams as $team) {
+                    $this->teamPointsCache[$team->id] = $this->calculateTeamPoints($team);
+                }
+                
+                // Get team IDs sorted by points
+                $sortedTeamIds = $this->teamPointsCache
+                    ->sortDesc()
+                    ->keys()
+                    ->toArray();
+                
+                // Use FIELD() to sort by our custom order
+                if (!empty($sortedTeamIds)) {
+                    $query->orderByRaw('FIELD(id, "' . implode('","', $sortedTeamIds) . '")');
+                }
+                
+                return $query;
             })
             ->columns([
                 Tables\Columns\TextColumn::make('rank')
@@ -79,8 +99,7 @@ class EventLeaderboardWidget extends BaseWidget
                     ->label('Points')
                     ->getStateUsing(function ($record) {
                         return $this->teamPointsCache[$record->id] ?? 0;
-                    })
-                    ->sortable(),
+                    }),
                 Tables\Columns\TextColumn::make('solved')
                     ->label('Challenges Solved')
                     ->getStateUsing(function ($record) {
@@ -98,8 +117,7 @@ class EventLeaderboardWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('members_count')
                     ->label('Members')
                     ->getStateUsing(fn ($record) => $record->members->count()),
-            ])
-            ->defaultSort('points', 'desc');
+            ]);
     }
     
     /**
