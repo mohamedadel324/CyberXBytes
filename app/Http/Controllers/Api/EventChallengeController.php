@@ -1633,13 +1633,13 @@ class EventChallengeController extends Controller
                 
                 // Add to results
                 $results->push([
-                    'user_uuid' => $solvedAfterFreeze ? 'hidden' : $submission->user->uuid,
-                    'user_name' => $solvedAfterFreeze ? '*****' : $submission->user->user_name,
-                    'profile_image' => $solvedAfterFreeze ? null : ($submission->user->profile_image ? asset('storage/' . $submission->user->profile_image) : null),
+                    'user_uuid' => $submission->user->uuid,
+                    'user_name' => $submission->user->user_name,
+                    'profile_image' => $submission->user->profile_image ? asset('storage/' . $submission->user->profile_image) : null,
                     'team_name' => $userTeam ? $userTeam->name : null,
                     'team_icon' => $userTeam ? $userTeam->icon_url : null,
-                    'points' => $points,
-                    'first_blood_points' => $firstBloodPoints,
+                    'points' => $isFrozen ? '*****' : $points,
+                    'first_blood_points' => $isFrozen ? '*****' : $firstBloodPoints,
                     'is_first_blood' => $isFirstBlood,
                     'is_teammate' => $team && $userTeam && $team->id === $userTeam->id,
                     'solved_at' => $this->formatInUserTimezone($submission->solved_at),
@@ -1671,7 +1671,15 @@ class EventChallengeController extends Controller
                             'icon' => $team->icon_url,
                             'member_count' => $team->members->count()
                         ],
-                        'challenge' => [
+                        'challenge' => $isFrozen ? [
+                            'id' => '*****',
+                            'title' => '*****',
+                            'flag_type' => '*****',
+                            'flag_type_description' => '*****',
+                            'bytes' => '*****',
+                            'first_blood_bytes' => '*****',
+                            'total_flags' => '*****'
+                        ] : [
                             'id' => $challenge->id,
                             'title' => $challenge->title,
                             'flag_type' => $challenge->flag_type,
@@ -1680,7 +1688,7 @@ class EventChallengeController extends Controller
                             'first_blood_bytes' => $challenge->firstBloodBytes,
                             'total_flags' => $challenge->flags->count()
                         ],
-                        'users' => [],
+                        'members' => [],
                         'total_solvers' => 0,
                         'frozen' => $isFrozen,
                         'freeze_time' => $freezeTime ? $this->formatInUserTimezone($freezeTime) : null,
@@ -1769,10 +1777,10 @@ class EventChallengeController extends Controller
                         if (!$flag) continue;
                         
                         $solvedFlags[] = [
-                            'id' => $flag->id,
-                            'name' => $flag->name,
-                            'points' => 0, // Points only awarded for all flags
-                            'is_first_blood' => false,
+                            'id' => $isFrozen ? '*****' : $flag->id,
+                            'name' => $isFrozen ? '*****' : $flag->name,
+                            'points' => $isFrozen ? '*****' : 0, // Points only awarded for all flags
+                            'is_first_blood' => $isFirstBlood,
                             'solved_at' => $this->formatInUserTimezone($submission->solved_at)
                         ];
                     }
@@ -1804,9 +1812,9 @@ class EventChallengeController extends Controller
                         
                         // Add flag data
                         $solvedFlags[] = [
-                            'id' => $flag->id,
-                            'name' => $flag->name,
-                            'points' => $flagPoints,
+                            'id' => $isFrozen ? '*****' : $flag->id,
+                            'name' => $isFrozen ? '*****' : $flag->name,
+                            'points' => $isFrozen ? '*****' : $flagPoints,
                             'is_first_blood' => $flagFirstBlood,
                             'solved_at' => $this->formatInUserTimezone($submission->solved_at)
                         ];
@@ -1823,8 +1831,8 @@ class EventChallengeController extends Controller
                     'profile_image' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
                     'team_name' => $userTeam ? $userTeam->name : null,
                     'team_icon' => $userTeam ? $userTeam->icon_url : null,
-                    'points' => $points,
-                    'first_blood_points' => $firstBloodPoints,
+                    'points' => $isFrozen ? '*****' : $points,
+                    'first_blood_points' => $isFrozen ? '*****' : $firstBloodPoints,
                     'is_first_blood' => $isFirstBlood,
                     'is_teammate' => $team && $userTeam && $team->id === $userTeam->id,
                     'solved_at' => $this->formatInUserTimezone($earliestSolvedAt),
@@ -1846,7 +1854,15 @@ class EventChallengeController extends Controller
                     'icon' => $team->icon_url,
                     'member_count' => $team->members->count()
                 ],
-                'challenge' => [
+                'challenge' => $isFrozen ? [
+                    'id' => '*****',
+                    'title' => '*****',
+                    'flag_type' => '*****',
+                    'flag_type_description' => '*****',
+                    'bytes' => '*****',
+                    'first_blood_bytes' => '*****',
+                    'total_flags' => '*****'
+                ] : [
                     'id' => $challenge->id,
                     'title' => $challenge->title,
                     'flag_type' => $challenge->flag_type,
