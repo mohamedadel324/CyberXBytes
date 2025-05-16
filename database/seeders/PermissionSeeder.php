@@ -47,6 +47,7 @@ class PermissionSeeder extends Seeder
             
             // Settings section
             'backup',
+            'email_template',
         ];
 
         foreach ($resources as $resource) {
