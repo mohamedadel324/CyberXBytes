@@ -1852,6 +1852,7 @@ class LabController extends Controller
                     'description' => $flag->description,
                     'bytes' => $flag->bytes,
                     'first_blood_bytes' => $flag->firstBloodBytes,
+                    'column_name' => 'flag_' . $flag->id
                 ];
             });
         }
