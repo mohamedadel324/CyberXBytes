@@ -1813,7 +1813,6 @@ class LabController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $flagsData,
             'challenge' => [
                 'uuid' => $challenge->uuid,
                 'title' => $challenge->title,
@@ -1821,7 +1820,6 @@ class LabController extends Controller
                 'flag_type_description' => $this->getFlagTypeDescription($challenge->flag_type),
                 'total_solvers' => count($overallLeaderboard)
             ],
-            'flags' => $flagsData, // Duplicate data for backward compatibility
             'overall_leaderboard' => $overallLeaderboard
         ]);
     }
