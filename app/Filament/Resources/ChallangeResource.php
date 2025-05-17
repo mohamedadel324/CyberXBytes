@@ -153,6 +153,7 @@ class ChallangeResource extends BaseResource
             Group::make([
                 FileUpload::make('file')
                 ->required()
+                ->downloadable()
                     ->label('File')
                     ->columnSpanFull(),
             ])
