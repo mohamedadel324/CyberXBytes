@@ -1614,25 +1614,25 @@ class LabController extends Controller
 
         // For single flag type, use the simpler structure
         if ($challenge->flag_type === 'single' || !$challenge->flag_type) {
-            $usersWhoSolved = User::whereHas('submissions', function($query) use ($uuid) {
-                    $query->whereHas('challange', function($q) use ($uuid) {
-                        $q->where('uuid', $uuid);
-                    })
-                    ->where('solved', true);
+        $usersWhoSolved = User::whereHas('submissions', function($query) use ($uuid) {
+                $query->whereHas('challange', function($q) use ($uuid) {
+                    $q->where('uuid', $uuid);
                 })
-                ->with(['submissions' => function($query) use ($uuid) {
-                    $query->whereHas('challange', function($q) use ($uuid) {
-                        $q->where('uuid', $uuid);
-                    })
+                ->where('solved', true);
+            })
+            ->with(['submissions' => function($query) use ($uuid) {
+                $query->whereHas('challange', function($q) use ($uuid) {
+                    $q->where('uuid', $uuid);
+                })
                     ->where('solved', true);
-                }])
-                ->get()
-                ->map(function($user) use ($challenge) {
-                    $points = 0;
-                    $firstBloodPoints = 0;
-                    $isFirstBlood = false;
-                    $solvedAt = null;
-                    
+            }])
+            ->get()
+            ->map(function($user) use ($challenge) {
+                $points = 0;
+                $firstBloodPoints = 0;
+                $isFirstBlood = false;
+                $solvedAt = null;
+                
                     $submission = $user->submissions->first();
                     if ($submission) {
                         $solvedAt = $submission->created_at;
@@ -1712,12 +1712,12 @@ class LabController extends Controller
                 $solvedAt = $submission->created_at;
                 
                 // Check if this user was first blood for this flag
-                $firstSolver = $challenge->submissions()
-                    ->where('flag', $flag->flag)
-                    ->where('solved', true)
-                    ->orderBy('created_at')
-                    ->first();
-                    
+                            $firstSolver = $challenge->submissions()
+                                ->where('flag', $flag->flag)
+                                ->where('solved', true)
+                                ->orderBy('created_at')
+                                ->first();
+                            
                 $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $user->uuid;
                 $basePoints = $flag->bytes;
                 $firstBloodPoints = $isFirstBlood ? $flag->firstBloodBytes : 0;
@@ -1786,8 +1786,8 @@ class LabController extends Controller
             
             // Add flag data to response
             $flagsData[] = [
-                'id' => $flag->id,
-                'name' => $flag->name,
+                                'id' => $flag->id,
+                                'name' => $flag->name,
                 'description' => $flag->description,
                 'bytes' => $flag->bytes,
                 'first_blood_bytes' => $flag->firstBloodBytes,
