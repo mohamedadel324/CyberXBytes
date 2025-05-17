@@ -25,6 +25,8 @@ class LabCategorySeeder extends Seeder
                 'title' => 'Web Security',
                 'ar_title' => 'أمن الويب',
                 'image' => 'web_security.png',
+                'description' => 'Web Security Lab',
+                'ar_description' => 'أمن الويب',
             ],
          
         ];
@@ -36,6 +38,8 @@ class LabCategorySeeder extends Seeder
                     'title' => $category['title'],
                     'ar_title' => $category['ar_title'],
                     'image' => $category['image'],
+                    'description' => $category['description'],
+                    'ar_description' => $category['ar_description'],
                 ]);
             }
         }
