@@ -1843,9 +1843,9 @@ class LabController extends Controller
             ]
         ];
         
-        // For multiple_individual, add flag metadata and individual leaderboards
+        // For multiple_individual, create separate flag leaderboards but with simpler structure
         if ($challenge->flag_type === 'multiple_individual') {
-            $flagsData = [];
+            $flagLeaderboards = [];
             
             // Process each flag as a separate challenge
             foreach ($challenge->flags as $flag) {
@@ -1887,35 +1887,33 @@ class LabController extends Controller
                             'user_name' => $user->user_name,
                             'profile_image' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
                             'points' => $totalPoints,
-                            'base_points' => $points,
                             'first_blood_points' => $firstBloodPoints,
                             'is_first_blood' => $isFirstBlood,
-                            'solved_at' => $submission->created_at,
-                            'status' => $isFirstBlood ? 'first_blood' : 'solved'
+                            'solved_at' => $submission->created_at
                         ];
                     })
                     ->sortByDesc('points')
                     ->values();
                 
-                // Add this flag's data to the response
-                $flagsData[] = [
-                    'id' => $flag->id,
-                    'name' => $flag->name,
-                    'description' => $flag->description,
-                    'bytes' => $flag->bytes,
-                    'first_blood_bytes' => $flag->firstBloodBytes,
-                    'column_name' => 'flag_' . $flag->id,
-                    'total_solvers' => $flagLeaderboard->count(),
-                    'leaderboard' => $flagLeaderboard
+                // Add this flag's leaderboard to our collection
+                $flagLeaderboards[$flag->id] = [
+                    'flag' => [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes
+                    ],
+                    'data' => $flagLeaderboard,
+                    'total_solvers' => $flagLeaderboard->count()
                 ];
             }
             
-            // Replace the flags array with our detailed version
-            $response['flags'] = $flagsData;
+            // Add the flag leaderboards to the response
+            $response['flag_leaderboards'] = $flagLeaderboards;
             
-            // Keep the overall leaderboard too
-            $response['overall_leaderboard'] = $response['data'];
-            $response['data'] = $flagsData;
+            // Keep the original response structure for backward compatibility
+            $response['overall_data'] = $response['data'];
         }
 
         return response()->json($response);
