@@ -250,11 +250,22 @@ class UserController extends Controller
                 ], 400);
             }
 
+            // Store old email for updating event invitations
+            $oldEmail = $user->email;
+            $newEmail = $otpData['new_email'];
+            
             // Update user's email and mark as verified
             $user = User::find($user->id);
-            $user->email = $otpData['new_email'];
+            $user->email = $newEmail;
             $user->email_verified_at = now();
             $user->save();
+
+            // Update any event invitations associated with the old email
+            $eventInvitations = \App\Models\EventInvitation::where('email', $oldEmail)->get();
+            foreach ($eventInvitations as $invitation) {
+                $invitation->email = $newEmail;
+                $invitation->save();
+            }
 
             // Clean up cache
             Cache::forget($cacheKey);
