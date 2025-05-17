@@ -71,6 +71,8 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/challenges/{uuid}/check-solved-flags', [LabController::class, 'checkUserSolvedFlags']);
     Route::get('/challenges/{uuid}/status', [LabController::class, 'getChallengeStatusAndFlags']);
     Route::get('/last-Three-challenges', [LabController::class, 'lastThreeChallenges']);
+    Route::get('/last-Three-challenges/{lab_uuid}', [LabController::class, 'lastThreeChallengesByLabUUID']);
+
     Route::get('/challenges/{uuid}/leaderboard', [LabController::class, 'getChallengeLeaderboard']);
 
     Route::post('/submit-challenge', [LabController::class, 'SubmitChallange']);

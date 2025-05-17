@@ -32,6 +32,49 @@ class LabController extends Controller
             'data' => $labs,
         ]);
     }
+    public function lastThreeChallengesByLabUUID($lab_uuid)
+    {
+        $lab = Lab::where('uuid', $lab_uuid)->first(['uuid', 'name', 'ar_name', 'description', 'ar_description']);
+        
+        $challenges = Challange::whereHas('labCategory', function ($query) use ($lab_uuid) {
+            $query->where('lab_uuid', $lab_uuid);
+        })
+        ->with(['category:uuid,icon', 'flags'])
+        ->latest()
+        ->take(3)
+        ->get();
+        
+        $challenges->each(function ($challenge) {
+            $challenge->category_icon = $challenge->category->icon ?? null;
+            unset($challenge->category);
+            $challenge->difficulty = $this->translateDifficulty($challenge->difficulty);
+            
+            // Add flag information
+            $challenge->flag_type_description = $this->getFlagTypeDescription($challenge->flag_type);
+            
+            // For multiple flag types, format the flags data
+            if ($challenge->flag_type !== 'single' && $challenge->flags) {
+                $challenge->flags_data = $challenge->flags->map(function ($flag) {
+                    return [
+                        'id' => $flag->id,
+                        'name' => $flag->name,
+                        'description' => $flag->description,
+                        'bytes' => $flag->bytes,
+                        'first_blood_bytes' => $flag->firstBloodBytes,
+                    ];
+                });
+                $challenge->flags_count = $challenge->flags->count();
+            }
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $challenges,
+            'count' => $challenges->count(),
+            'lab' => $lab
+        ]);
+    }
+
     public function getallLabCategoriesByLabUUID($uuid)
     {
         $lab = Lab::where('uuid', $uuid)->first(['uuid', 'name', 'ar_name', 'description', 'ar_description']);
