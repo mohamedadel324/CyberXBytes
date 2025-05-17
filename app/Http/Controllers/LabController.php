@@ -1769,7 +1769,8 @@ class LabController extends Controller
                                 'solved' => true,
                                 'solved_at' => $submission->created_at,
                                 'is_first_blood' => $flagFirstBlood,
-                                'points' => $flagFirstBlood ? $flag->bytes + $flag->firstBloodBytes : $flag->bytes
+                                'points' => $flagFirstBlood ? $flag->bytes + $flag->firstBloodBytes : $flag->bytes,
+                                'status' => $flagFirstBlood ? 'first_blood' : 'solved'
                             ];
                             
                             // Also keep the old format for backward compatibility
@@ -1777,7 +1778,8 @@ class LabController extends Controller
                                 'id' => $flag->id,
                                 'name' => $flag->name,
                                 'solved_at' => $submission->created_at,
-                                'is_first_blood' => $flagFirstBlood
+                                'is_first_blood' => $flagFirstBlood,
+                                'status' => $flagFirstBlood ? 'first_blood' : 'solved'
                             ];
                         } else {
                             // Add unsolved flag as a column
@@ -1785,7 +1787,8 @@ class LabController extends Controller
                                 'solved' => false,
                                 'solved_at' => null,
                                 'is_first_blood' => false,
-                                'points' => 0
+                                'points' => 0,
+                                'status' => 'unsolved'
                             ];
                         }
                     }
