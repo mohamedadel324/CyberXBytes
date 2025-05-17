@@ -1776,7 +1776,7 @@ class LabController extends Controller
                                 'flags_count' => 0,
                                 'solved_flags' => [],
                                 'flag_name' => $flag->name,
-                                'flag_name_ar' => $flag->name_ar,
+                                'flag_name_ar' => $flag->ar_name,
                                 'flag_description' => $flag->description
                             ];
                         }
