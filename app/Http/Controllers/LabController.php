@@ -149,6 +149,7 @@ class LabController extends Controller
         
         $challenges = Challange::with(['category:uuid,icon', 'flags'])
             ->where('lab_category_uuid', $categoryUUID)
+            ->orderBy('created_at', 'desc')
             ->get();
         
         $totalChallenges = $challenges->count();
