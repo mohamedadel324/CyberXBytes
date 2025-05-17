@@ -1753,7 +1753,9 @@ class LabController extends Controller
                             'solved_at' => $solvedAt,
                             'is_first_blood' => $isFirstBlood,
                             'points' => $totalPoints,
-                            'status' => $status
+                            'status' => $status,
+                            'name' => $flag->name,
+                            'description' => $flag->description
                         ]
                     ];
                 } else {
@@ -1774,7 +1776,9 @@ class LabController extends Controller
                         'solved_at' => $solvedAt,
                         'is_first_blood' => $isFirstBlood,
                         'points' => $totalPoints,
-                        'status' => $status
+                        'status' => $status,
+                        'name' => $flag->name,
+                        'description' => $flag->description
                     ];
                 }
             }
@@ -1786,8 +1790,8 @@ class LabController extends Controller
             
             // Add flag data to response
             $flagsData[] = [
-                                'id' => $flag->id,
-                                'name' => $flag->name,
+                'id' => $flag->id,
+                'name' => $flag->name,
                 'description' => $flag->description,
                 'bytes' => $flag->bytes,
                 'first_blood_bytes' => $flag->firstBloodBytes,

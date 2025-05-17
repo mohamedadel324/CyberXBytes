@@ -266,6 +266,7 @@ class EventResource extends BaseResource
                                         ->reactive(),
                                     Forms\Components\FileUpload::make('file')
                                         ->label('File')
+                                        ->downloadable()
                                         ->visible(fn (Forms\Get $get) => in_array($get('input_type'), ['file', 'file_and_link'])),
                                     Forms\Components\Textarea::make('link')
                                         ->label('Link')
