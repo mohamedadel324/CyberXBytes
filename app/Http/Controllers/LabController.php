@@ -1632,6 +1632,7 @@ class LabController extends Controller
                 $isFirstBlood = false;
                 $solvedAt = null;
                 $solvedFlags = [];
+                $flagColumns = []; // New array to store flag data as columns
                 
                 // For single flag type
                 if ($challenge->flag_type === 'single' || !$challenge->flag_type) {
@@ -1736,19 +1737,19 @@ class LabController extends Controller
                     // Process each solved flag
                     $uniqueFlags = $user->submissions->pluck('flag')->unique();
                     
-                    foreach ($uniqueFlags as $flagValue) {
-                        // Find the flag in the challenge's flags collection
-                        $flag = $challenge->flags->firstWhere('flag', $flagValue);
+                    // Create a column for each flag in the challenge
+                    foreach ($challenge->flags as $flag) {
+                        $flagSolved = $uniqueFlags->contains($flag->flag);
                         
-                        if ($flag) {
+                        if ($flagSolved) {
                             // Get submission for this flag
                             $submission = $user->submissions
-                                ->where('flag', $flagValue)
+                                ->where('flag', $flag->flag)
                                 ->first();
                                 
                             // Check if the user was first to solve this flag
                             $firstSolver = $challenge->submissions()
-                                ->where('flag', $flagValue)
+                                ->where('flag', $flag->flag)
                                 ->where('solved', true)
                                 ->orderBy('created_at')
                                 ->first();
@@ -1763,12 +1764,28 @@ class LabController extends Controller
                                 $points += $flag->bytes;
                             }
                             
-                            // Track solved flag
+                            // Add flag as a column
+                            $flagColumns['flag_' . $flag->id] = [
+                                'solved' => true,
+                                'solved_at' => $submission->created_at,
+                                'is_first_blood' => $flagFirstBlood,
+                                'points' => $flagFirstBlood ? $flag->bytes + $flag->firstBloodBytes : $flag->bytes
+                            ];
+                            
+                            // Also keep the old format for backward compatibility
                             $solvedFlags[] = [
                                 'id' => $flag->id,
                                 'name' => $flag->name,
                                 'solved_at' => $submission->created_at,
                                 'is_first_blood' => $flagFirstBlood
+                            ];
+                        } else {
+                            // Add unsolved flag as a column
+                            $flagColumns['flag_' . $flag->id] = [
+                                'solved' => false,
+                                'solved_at' => null,
+                                'is_first_blood' => false,
+                                'points' => 0
                             ];
                         }
                     }
@@ -1780,29 +1797,38 @@ class LabController extends Controller
                     $isFirstBlood = $firstBloodPoints > 0;
                 }
                 
-                return [
+                $result = [
                     'user_name' => $user->user_name,
                     'profile_image' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
                     'points' => $points,
                     'first_blood_points' => $firstBloodPoints,
                     'is_first_blood' => $isFirstBlood,
                     'solved_at' => $solvedAt,
-                    'solved_flags' => $solvedFlags,
                     'flags_count' => count($solvedFlags)
                 ];
+                
+                // For multiple_individual, add flag columns
+                if ($challenge->flag_type === 'multiple_individual') {
+                    $result = array_merge($result, $flagColumns);
+                } else {
+                    // For other types, keep the old format
+                    $result['solved_flags'] = $solvedFlags;
+                }
+                
+                return $result;
             })
             // Include all users who have attempted the challenge, not just those with full points
             ->filter(function($user) use ($challenge) {
                 if ($challenge->flag_type === 'multiple_all') {
                     // Include all users who have solved at least one flag
-                    return count($user['solved_flags']) > 0;
+                    return $user['flags_count'] > 0;
                 }
                 return true; // Include all users for other challenge types
             })
             ->sortByDesc('points')
             ->values();
-
-        return response()->json([
+        
+        $response = [
             'status' => 'success',
             'data' => $usersWhoSolved,
             'challenge' => [
@@ -1812,6 +1838,21 @@ class LabController extends Controller
                 'flag_type_description' => $this->getFlagTypeDescription($challenge->flag_type),
                 'total_solvers' => $usersWhoSolved->count()
             ]
-        ]);
+        ];
+        
+        // For multiple_individual, add flag metadata
+        if ($challenge->flag_type === 'multiple_individual') {
+            $response['flags'] = $challenge->flags->map(function($flag) {
+                return [
+                    'id' => $flag->id,
+                    'name' => $flag->name,
+                    'description' => $flag->description,
+                    'bytes' => $flag->bytes,
+                    'first_blood_bytes' => $flag->firstBloodBytes,
+                ];
+            });
+        }
+
+        return response()->json($response);
     }
 }
