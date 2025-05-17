@@ -1843,18 +1843,79 @@ class LabController extends Controller
             ]
         ];
         
-        // For multiple_individual, add flag metadata
+        // For multiple_individual, add flag metadata and individual leaderboards
         if ($challenge->flag_type === 'multiple_individual') {
-            $response['flags'] = $challenge->flags->map(function($flag) {
-                return [
+            $flagsData = [];
+            
+            // Process each flag as a separate challenge
+            foreach ($challenge->flags as $flag) {
+                // Create a leaderboard for this specific flag
+                $flagLeaderboard = User::whereHas('submissions', function($query) use ($uuid, $flag) {
+                        $query->whereHas('challange', function($q) use ($uuid) {
+                            $q->where('uuid', $uuid);
+                        })
+                        ->where('flag', $flag->flag)
+                        ->where('solved', true);
+                    })
+                    ->with(['submissions' => function($query) use ($uuid, $flag) {
+                        $query->whereHas('challange', function($q) use ($uuid) {
+                            $q->where('uuid', $uuid);
+                        })
+                        ->where('flag', $flag->flag)
+                        ->where('solved', true);
+                    }])
+                    ->get()
+                    ->map(function($user) use ($flag, $challenge) {
+                        // Get the submission for this flag
+                        $submission = $user->submissions->first();
+                        
+                        // Check if this user was first blood for this flag
+                        $firstSolver = $challenge->submissions()
+                            ->where('flag', $flag->flag)
+                            ->where('solved', true)
+                            ->orderBy('created_at')
+                            ->first();
+                            
+                        $isFirstBlood = $firstSolver && $firstSolver->user_uuid === $user->uuid;
+                        
+                        // Calculate points
+                        $points = $flag->bytes;
+                        $firstBloodPoints = $isFirstBlood ? $flag->firstBloodBytes : 0;
+                        $totalPoints = $points + $firstBloodPoints;
+                        
+                        return [
+                            'user_name' => $user->user_name,
+                            'profile_image' => $user->profile_image ? asset('storage/' . $user->profile_image) : null,
+                            'points' => $totalPoints,
+                            'base_points' => $points,
+                            'first_blood_points' => $firstBloodPoints,
+                            'is_first_blood' => $isFirstBlood,
+                            'solved_at' => $submission->created_at,
+                            'status' => $isFirstBlood ? 'first_blood' : 'solved'
+                        ];
+                    })
+                    ->sortByDesc('points')
+                    ->values();
+                
+                // Add this flag's data to the response
+                $flagsData[] = [
                     'id' => $flag->id,
                     'name' => $flag->name,
                     'description' => $flag->description,
                     'bytes' => $flag->bytes,
                     'first_blood_bytes' => $flag->firstBloodBytes,
-                    'column_name' => 'flag_' . $flag->id
+                    'column_name' => 'flag_' . $flag->id,
+                    'total_solvers' => $flagLeaderboard->count(),
+                    'leaderboard' => $flagLeaderboard
                 ];
-            });
+            }
+            
+            // Replace the flags array with our detailed version
+            $response['flags'] = $flagsData;
+            
+            // Keep the overall leaderboard too
+            $response['overall_leaderboard'] = $response['data'];
+            $response['data'] = $flagsData;
         }
 
         return response()->json($response);
