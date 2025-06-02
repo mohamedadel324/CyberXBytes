@@ -182,7 +182,7 @@ class UserController extends Controller
                 'attempts' => 0
             ], now()->addMinutes(30));
 
-            // Send OTP to new email
+            // Send OTP to new email synchronously
             Mail::to($request->new_email)->send(new RegistrationOtpMail(['email' => $request->new_email], $otp));
 
             return response()->json([
@@ -357,12 +357,16 @@ class UserController extends Controller
             $ranges = collect($titleConfig->title_ranges)->sortBy('from');
             $currentRange = null;
             $nextRange = null;
+            $isHighestTitle = false;
             
             foreach ($ranges as $index => $range) {
                 if ($percentageSolved >= $range['from'] && $percentageSolved <= $range['to']) {
                     $currentRange = $range;
                     if ($index < count($ranges) - 1) {
                         $nextRange = $ranges[$index + 1];
+                    } else {
+                        // User has reached the highest title (Legend)
+                        $isHighestTitle = true;
                     }
                     break;
                 }
@@ -375,7 +379,10 @@ class UserController extends Controller
                 $currentRangeSize = $nextRange['from'] - $currentRange['from'];
                 $progressInRange = $percentageSolved - $currentRange['from'];
                 $percentageForNextTitle = ($currentRangeSize - $progressInRange) / $currentRangeSize * 100;
-            }
+            } elseif ($isHighestTitle) {
+                // For users with the highest title (Legend), show percentage remaining to solve all challenges
+                $percentageForNextTitle = 100 - $percentageSolved;
+            }            
         }
         
         // Calculate solved challenges by difficulty
@@ -640,7 +647,9 @@ class UserController extends Controller
         
         // Find the user's rank in the sorted collection
         $userRank = 1;
-        foreach ($allUsersRanked as $index => $rankData) {
+        // Reset the collection keys after sorting to ensure proper indexing
+        $allUsersRankedWithResetKeys = $allUsersRanked->values();
+        foreach ($allUsersRankedWithResetKeys as $index => $rankData) {
             if ($rankData['uuid'] === $user->uuid) {
                 $userRank = $index + 1;
                 break;
@@ -649,7 +658,7 @@ class UserController extends Controller
         
         // Recalculate total bytes to match the leaderboard calculation
         $totalLeaderboardBytes = 0;
-        foreach ($allUsersRanked as $rankData) {
+        foreach ($allUsersRankedWithResetKeys as $rankData) {
             if ($rankData['uuid'] === $user->uuid) {
                 $totalLeaderboardBytes = $rankData['points'];
                 break;
@@ -678,36 +687,76 @@ class UserController extends Controller
             ];
         }
         
-        // Get median statistics for all users
+        // Get median statistics for all users - only for users with >0% in the category
         $allUsersStats = [];
         $users = User::all();
-        
         foreach ($categories as $category) {
-            $percentages = [];
-            
-            foreach ($users as $currentUser) {
-                $totalInCategory = Challange::where('category_uuid', $category->uuid)->count();
-                $solvedInCategory = Submission::where('user_uuid', $currentUser->uuid)
-                    ->where('solved', true)
-                    ->whereHas('challange', function ($query) use ($category) {
-                        $query->where('category_uuid', $category->uuid);
-                    })
-                    ->count();
-                
-                $percentageInCategory = $totalInCategory > 0 ? ($solvedInCategory / $totalInCategory) * 100 : 0;
-                $percentages[] = $percentageInCategory;
+            $challengesInCategory = Challange::where('category_uuid', $category->uuid)->with('flags')->get();
+            $totalChallenges = $challengesInCategory->count();
+            if ($totalChallenges === 0) {
+                $allUsersStats[] = [
+                    'name' => $category->name,
+                    'median_percentage' => 0,
+                    'debug' => [
+                        'allPercentages' => [],
+                        'totalChallenges' => 0,
+                    ],
+                ];
+                continue;
             }
-            
-            // Calculate median
-            sort($percentages);
-            $count = count($percentages);
-            $middleVal = floor(($count - 1) / 2);
-            
-            $median = $count > 0 ? ($percentages[$middleVal] + $percentages[$middleVal + ($count % 2 === 0 ? 1 : 0)]) / 2 : 0;
-            
+            $allPercentages = [];
+            foreach ($users as $currentUser) {
+                $solvedCount = 0;
+                foreach ($challengesInCategory as $challenge) {
+                    if ($challenge->flag_type === 'single' || !$challenge->flag_type) {
+                        $solved = Submission::where('user_uuid', $currentUser->uuid)
+                            ->where('challange_uuid', $challenge->uuid)
+                            ->where('solved', true)
+                            ->exists();
+                        if ($solved) $solvedCount++;
+                    } elseif ($challenge->flag_type === 'multiple_all') {
+                        $totalFlags = $challenge->flags->count();
+                        if ($totalFlags > 0) {
+                            $userSolvedFlags = Submission::where('user_uuid', $currentUser->uuid)
+                                ->where('challange_uuid', $challenge->uuid)
+                                ->where('solved', true)
+                                ->pluck('flag')
+                                ->unique()
+                                ->count();
+                            if ($userSolvedFlags === $totalFlags) $solvedCount++;
+                        }
+                    } elseif ($challenge->flag_type === 'multiple_individual') {
+                        $solved = Submission::where('user_uuid', $currentUser->uuid)
+                            ->where('challange_uuid', $challenge->uuid)
+                            ->where('solved', true)
+                            ->exists();
+                        if ($solved) $solvedCount++;
+                    }
+                }
+                $percentage = $totalChallenges > 0 ? ($solvedCount / $totalChallenges) * 100 : 0;
+                if ($percentage > 0) { // Only include users who solved at least one
+                    $allPercentages[] = $percentage;
+                }
+            }
+            sort($allPercentages);
+            $count = count($allPercentages);
+            $median = 0;
+            if ($count > 0) {
+                if ($count % 2 === 0) {
+                    $middleIndex = $count / 2;
+                    $median = ($allPercentages[$middleIndex - 1] + $allPercentages[$middleIndex]) / 2;
+                } else {
+                    $middleIndex = floor($count / 2);
+                    $median = $allPercentages[$middleIndex];
+                }
+            }
             $allUsersStats[] = [
                 'name' => $category->name,
                 'median_percentage' => $median,
+                'debug' => [
+                    'allPercentages' => $allPercentages,
+                    'totalChallenges' => $totalChallenges,
+                ],
             ];
         }
         
@@ -960,9 +1009,10 @@ class UserController extends Controller
 
             $maxBytes = $monthBytes->max() ?? 0;
             $minBytes = $monthBytes->min() ?? 0;
+            $totalBytes = $monthBytes->sum() ?? 0;
             $bytesByMonth[$month] = [
-                'max' => $maxBytes,
-                'min' => $minBytes
+                'max' => $totalBytes,
+                'min' => $minBytes,
             ];
 
             $allMaxBytes->push($maxBytes);
@@ -972,11 +1022,22 @@ class UserController extends Controller
         $yearlyMedianMax = $allMaxBytes->median() ?? 0;
         $yearlyMedianMin = $allMinBytes->median() ?? 0;
 
+        // Calculate yearly total
+        $yearlyTotal = 0;
+        for ($month = 1; $month <= 12; $month++) {
+            if (isset($bytesByMonth[$month]['total'])) {
+                $yearlyTotal += $bytesByMonth[$month]['total'];
+            }
+        }
+        
         // Add yearly median max and min to the result
         $bytesByMonth['yearly_median'] = [
             'max' => $yearlyMedianMax,
             'min' => $yearlyMedianMin
         ];
+        
+        // Add yearly total
+        $bytesByMonth['yearly_total'] = $yearlyTotal;
         
         // Compile and return the statistics
         return response()->json([
@@ -1060,7 +1121,7 @@ class UserController extends Controller
                 
                 // Format date based on user's timezone
                 $solvedAt = new \DateTime($submission->created_at);
-                $userTimezone = $user->time_zone ?? 'UTC';
+                $userTimezone = auth()->user()->time_zone ?? 'UTC';
                 $solvedAt->setTimezone(new \DateTimeZone($userTimezone));
                 
                 $activities[] = [
@@ -1147,6 +1208,7 @@ class UserController extends Controller
                         'challenge_title' => $challange->title,
                         'challenge_uuid' => $challange->uuid,
                         'category' => $challange->category ? $challange->category->name : null,
+                        'category_icon_url' => url('/storage/' . $challange->category->icon),
                         'difficulty' => $challange->difficulty,
                         'bytes' => $challange->bytes,
                         'is_first_blood' => $isFirstBlood,
@@ -1197,6 +1259,7 @@ class UserController extends Controller
                     'challenge_title' => $challange->title . ' - ' . ($flag->name ?? 'Flag'),
                     'challenge_uuid' => $challange->uuid,
                     'category' => $challange->category ? $challange->category->name : null,
+                    'category_icon_url' => url('/storage/' . $challange->category->icon),
                     'difficulty' => $challange->difficulty,
                     'bytes' => $flag->bytes,
                     'is_first_blood' => $isFirstBlood,

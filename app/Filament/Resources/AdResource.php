@@ -24,8 +24,7 @@ class AdResource extends BaseResource
             ->schema([
                 Forms\Components\FileUpload::make('image')
                     ->required()
-                    ->imageEditor()
-                    ->image(),
+                    ->maxSize(512000),
                 Forms\Components\TextInput::make('link')
                     ->label('Link (optional)')
                     ->url(),

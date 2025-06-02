@@ -59,9 +59,25 @@ class EventLeaderboardWidget extends BaseWidget
                 // Load all teams
                 $teams = $query->get();
                 
-                // Calculate points for all teams
+                // Calculate points for all teams using the EventTeamController API
                 foreach ($teams as $team) {
-                    $this->teamPointsCache[$team->id] = $this->calculateTeamPoints($team);
+                    // Use the working getTeamById method from EventTeamController to get accurate points
+                    $teamController = new \App\Http\Controllers\Api\EventTeamController();
+                    $teamResponse = $teamController->getTeamByIdForAdmin($team->id);
+                    $teamData = json_decode($teamResponse->getContent(), true);
+                    
+                    // If we got valid data back from the API
+                    if (isset($teamData['status']) && $teamData['status'] === 'success' && isset($teamData['data'])) {
+                        // Extract statistics data from the response
+                        $stats = isset($teamData['data']['statistics']) ? $teamData['data']['statistics'] : [];
+                        
+                        // Get total bytes as points
+                        $totalPoints = isset($stats['total_bytes']) ? $stats['total_bytes'] : 0;
+                        $this->teamPointsCache[$team->id] = $totalPoints;
+                    } else {
+                        // Fallback to the old calculation method if API fails
+                        $this->teamPointsCache[$team->id] = $this->calculateTeamPoints($team);
+                    }
                 }
                 
                 // Get team IDs sorted by points
@@ -111,6 +127,18 @@ class EventLeaderboardWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('solved')
                     ->label('Challenges Solved')
                     ->getStateUsing(function ($record) {
+                        // Use the cached team API data if available
+                        // This value comes from getTeamById which handles both single and multiple flag challenges correctly
+                        $teamController = new \App\Http\Controllers\Api\EventTeamController();
+                        $teamResponse = $teamController->getTeamById($record->id);
+                        $teamData = json_decode($teamResponse->getContent(), true);
+                        
+                        if (isset($teamData['status']) && $teamData['status'] === 'success' && 
+                            isset($teamData['data']) && isset($teamData['data']['statistics'])) {
+                            return $teamData['data']['statistics']['total_challenges_solved'] ?? 0;
+                        }
+                        
+                        // Fallback to the old calculation method if API fails
                         $solvedChallenges = collect();
                         
                         foreach ($record->members as $member) {
@@ -122,6 +150,23 @@ class EventLeaderboardWidget extends BaseWidget
                         
                         return $solvedChallenges->unique()->count();
                     }),
+                Tables\Columns\TextColumn::make('first_blood')
+                    ->label('First Bloods')
+                    ->getStateUsing(function ($record) {
+                        // Use the cached team API data for first blood count
+                        $teamController = new \App\Http\Controllers\Api\EventTeamController();
+                        $teamResponse = $teamController->getTeamById($record->id);
+                        $teamData = json_decode($teamResponse->getContent(), true);
+                        
+                        if (isset($teamData['status']) && $teamData['status'] === 'success' && 
+                            isset($teamData['data']) && isset($teamData['data']['statistics'])) {
+                            return $teamData['data']['statistics']['total_first_blood_count'] ?? 0;
+                        }
+                        
+                        // If API fails, return 0 as we don't have a good way to calculate this manually
+                        return 0;
+                    }),
+                
                 Tables\Columns\TextColumn::make('members_count')
                     ->label('Members')
                     ->getStateUsing(fn ($record) => $record->members->count()),

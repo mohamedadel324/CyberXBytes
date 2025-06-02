@@ -145,6 +145,71 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         return $this->belongsToMany(Event::class, 'event_registrations', 'user_uuid', 'event_uuid', 'uuid', 'uuid');
     }
 
+    /**
+     * Get category completion data excluding event challenges
+     * 
+     * @return \Illuminate\Support\Collection
+     */
+    public function getCategoryCompletionAttribute()
+    {
+        // Get all non-event categories
+        $categories = ChallangeCategory::all();
+        
+        // Get user's solved challenges (regular challenges only, not event challenges)
+        $userSolvedChallenges = Challange::whereHas('submissions', function($query) {
+            $query->where('user_uuid', $this->uuid)
+                ->where('solved', true);
+        })->get();
+        
+        $result = collect();
+        
+        foreach ($categories as $category) {
+            // Get total challenges for this category (excluding event challenges)
+            $totalChallenges = Challange::where('category_uuid', $category->uuid)->count();
+            
+            // Skip categories with no challenges
+            if ($totalChallenges === 0) {
+                continue;
+            }
+            
+            // Count how many challenges in this category the user has solved
+            $solvedChallenges = $userSolvedChallenges->where('category_uuid', $category->uuid)->count();
+            
+            // Calculate completion percentage
+            $percentage = ($solvedChallenges > 0 && $totalChallenges > 0) 
+                ? round(($solvedChallenges / $totalChallenges) * 100) 
+                : 0;
+            
+            // Add to result collection
+            $result->push([
+                'name' => $category->name,
+                'solved_count' => $solvedChallenges,
+                'total_count' => $totalChallenges,
+                'percentage' => $percentage,
+            ]);
+        }
+        
+        // Sort by percentage completion (highest first)
+        return $result->sortByDesc('percentage')->values();
+    }
+    
+    /**
+     * Get the unsolved challenges for this user (regular challenges only, not event challenges)
+     */
+    public function getUnsolvedChallengesAttribute()
+    {
+        // Get IDs of challenges this user has solved
+        $solvedIds = Challange::whereHas('submissions', function($query) {
+            $query->where('user_uuid', $this->uuid)
+                ->where('solved', true);
+        })->pluck('id');
+        
+        // Return challenges not in the solved IDs list
+        return Challange::whereNotIn('id', $solvedIds)
+            ->with('category')
+            ->get();
+    }
+    
     public function getCurrentTitleAttribute()
     {
         $totalChallenges = EventChallange::count();

@@ -28,7 +28,7 @@ class AuthController extends \Illuminate\Routing\Controller
      */
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login', 'register', 'sendResetLinkEmail', 'resetPassword', 'verifyEmail', 'verifyRegistrationOtp', 'sendVerificationOtp']]);
+        $this->middleware('auth:api', ['except' => ['login', 'register', 'sendResetLinkEmail', 'resetPassword', 'verifyEmail', 'verifyRegistrationOtp', 'sendVerificationOtp', 'verifyPasswordResetOtp']]);
     }
 
     /**
@@ -74,7 +74,7 @@ class AuthController extends \Illuminate\Routing\Controller
             'attempts' => 0
         ], now()->addMinutes(30));
 
-        // Send OTP via email
+        // Send OTP via email synchronously
         Mail::to($request->email)->send(new RegistrationOtpMail(['email' => $request->email], $otp));
 
         return response()->json([
@@ -316,6 +316,52 @@ class AuthController extends \Illuminate\Routing\Controller
     }
 
     /**
+     * Verify the password reset OTP.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     * @unauthenticated
+     */
+    public function verifyPasswordResetOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        $userOtp = $user->otp()->latest()->first();
+
+        if (!$userOtp) {
+            return response()->json(['error' => 'No OTP request found'], 404);
+        }
+
+        if ($userOtp->expires_at < now()) {
+            return response()->json(['error' => 'OTP has expired'], 400);
+        }
+
+        if ($userOtp->attempts >= 3) {
+            return response()->json(['error' => 'Maximum attempts exceeded. Please request a new OTP.'], 400);
+        }
+
+        if (!$userOtp->verifyOtp($request->otp)) {
+            $userOtp->increment('attempts');
+            return response()->json(['error' => 'Invalid OTP'], 400);
+        }
+
+        // Store verification token in cache for 10 minutes
+        $resetToken = Str::random(64);
+        Cache::put("password_reset_token:{$user->uuid}", $resetToken, now()->addMinutes(10));
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'OTP verified successfully.',
+            'reset_token' => $resetToken,
+            'expires_in' => 600 // 10 minutes
+        ]);
+    }
+
+    /**
      * Reset the user's password.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -324,42 +370,31 @@ class AuthController extends \Illuminate\Routing\Controller
      */
     public function resetPassword(Request $request)
     {
-            $request->validate([
-                'email' => 'required|email|exists:users,email',
-                'otp' => 'required|string|size:6',
-                'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
-            ]);
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'reset_token' => 'required|string',
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
+        ]);
 
-            $user = User::where('email', $request->email)->first();
-            $userOtp = $user->otp()->latest()->first();
+        $user = User::where('email', $request->email)->first();
+        $cacheKey = "password_reset_token:{$user->uuid}";
+        $storedToken = Cache::get($cacheKey);
 
-            if (!$userOtp) {
-                return response()->json(['error' => 'No OTP request found'], 404);
-            }
+        if (!$storedToken || $storedToken !== $request->reset_token) {
+            return response()->json(['error' => 'Invalid or expired reset token'], 400);
+        }
 
-            if ($userOtp->expires_at < now()) {
-                return response()->json(['error' => 'OTP has expired'], 400);
-            }
+        $user->update([
+            'password' => bcrypt($request->password),
+        ]);
 
-            if ($userOtp->attempts >= 3) {
-                return response()->json(['error' => 'Maximum attempts exceeded. Please request a new OTP.'], 400);
-            }
+        // Clean up OTP and cache
+        $user->otp()->delete();
+        Cache::forget($cacheKey);
 
-            if (!$userOtp->verifyOtp($request->otp)) {
-                $userOtp->increment('attempts');
-                return response()->json(['error' => 'Invalid OTP'], 400);
-            }
-
-            $user->update([
-                'password' => bcrypt($request->password),
-            ]);
-
-            $userOtp->delete();
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Password has been successfully reset.'
-            ]);
-       
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password has been successfully reset.'
+        ]);
     }
 }

@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\EventChallangeSubmissionResource\Pages;
 use App\Filament\Resources\EventChallangeSubmissionResource\RelationManagers;
-use App\Models\EventChallangeSubmission;
+use App\Models\EventChallangeFlagSubmission;
 use Filament\Forms;
 use Filament\Forms\Form;
 // // use Filament\Resources\Resource;
@@ -13,11 +13,14 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
-class EventChallangeSubmissionResource extends BaseResource
+class EventChallangeSubmissionResource extends BaseResource // This now represents flag submissions
 {
-    protected static ?string $model = EventChallangeSubmission::class;
+    protected static ?string $model = EventChallangeFlagSubmission::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $modelLabel = 'Flag Submission';
+    protected static ?string $pluralModelLabel = 'Flag Submissions';
+    
     public static function getNavigationGroup(): ?string
     {
         return 'Submissions';
@@ -26,11 +29,11 @@ class EventChallangeSubmissionResource extends BaseResource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('event_challange_id')
+                Forms\Components\Select::make('event_challange_flag_id')
                         ->preload()
                         ->searchable()
                     ->required()
-                    ->relationship('eventChallange', 'title'),
+                    ->relationship('eventChallangeFlag', 'name'),
                 Forms\Components\Select::make('user_uuid')
                     ->required()
                     ->preload()
@@ -56,12 +59,20 @@ class EventChallangeSubmissionResource extends BaseResource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('eventChallange.title')
+                Tables\Columns\TextColumn::make('eventChallangeFlag.name')
+                    ->label('Flag Name')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('eventChallangeFlag.eventChallange.title')
+                    ->label('Challenge')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('user.user_name')
+                    ->label('User')
                     ->searchable(),
                 Tables\Columns\IconColumn::make('solved')
                     ->boolean(),
+                Tables\Columns\TextColumn::make('submission')
+                    ->limit(30)
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('attempts')
                     ->numeric()
                     ->sortable(),
@@ -80,17 +91,29 @@ class EventChallangeSubmissionResource extends BaseResource
             ->defaultSort('created_at', 'desc')
 
             ->filters([
-                Tables\Filters\SelectFilter::make('event_challange_id')
-                    ->relationship('eventChallange', 'title')
+                Tables\Filters\SelectFilter::make('event_challange_flag_id')
+                    ->relationship('eventChallangeFlag', 'name')
                     ->searchable()
                     ->preload()
-                    ->label('Event Challenge'),
+                    ->label('Flag'),
+                
+                Tables\Filters\SelectFilter::make('challenge')
+                    ->relationship('eventChallangeFlag.eventChallange', 'title')
+                    ->searchable()
+                    ->preload()
+                    ->label('Challenge'),
+                    
                 Tables\Filters\SelectFilter::make('user_uuid')
                     ->relationship('user', 'user_name')
                     ->searchable()
                     ->preload()
                     ->label('User'),
-            ])
+                    
+                Tables\Filters\Filter::make('solved')
+                    ->toggle()
+                    ->label('Show Only Solved')
+                    ->query(fn (Builder $query): Builder => $query->where('solved', true)),
+            ])->defaultSort('created_at', 'desc')
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
@@ -115,5 +138,20 @@ class EventChallangeSubmissionResource extends BaseResource
             'create' => Pages\CreateEventChallangeSubmission::route('/create'),
             'edit' => Pages\EditEventChallangeSubmission::route('/{record}/edit'),
         ];
+    }
+    
+    public static function getNavigationLabel(): string
+    {
+        return 'Flag Submissions';
+    }
+    
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::where('solved', true)->count();
+    }
+    
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'success';
     }
 }

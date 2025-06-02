@@ -10,6 +10,7 @@ use PDO;
 use ZipArchive;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
+use Illuminate\Support\Facades\File;
 
 class BackupController extends Controller
 {
@@ -408,5 +409,97 @@ class BackupController extends Controller
             'success' => false,
             'message' => 'Failed to delete backup'
         ], 500);
+    }
+    
+    public function uploadBackup(Request $request)
+    {
+        try {
+            // Validate the uploaded file
+            $request->validate([
+                'backupFile' => 'required|file|mimes:sql,gz,txt|max:204800', // Max 200MB
+            ]);
+            
+            $uploadedFile = $request->file('backupFile');
+            $originalName = $uploadedFile->getClientOriginalName();
+            $extension = $uploadedFile->getClientOriginalExtension();
+            
+            // Generate a unique filename with timestamp
+            $timestamp = Carbon::now()->format('Y-m-d-H-i-s');
+            $filename = "uploaded-" . $timestamp . "." . $extension;
+            
+            // Ensure backups directory exists
+            if (!Storage::exists('backups')) {
+                Storage::makeDirectory('backups');
+            }
+            
+            // Save file to backups directory
+            $path = $uploadedFile->storeAs('backups', $filename);
+            
+            if (!$path) {
+                throw new \Exception('Failed to save uploaded file');
+            }
+            
+            // Process file based on extension
+            $sqlContent = '';
+            
+            if ($extension === 'gz') {
+                // If it's a gzipped file, uncompress it first
+                $tempPath = storage_path('app/' . $path);
+                $tempSqlPath = storage_path('app/backups/temp_' . $timestamp . '.sql');
+                
+                $gzippedData = file_get_contents($tempPath);
+                $uncompressedData = gzdecode($gzippedData);
+                
+                if ($uncompressedData === false) {
+                    throw new \Exception('Failed to decompress .gz file');
+                }
+                
+                File::put($tempSqlPath, $uncompressedData);
+                $sqlContent = file_get_contents($tempSqlPath);
+                File::delete($tempSqlPath); // Clean up temp file
+            } else {
+                // Regular SQL file
+                $sqlContent = Storage::get($path);
+            }
+            
+            // Execute SQL statements
+            $queries = array_filter(
+                array_map('trim', 
+                    preg_split("/;\s*[\r\n]+/", $sqlContent)
+                )
+            );
+            
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+            
+            try {
+                foreach ($queries as $query) {
+                    if (!empty($query)) {
+                        DB::unprepared($query);
+                    }
+                }
+                
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                
+            } catch (\Exception $e) {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                throw $e;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Database backup uploaded and imported successfully',
+                'filename' => $filename,
+                'size' => $this->formatBytes(Storage::size($path)),
+                'date' => Carbon::now()->toDateTimeString()
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Database backup upload failed: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Database backup upload failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

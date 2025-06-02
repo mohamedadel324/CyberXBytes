@@ -63,21 +63,6 @@ class EventRegistrationController extends Controller
         $startTimestamp = $startDateObj->getTimestamp(); 
         $endTimestamp = $endDateObj->getTimestamp();
         
-        // Comprehensive logging for debugging
-        Log::info('STRICT TIME CHECK', [
-            'event_uuid' => $eventUuid,
-            'event_title' => $event->title,
-            'current_server_timestamp' => $currentServerTime,
-            'start_timestamp' => $startTimestamp,
-            'end_timestamp' => $endTimestamp,
-            'time_diff_seconds' => $startTimestamp - $currentServerTime,
-            'raw_start_date' => $event->registration_start_date,
-            'raw_end_date' => $event->registration_end_date,
-            'server_time_formatted' => date('Y-m-d H:i:s', $currentServerTime),
-            'start_time_formatted' => date('Y-m-d H:i:s', $startTimestamp),
-            'registration_allowed' => ($currentServerTime >= $startTimestamp && $currentServerTime <= $endTimestamp) ? 'YES' : 'NO'
-        ]);
-        
         // For private events with invitations, skip the time check
         if (!$event->is_private) {
             // ------------ START HARDCODED TIME CHECK --------------
@@ -139,13 +124,8 @@ class EventRegistrationController extends Controller
             'status' => 'registered'
         ]);
 
-        // Send registration notification email
-        try {
-            Mail::to(Auth::user()->email)->queue(new EventRegistrationMail($event, Auth::user()));
-            Log::info('Sent registration email to: ' . Auth::user()->email);
-        } catch (\Exception $e) {
-            Log::error('Failed to send registration email: ' . $e->getMessage());
-        }
+
+        Mail::to(Auth::user()->email)->send(new EventRegistrationMail($event, Auth::user()));
 
         return response()->json([
             'status' => 'success',

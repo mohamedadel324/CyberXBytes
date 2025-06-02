@@ -10,7 +10,7 @@ use App\Models\ChallangeCategory;
 use App\Models\EventInvitation;
 use Filament\Forms;
 use Filament\Forms\Form;
-// // use Filament\Resources\Resource;
+use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Notifications\Notification;
@@ -26,6 +26,7 @@ use App\Models\EventRegistration;
 use App\Mail\EventRegistrationMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
+use App\Mail\TeamFormationReminderMail;
 
 class EventResource extends BaseResource
 {
@@ -491,6 +492,103 @@ class EventResource extends BaseResource
                         }, 'event-invitations-' . now()->format('Y-m-d') . '.csv');
                     })
                     ->visible(fn (Event $record) => $record->is_private),
+                Tables\Actions\Action::make('sendReminderCommand')
+                    ->label('Send Reminders')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Send Team Formation Reminders')
+                    ->modalDescription('This will send a reminder email to all registered users for this event. This operation runs in the background for better reliability.')
+                    ->modalSubmitActionLabel('Send Reminders')
+                    ->visible(fn (Event $record) => $record->team_formation_start_date !== null)
+                    ->action(function (Event $record, Tables\Actions\Action $action) {
+                        try {
+                            // Log the start
+                            Log::info('Starting to send reminders via SMTP for event: ' . $record->uuid);
+                            
+                            // Get all registered users for this event
+                            $registrations = $record->registrations()
+                                ->with('user')
+                                ->get();
+                            
+                            // Count and log registrations
+                            $registrationCount = $registrations->count();
+                            Log::info('Found ' . $registrationCount . ' registrations for event: ' . $record->uuid);
+                            
+                            // If no registrations found, show a different message
+                            if ($registrationCount == 0) {
+                                Notification::make()
+                                    ->title('No Registrations Found')
+                                    ->body("There are no registered users for this event to send reminders to.")
+                                    ->warning()
+                                    ->send();
+                                    
+                                Log::warning('No registrations found for event: ' . $record->uuid);
+                                return;
+                            }
+                            
+                            $sentCount = 0;
+                            $failedCount = 0;
+                            $errorMessages = [];
+                            
+                            // Send email to each registered user
+                            foreach ($registrations as $registration) {
+                                Log::info('Processing registration: ' . $registration->uuid . ' for user: ' . ($registration->user_uuid ?? 'unknown'));
+                                
+                                if ($registration->user && $registration->user->email) {
+                                    try {
+                                        $userEmail = $registration->user->email;
+                                        Log::info('Attempting to send email to: ' . $userEmail);
+                                        
+                                        // Use the Blade template instead of raw email
+                                        Mail::to($userEmail)
+                                            ->send(new TeamFormationReminderMail($record, $registration->user));
+                                            
+                                        $sentCount++;
+                                        Log::info('Email sent successfully to: ' . $userEmail);
+                                    } catch (\Exception $emailException) {
+                                        $failedCount++;
+                                        Log::error('Failed to send email to ' . $registration->user->email . ': ' . $emailException->getMessage());
+                                        $errorMessages[] = $emailException->getMessage();
+                                    }
+                                } else {
+                                    Log::warning('Skipping registration ' . $registration->uuid . ' - missing user or email');
+                                }
+                            }
+                            
+                            // Provide feedback with detailed information
+                            $notificationTitle = $sentCount > 0 ? 'Reminders Sent' : 'Failed to Send Reminders';
+                            $notificationBody = "Attempted to send reminders to {$registrationCount} users. Successfully sent: {$sentCount}. Failed: {$failedCount}.";
+                            
+                            if ($sentCount > 0) {
+                                Notification::make()
+                                    ->title($notificationTitle)
+                                    ->body($notificationBody . "\n\nUsers will be directed to " . config('app.url') . '/events/' . $record->uuid)
+                                    ->success()
+                                    ->send();
+                            } else {
+                                $errorDetail = !empty($errorMessages) ? ' First error: ' . $errorMessages[0] : '';
+                                Notification::make()
+                                    ->title($notificationTitle)
+                                    ->body($notificationBody . $errorDetail)
+                                    ->danger()
+                                    ->send();
+                            }
+                            
+                            Log::info('Reminder send process completed for event: ' . $record->uuid . '. Sent: ' . $sentCount . ' out of ' . $registrationCount);
+                            
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send reminders: ' . $e->getMessage());
+                            Log::error($e->getTraceAsString());
+                            
+                            Notification::make()
+                                ->title('Failed to Send Reminders')
+                                ->body('Error: ' . $e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+               
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -521,6 +619,7 @@ class EventResource extends BaseResource
             EventResource\Widgets\EventLeaderboardWidget::class,
             EventResource\Widgets\TeamsWidget::class,
             EventResource\Widgets\ChallengesSolvedWidget::class,
+            EventResource\Widgets\EventRegisteredUsersWidget::class,
         ];
     }
 }

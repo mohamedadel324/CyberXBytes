@@ -34,6 +34,8 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\RedirectIfNoOtpVerified::class,
+            \App\Http\Middleware\FilamentAuthRedirector::class,
         ],
 
         'api' => [
@@ -70,5 +72,8 @@ class Kernel extends HttpKernel
         // DDoS Protection
         'ddos.protect' => \App\Http\Middleware\DdosProtection::class,
         'api.ddos.protect' => \App\Http\Middleware\ApiDdosProtection::class,
+        
+        // Custom Auth
+        'filament.redirect' => \App\Http\Middleware\FilamentAuthRedirector::class,
     ];
 } 

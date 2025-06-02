@@ -35,4 +35,12 @@ class Admin extends Authenticatable implements FilamentUser
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+    
+    /**
+     * Get the OTP associated with the admin.
+     */
+    public function otp()
+    {
+        return $this->hasOne(AdminOtp::class);
+    }
 }

@@ -41,10 +41,10 @@
         </div>
         
         <div style="margin: 30px 0 15px 0;">
-            <a href="https://discord.com" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" style="width: 24px; height: 24px;"></a>
-            <a href="https://twitter.com" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="width: 24px; height: 24px;"></a>
-            <a href="https://linkedin.com" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="width: 24px; height: 24px;"></a>
-            <a href="https://telegram.org" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" style="width: 24px; height: 24px;"></a>
+            <a href="" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" style="width: 24px; height: 24px;"></a>
+            <a href="https://x.com/cyberxbytes" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" style="width: 24px; height: 24px;"></a>
+            <a href="" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" style="width: 24px; height: 24px;"></a>
+            <a href="https://t.me/CyberXbytes" style="margin: 0 10px; text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" style="width: 24px; height: 24px;"></a>
         </div>
         
         <div style="margin-top: 20px; font-size: 12px; color: #777777; font-family: 'Tajawal', Arial, sans-serif;">

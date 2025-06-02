@@ -28,6 +28,7 @@ Route::prefix('auth')->middleware('api')->group(function () {
     
     // Password reset routes
     Route::post('password/request-reset', [AuthController::class, 'sendResetLinkEmail']);
+    Route::post('password/verify-otp', [AuthController::class, 'verifyPasswordResetOtp']);
     Route::post('password/reset', [AuthController::class, 'resetPassword']);
 });
 
@@ -95,7 +96,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
     Route::get('/events/{uuid}', [EventController::class, 'show']);
     Route::get('/events/activities/{uuid}', [EventController::class, 'recentEventActivities']);
     Route::get('/main-event', [EventController::class, 'mainEvent']);
-    Route::get('/user-events', [EventController::class, 'userEvents']);
+    Route::get('/user-events/{user_name}', [EventController::class, 'userEvents']);
 
     // Event routes
         // Event registration

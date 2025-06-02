@@ -103,10 +103,10 @@
                         <td align="center" style="padding: 20px 0;">
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="padding: 0 10px;"><a href="https://discord.com" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
-                                    <td style="padding: 0 10px;"><a href="https://x.com" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="X" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
-                                    <td style="padding: 0 10px;"><a href="https://linkedin.com" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
-                                    <td style="padding: 0 10px;"><a href="https://telegram.org" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="https://x.com/cyberxbytes" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="X" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="https://t.me/CyberXbytes" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
                                 </tr>
                             </table>
                         </td>

@@ -18,14 +18,26 @@ class UserChallangeController extends Controller
      */
     public function store(Request $request)
     {
+        // Check if the user has uploaded a challenge in the last 5 minutes
+        $latestChallenge = UserChallange::where('user_uuid', Auth::user()->uuid)
+            ->orderBy('created_at', 'desc')
+            ->first();
+            
+        if ($latestChallenge && $latestChallenge->created_at->diffInMinutes(now()) < 5) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'You can only upload one challenge every 5 minutes. Please try again later.'
+            ], 429);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'category_uuid' => 'required|uuid|exists:challange_categories,uuid',
             'difficulty' => 'required|string',
             'flag' => 'required|array',
-            'challange_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
-            'answer_file' => 'required|file|mimes:zip|max:30240', // Max 30MB
+            'challange_file' => 'required|file|mimes:zip|max:80000', // Max 80MB
+            'answer_file' => 'required|file|mimes:zip|max:80000', // Max 80MB
             'notes' => 'nullable|string',
         ]);
 

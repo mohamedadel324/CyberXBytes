@@ -35,41 +35,131 @@ class ViewUser extends ViewRecord
         
         // Calculate challenge completion by category
         $categoryCompletion = $this->calculateCategoryCompletion($record);
-        $record->setAttribute('categoryCompletion', $categoryCompletion);
+        
+        // We need to ensure this is set as a collection that Filament can use
+        $record->categoryCompletion = $categoryCompletion->values();
         
         // Get unsolved challenges
-        $record->setAttribute('unsolvedChallenges', $this->getUnsolvedChallenges($record));
+        $record->unsolvedChallenges = $this->getUnsolvedChallenges($record);
         
         return $record;
     }
     
     private function calculateCategoryCompletion(Model $user): Collection
     {
-        $categories = ChallangeCategory::all();
-        $solvedChallengeIds = $user->solvedChallenges->pluck('id')->toArray();
+        // Debug information
+        \Illuminate\Support\Facades\Log::info('Calculating category completion for user: ' . $user->id . ' - ' . $user->user_name);
         
-        return $categories->map(function ($category) use ($solvedChallengeIds) {
+        $categories = ChallangeCategory::all();
+        
+        // Get solved challenges from regular challenges table
+        $solvedRegularQuery = \App\Models\Submission::where('user_uuid', $user->uuid)
+            ->where('solved', true);
+        
+        $regularSolvedCount = $solvedRegularQuery->count();
+        \Illuminate\Support\Facades\Log::info('Regular solved challenges count: ' . $regularSolvedCount);
+        
+        $regularSolvedChallengeIds = $solvedRegularQuery->pluck('challange_uuid')->unique()->toArray();
+        \Illuminate\Support\Facades\Log::info('Regular solved challenge IDs: ' . implode(', ', $regularSolvedChallengeIds ?: ['none']));
+        
+        // Get solved challenges from event challenges table
+        $solvedEventQuery = \App\Models\EventChallangeSubmission::where('user_uuid', $user->uuid)
+            ->where('solved', true);
+        
+        $eventSolvedCount = $solvedEventQuery->count();
+        \Illuminate\Support\Facades\Log::info('Event solved challenges count: ' . $eventSolvedCount);
+        
+        $eventSolvedChallengeIds = $solvedEventQuery->pluck('event_challange_id')->unique()->toArray();
+        \Illuminate\Support\Facades\Log::info('Event solved challenge IDs: ' . implode(', ', $eventSolvedChallengeIds ?: ['none']));
+        
+        // Get solved flags
+        $solvedFlagsQuery = \App\Models\EventChallangeFlagSubmission::where('user_uuid', $user->uuid)
+            ->where('solved', true);
+        
+        $flagSolvedCount = $solvedFlagsQuery->count();
+        \Illuminate\Support\Facades\Log::info('Flag solved count: ' . $flagSolvedCount);
+        
+        $solvedFlagIds = $solvedFlagsQuery->pluck('event_challange_flag_id')->unique()->toArray();
+        \Illuminate\Support\Facades\Log::info('Solved flag IDs: ' . implode(', ', $solvedFlagIds ?: ['none']));
+        
+        // Combine both types of solved challenges
+        $solvedChallengeIds = array_merge($regularSolvedChallengeIds, $eventSolvedChallengeIds);
+        \Illuminate\Support\Facades\Log::info('Total solved challenge IDs: ' . count($solvedChallengeIds));
+        
+        $result = $categories->map(function ($category) use ($solvedChallengeIds, $solvedFlagIds, $user) {
+            // Debug for this category
+            \Illuminate\Support\Facades\Log::info('Processing category: ' . $category->name . ' (UUID: ' . $category->uuid . ')');
+            
             // Get all challenges for this category
-            $challengesInCategory = Challange::where('category_uuid', $category->uuid)->get();
-            $eventChallengesInCategory = EventChallange::where('category_uuid', $category->uuid)->get();
+            $challengesInCategory = \App\Models\Challange::where('category_uuid', $category->uuid)->get();
+            $eventChallengesInCategory = \App\Models\EventChallange::where('category_uuid', $category->uuid)->get();
             
-            // Get all challenge IDs for this category
-            $allChallengeIds = $challengesInCategory->pluck('id')->merge($eventChallengesInCategory->pluck('id'))->toArray();
+            \Illuminate\Support\Facades\Log::info('Regular challenges in category ' . $category->name . ': ' . $challengesInCategory->count());
+            \Illuminate\Support\Facades\Log::info('Event challenges in category ' . $category->name . ': ' . $eventChallengesInCategory->count());
             
-            // Count solved challenges in this category
-            $solvedCount = count(array_intersect($solvedChallengeIds, $allChallengeIds));
-            $totalCount = count($allChallengeIds);
+            // Track which challenges are solved
+            $solvedInCategory = 0;
+            $totalInCategory = $challengesInCategory->count() + $eventChallengesInCategory->count();
+            
+            // Check regular challenges - use UUID comparison
+            foreach ($challengesInCategory as $challenge) {
+                \Illuminate\Support\Facades\Log::info('Checking regular challenge: ' . $challenge->id . ' - ' . $challenge->title);
+                
+                // Use challenge UUID for regular challenges
+                if (in_array($challenge->uuid, $solvedChallengeIds)) {
+                    \Illuminate\Support\Facades\Log::info('MATCH - Regular challenge solved: ' . $challenge->title);
+                    $solvedInCategory++;
+                }
+            }
+            
+            // Check event challenges - use ID comparison
+            foreach ($eventChallengesInCategory as $challenge) {
+                \Illuminate\Support\Facades\Log::info('Checking event challenge: ' . $challenge->id . ' - ' . $challenge->title);
+                
+                // For single and multiple_all flag types
+                if (in_array($challenge->id, $solvedChallengeIds)) {
+                    \Illuminate\Support\Facades\Log::info('MATCH - Event challenge solved: ' . $challenge->title);
+                    $solvedInCategory++;
+                }
+                // For multiple_individual flag type, check if any flag is solved
+                elseif ($challenge->flag_type === 'multiple_individual') {
+                    // Get flags for this challenge
+                    $flagsQuery = $challenge->flags();
+                    $flagIds = $flagsQuery->pluck('id')->toArray();
+                    
+                    \Illuminate\Support\Facades\Log::info('Challenge has multiple_individual flags: ' . count($flagIds));
+                    \Illuminate\Support\Facades\Log::info('Flag IDs: ' . implode(', ', $flagIds ?: ['none']));
+                    \Illuminate\Support\Facades\Log::info('Solved flag IDs: ' . implode(', ', $solvedFlagIds ?: ['none']));
+                    
+                    // Check if any of those flags are solved
+                    $intersect = array_intersect($flagIds, $solvedFlagIds);
+                    $hasAnySolved = !empty($intersect);
+                    
+                    \Illuminate\Support\Facades\Log::info('Intersection: ' . implode(', ', $intersect ?: ['none']));
+                    \Illuminate\Support\Facades\Log::info('Has any solved: ' . ($hasAnySolved ? 'YES' : 'NO'));
+                    
+                    if ($hasAnySolved) {
+                        \Illuminate\Support\Facades\Log::info('MATCH - Multiple individual flag challenge solved: ' . $challenge->title);
+                        $solvedInCategory++;
+                    }
+                }
+            }
             
             // Calculate percentage
-            $percentage = $totalCount > 0 ? round(($solvedCount / $totalCount) * 100) : 0;
+            $percentage = $totalInCategory > 0 ? round(($solvedInCategory / $totalInCategory) * 100) : 0;
+            
+            \Illuminate\Support\Facades\Log::info('Category ' . $category->name . ' results: Solved=' . $solvedInCategory . ', Total=' . $totalInCategory . ', Percentage=' . $percentage . '%');
             
             return [
                 'name' => $category->name,
-                'solved_count' => $solvedCount,
-                'total_count' => $totalCount,
-                'percentage' => $percentage,
+                'solved_count' => (int)$solvedInCategory,
+                'total_count' => (int)$totalInCategory,
+                'percentage' => (int)$percentage,
             ];
         });
+        
+        \Illuminate\Support\Facades\Log::info('Category completion calculation completed');
+        return $result;
     }
     
     private function getUnsolvedChallenges(Model $user): Collection

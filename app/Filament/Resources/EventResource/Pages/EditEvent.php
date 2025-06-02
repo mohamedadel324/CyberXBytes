@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Filament\Resources\EventResource\Widgets\EventLeaderboardWidget;
 use App\Filament\Resources\EventResource\Widgets\TeamsWidget;
 use App\Filament\Resources\EventResource\Widgets\ChallengesSolvedWidget;
+use App\Filament\Resources\EventResource\Widgets\EventRegisteredUsersWidget;
 
 class EditEvent extends EditRecord
 {
@@ -29,12 +30,16 @@ class EditEvent extends EditRecord
             EventLeaderboardWidget::class,
             TeamsWidget::class,
             ChallengesSolvedWidget::class,
+            EventRegisteredUsersWidget::class,
         ];
     }
     
     public function getHeaderWidgetsColumns(): int | string | array
     {
-        return 3;
+        return [
+            'md' => 2,
+            'lg' => 4,
+        ];
     }
 
     protected function mutateFormDataBeforeSave(array $data): array

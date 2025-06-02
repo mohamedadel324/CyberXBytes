@@ -40,9 +40,9 @@
           <div class="space-x-4">
             <button
               class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
-              onclick="createFullBackup()"
+              onclick="showUploadModal()"
             >
-              Create Full Backup
+              Upload Database Backup
             </button>
             <button
               class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
@@ -107,7 +107,7 @@
       </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Backup Create Modal -->
     <div
       id="backupModal"
       class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center"
@@ -137,6 +137,49 @@
       </div>
     </div>
 
+    <!-- Upload Modal -->    
+    <div
+      id="uploadModal"
+      class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center"
+    >
+      <div class="bg-dark rounded-lg p-6 max-w-md w-full mx-4">
+        <h2 class="text-xl font-bold mb-4">Upload Database Backup</h2>
+        <p class="text-gray-400 mb-4">
+          Upload a SQL dump file to restore your database.
+        </p>
+
+        <form id="uploadBackupForm" enctype="multipart/form-data">
+          <div class="mb-4">
+            <label class="block text-gray-300 mb-2" for="backupFile">Select backup file (.sql)</label>
+            <input 
+              type="file" 
+              id="backupFile" 
+              name="backupFile" 
+              accept=".sql,.sql.gz,.gz"
+              class="w-full p-2 border border-gray-700 rounded-lg bg-darker text-white"
+              required
+            >
+          </div>
+          
+          <div class="flex justify-end space-x-3 mt-6">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-lg border border-gray-700 hover:bg-table-header"
+              onclick="hideUploadModal()"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white"
+            >
+              Upload & Restore
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
     <script>
       function formatBytes(bytes, decimals = 2) {
         if (bytes === 0) return '0 Bytes';
@@ -151,6 +194,18 @@
         const modal = document.getElementById("backupModal");
         modal.classList.remove("hidden");
         modal.classList.add("flex");
+      }
+      
+      function showUploadModal() {
+        const modal = document.getElementById("uploadModal");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+      
+      function hideUploadModal() {
+        const modal = document.getElementById("uploadModal");
+        modal.classList.remove("flex");
+        modal.classList.add("hidden");
       }
 
       function hideModal() {
@@ -682,6 +737,106 @@
         if (e.target === e.currentTarget) {
           hideModal();
         }
+      });
+      
+      // Close upload modal when clicking outside
+      document.getElementById("uploadModal").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) {
+          hideUploadModal();
+        }
+      });
+      
+      // Handle upload form submission
+      document.getElementById("uploadBackupForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        
+        const fileInput = document.getElementById("backupFile");
+        const file = fileInput.files[0];
+        
+        if (!file) {
+          alert("Please select a backup file first.");
+          return;
+        }
+        
+        // Create FormData object
+        const formData = new FormData();
+        formData.append("backupFile", file);
+        formData.append("_token", document.querySelector('meta[name="csrf-token"]').content);
+        
+        // Show loading modal
+        const modalHtml = `
+          <div id="uploadingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-darker p-6 rounded-lg max-w-md w-full mx-4">
+              <h3 class="text-xl font-bold text-white mb-4">Uploading Database Backup</h3>
+              <div class="space-y-4">
+                <div class="flex items-center justify-center">
+                  <svg class="animate-spin h-8 w-8 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <p class="text-center text-white">Uploading and processing backup file...</p>
+                <div class="text-sm text-gray-400 text-center">This may take a few moments.</div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        hideUploadModal();
+        
+        // Send the request
+        fetch('/admin/backups/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        .then(response => response.json())
+        .then(data => {
+          // Remove loading modal
+          document.getElementById('uploadingModal')?.remove();
+          
+          if (data.success) {
+            // Show success notification
+            const successMsg = document.createElement('div');
+            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded shadow-lg z-50';
+            successMsg.innerHTML = `
+              <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Database backup successfully uploaded and imported!</span>
+              </div>
+            `;
+            document.body.appendChild(successMsg);
+            
+            // Remove success message after 3 seconds and reload
+            setTimeout(() => {
+              successMsg.remove();
+              window.location.reload(); // Refresh page
+            }, 3000);
+          } else {
+            throw new Error(data.message || 'Upload failed');
+          }
+        })
+        .catch(error => {
+          // Remove loading modal
+          document.getElementById('uploadingModal')?.remove();
+          
+          // Show error message
+          const errorModalHtml = `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onclick="this.remove()">
+              <div class="bg-darker p-6 rounded-lg max-w-2xl w-full mx-4" onclick="event.stopPropagation()">
+                <h3 class="text-xl font-bold text-red-500 mb-4">Upload Failed</h3>
+                <div class="bg-red-900 bg-opacity-20 p-4 rounded overflow-auto max-h-96">
+                  <pre class="text-sm text-red-100 whitespace-pre-wrap">${error.message}</pre>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded" onclick="this.closest('.fixed').remove()">Close</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.insertAdjacentHTML('beforeend', errorModalHtml);
+        });
       });
     </script>
   </body>

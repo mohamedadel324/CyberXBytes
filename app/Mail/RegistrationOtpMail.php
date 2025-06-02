@@ -10,13 +10,16 @@ use Illuminate\Support\Facades\App;
 
 class RegistrationOtpMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use SerializesModels;
 
     public $otp;
     public $expiresIn;
     public $user;
     protected $emailTemplateService;
 
+    /**
+     * Create a new message instance.
+     */
     public function __construct($user, $otp)
     {
         $this->user = $user;
@@ -25,6 +28,9 @@ class RegistrationOtpMail extends Mailable
         $this->emailTemplateService = App::make(EmailTemplateService::class);
     }
 
+    /**
+     * Build the message.
+     */
     public function build()
     {
         $type = 'registration-otp';
@@ -35,6 +41,7 @@ class RegistrationOtpMail extends Mailable
         $headerText = $this->emailTemplateService->getHeaderText($type, $defaultHeaderText);
 
         return $this->subject($subject)
+            ->priority(1) // Set high priority
             ->markdown('emails.registration-otp', [
                 'otp' => $this->otp,
                 'expiresIn' => $this->expiresIn,

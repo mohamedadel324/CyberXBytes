@@ -88,7 +88,7 @@
                                                 <td align="center" style="padding: 20px 0;">
                                                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                                         <tr>
-                                                            <td bgcolor="#00edb1" style="padding: 12px 30px; border-radius: 25px;">
+                                                            <td bgcolor="#38FFE5" style="padding: 12px 30px; border-radius: 25px;">
                                                                 <a href="{{ $eventUrl }}" style="color: #000000; font-weight: bold; text-decoration: none; display: inline-block; font-size: 14px;">View Event</a>
                                                             </td>
                                                         </tr>
@@ -98,14 +98,7 @@
                                         </table>
                                         
                                         <!-- Additional Info -->
-                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                                            <tr>
-                                                <td align="center" style="color: #ffffff; font-size: 14px; line-height: 1.5; padding-top: 10px;">
-                                                    <p style="margin: 0 0 10px 0;">If you're having trouble clicking the button, copy and paste this URL into your web browser:</p>
-                                                    <p style="margin: 0;"><a href="{{ $eventUrl }}" class="event-link" style="color: #00edb1; word-break: break-word;">{{ $eventUrl }}</a></p>
-                                                </td>
-                                            </tr>
-                                        </table>
+                                      
                                     </td>
                                 </tr>
                             </table>
@@ -117,10 +110,10 @@
                         <td align="center" style="padding: 20px 0;">
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="padding: 0 10px;"><a href="https://discord.com" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
-                                    <td style="padding: 0 10px;"><a href="https://x.com" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="X" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
-                                    <td style="padding: 0 10px;"><a href="https://linkedin.com" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
-                                    <td style="padding: 0 10px;"><a href="https://telegram.org" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/5968/5968756.png" alt="Discord" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="https://x.com/cyberxbytes" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="X" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
+                                    <td style="padding: 0 10px;"><a href="https://t.me/CyberXbytes" style="text-decoration: none;"><img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" alt="Telegram" width="30" height="30" class="social-icon" style="display: block; border: 0;"></a></td>
                                 </tr>
                             </table>
                         </td>

@@ -46,7 +46,9 @@ return [
             'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            'timeout' => 30,
+            'auth_mode' => null,
+            'verify_peer' => true,
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -112,6 +114,39 @@ return [
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Global "Reply-To" Address
+    |--------------------------------------------------------------------------
+    |
+    | You may wish for all emails sent by your application to have a default
+    | "reply-to" address. This helps with deliverability and prevents emails
+    | from being marked as spam.
+    |
+    */
+
+    'reply_to' => [
+        'address' => env('MAIL_REPLY_TO', env('MAIL_FROM_ADDRESS')),
+        'name' => env('MAIL_FROM_NAME', 'Example'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Email Headers
+    |--------------------------------------------------------------------------
+    |
+    | Here you may specify additional headers that will be added to all outgoing
+    | messages. These headers can help improve deliverability and prevent
+    | emails from being marked as spam.
+    |
+    */
+    
+    'headers' => [
+        'X-Priority' => '3',
+        'X-Mailer' => 'CyberXbytes',
+        'X-Contact' => env('MAIL_FROM_ADDRESS'),
     ],
 
 ];

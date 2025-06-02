@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
 use App\Models\Admin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -32,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(\App\Filament\Pages\Auth\Login::class)
             ->colors([
                 'primary' => "#38FFE5",
             ])
@@ -45,28 +46,30 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
                 Pages\Dashboard::class,
+                \App\Filament\Pages\Auth\VerifyOtp::class,
+                \App\Filament\Pages\Auth\DirectOtp::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
             ])
             ->middleware([
-                EncryptCookies::class,
-                AddQueuedCookiesToResponse::class,
-                StartSession::class,
-                AuthenticateSession::class,
-                ShareErrorsFromSession::class,
-                VerifyCsrfToken::class,
-                SubstituteBindings::class,
-                DisableBladeIconComponents::class,
-                DispatchServingFilamentEvent::class,
+                \Illuminate\Cookie\Middleware\EncryptCookies::class,
+                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+                \Illuminate\Session\Middleware\StartSession::class,
+                \Filament\Http\Middleware\AuthenticateSession::class,
+                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+                \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+                \Illuminate\Routing\Middleware\SubstituteBindings::class,
+                \Filament\Http\Middleware\DisableBladeIconComponents::class,
+                \Filament\Http\Middleware\DispatchServingFilamentEvent::class,
                 \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
                 \App\Http\Middleware\HandleFilamentNotifications::class,
             ])
             ->authMiddleware([
-                Authenticate::class,
+                \Filament\Http\Middleware\Authenticate::class,
             ])
             ->navigationItems([
-                NavigationItem::make('BackUps')
+                \Filament\Navigation\NavigationItem::make('BackUps')
                     ->url('/admin/backup')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->group('Settings')

@@ -39,7 +39,7 @@ class EventRegistrationMail extends Mailable
             ->markdown('emails.event-registration', [
                 'event' => $this->event,
                 'user' => $this->user,
-                'eventUrl' => config('app.url') . '/events/' . $this->event->uuid,
+                'eventUrl' => "https://cyberxbytes.com/events/" . $this->event->uuid,
             ]);
     }
 } 

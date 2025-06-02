@@ -1,0 +1,51 @@
+/* Fix for FilePond styling issues */
+.filepond--root {
+    margin-bottom: 0;
+    border-radius: 0.5rem;
+    background-color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.filepond--panel-root {
+    background-color: transparent;
+}
+
+.filepond--drop-label {
+    color: #4b5563;
+    font-size: 0.875rem;
+    padding: 0.75rem;
+}
+
+.filepond--label-action {
+    font-weight: 500;
+    color: #2563eb;
+    text-decoration: none;
+    transition-duration: 75ms;
+}
+
+.filepond--label-action:hover {
+    color: #1d4ed8;
+}
+
+.filepond--drip-blob {
+    background-color: #9ca3af;
+}
+
+/* Fix for file upload input */
+input[type="file"] {
+    display: block;
+    width: 100%;
+}
+
+/* Ensure FilePond container is visible */
+.fi-fo-file-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fi-fo-file-upload > div {
+    height: 100%;
+    width: 100%;
+} 

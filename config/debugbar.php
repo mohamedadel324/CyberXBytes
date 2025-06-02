@@ -329,4 +329,29 @@ return [
      | If you need larger stacktraces, you can increase this number. Setting it to 0 will result in no limit.
      */
     'debug_backtrace_limit' => 50,
+
+    /*
+     |--------------------------------------------------------------------------
+     | Route Prefix
+     |--------------------------------------------------------------------------
+     |
+     | This option determines where the debugbar will be available.
+     | Leave empty for automatic resolution, or provide a single string as a prefix.
+     |
+     | Warning: This influences the Login and API Routes.
+     |
+     */
+
+    'route_prefix' => '_debugbar',
+    
+    /*
+     |--------------------------------------------------------------------------
+     | Force HTTPS
+     |--------------------------------------------------------------------------
+     |
+     | Force all debugbar URLs to use HTTPS
+     |
+     */
+     
+    'force_https' => true,
 ];
