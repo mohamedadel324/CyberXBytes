@@ -12,8 +12,7 @@ class ListEventChallangeSubmissions extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Actions\CreateAction::make(),
-        ];
+        // No create action - read-only resource
+        return [];
     }
 }

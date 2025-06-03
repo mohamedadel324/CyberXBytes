@@ -455,9 +455,10 @@ class EventTeamController extends Controller
             }])
             ->get();
                 
-        // Calculate points for each team
+        // Calculate points and first blood count for each team
         $teamsWithPoints = $allTeams->map(function($teamItem) use ($isFrozen, $freezeTime) {
             $points = 0;
+            $firstBloodCount = 0;
             $solvedChallenges = [];
 
             foreach ($teamItem->members as $member) {
@@ -481,6 +482,7 @@ class EventTeamController extends Controller
                             
                         if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
                             $points += $submission->eventChallange->firstBloodBytes ?? 0;
+                            $firstBloodCount++;
                         } else {
                             $points += $submission->eventChallange->bytes ?? 0;
                         }
@@ -507,6 +509,7 @@ class EventTeamController extends Controller
                             
                         if ($firstSolver && $firstSolver->user_uuid === $member->uuid) {
                             $points += $flagSubmission->eventChallangeFlag->firstBloodBytes ?? 0;
+                            $firstBloodCount++; // Count first bloods for flag submissions too
                         } else {
                             $points += $flagSubmission->eventChallangeFlag->bytes ?? 0;
                         }
@@ -516,7 +519,8 @@ class EventTeamController extends Controller
 
             return [
                 'id' => $teamItem->id,
-                'points' => $points
+                'points' => $points,
+                'first_blood_count' => $firstBloodCount
             ];
         });
         
@@ -532,39 +536,45 @@ class EventTeamController extends Controller
             'your_team_id' => $team->id
         ]);
         
-        // Simpler solution: if your team is in the top teams (based on points),
-        // just make it #1, otherwise keep the normal ranking
+        // Advanced ranking logic with two-level sorting:
+        // 1. Sort by points (descending) as primary factor
+        // 2. When points are equal, sort by first blood count (descending) as tiebreaker
         
-        // Get top teams (those with the same highest score)
-        $maxPoints = $teamsWithPoints->max('points');
-        $topTeams = $teamsWithPoints->where('points', $maxPoints)->pluck('id')->toArray();
+        // Create a sorted array of teams based on points and first blood count
+        $sortedTeams = $teamsWithPoints
+            // Convert to array for easier manipulation
+            ->values()
+            ->toArray();
+            
+        // Sort teams by points first, then by first blood count
+        usort($sortedTeams, function($a, $b) {
+            // If points are different, sort by points (descending)
+            if ($a['points'] != $b['points']) {
+                return $b['points'] - $a['points']; 
+            }
+            
+            // If points are equal, use first blood count as tiebreaker (descending)
+            return $b['first_blood_count'] - $a['first_blood_count'];
+        });
         
-        // Force your team to rank #1 if among top teams
-        if (in_array($team->id, $topTeams)) {
-            $teamRank = 1;
-            
-            // Log this override for debugging
-            \Illuminate\Support\Facades\Log::critical('RANK OVERRIDE APPLIED', [
-                'team_id' => $team->id,
-                'forced_rank' => 1,
-                'reason' => 'Team is among top point scorers',
-                'max_points' => $maxPoints,
-                'top_teams' => $topTeams
-            ]);
-        } else {
-            // Normal ranking logic - sort by points only for simplicity
-            $sortedTeams = $teamsWithPoints->sortByDesc('points')->values();
-            $teamRank = $sortedTeams->search(function($item) use ($team) {
-                return $item['id'] == $team->id;
-            }) + 1; // Add 1 as array indices start at 0
-            
-            // Log normal ranking result
-            \Illuminate\Support\Facades\Log::critical('NORMAL RANK CALCULATION', [
-                'team_id' => $team->id,
-                'calculated_rank' => $teamRank,
-                'team_points' => $teamsWithPoints->where('id', $team->id)->first()['points'] ?? 'unknown'
-            ]);
+        // Find our team's rank
+        $teamRank = 1; // Default to 1 if not found (shouldn't happen)
+        foreach ($sortedTeams as $index => $teamData) {
+            if ($teamData['id'] == $team->id) {
+                $teamRank = $index + 1; // Add 1 because array is 0-indexed
+                break;
+            }
         }
+        
+        // Log detailed ranking information for debugging
+        \Illuminate\Support\Facades\Log::critical('ADVANCED RANK CALCULATION', [
+            'team_id' => $team->id,
+            'calculated_rank' => $teamRank,
+            'team_index' => $teamRank - 1,
+            'team_points' => collect($sortedTeams)->firstWhere('id', $team->id)['points'] ?? 'unknown',
+            'team_first_bloods' => collect($sortedTeams)->firstWhere('id', $team->id)['first_blood_count'] ?? 'unknown',
+            'top_teams' => array_slice($sortedTeams, 0, min(5, count($sortedTeams)))
+        ]);
         
         // Get members with their challenge completions and bytes
         $membersData = $team->members->map(function ($member) use ($eventUuid, $isFrozen, $freezeTime, $freezeDateStr) {
@@ -919,9 +929,9 @@ class EventTeamController extends Controller
             'name' => $team->name,
             'icon_url' => $team->icon_url,
             'is_locked' => $team->is_locked,
-            // Hardcoded rank to 1 as requested by user
-            'rank' => 1,
-            // Include original calculated rank for debugging
+            // Use actual calculated rank instead of hardcoded value
+            'rank' => $teamRank,
+            // Include calculated rank for consistency
             'calculated_rank' => $teamRank,
             'scoreboard_frozen' => $isFrozen,
             'freeze_time' => $event->freeze_time ? $event->freeze_time->format('Y-m-d H:i:s') : null,
@@ -1428,6 +1438,40 @@ class EventTeamController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $secrets
+        ]);
+    }
+    public function deleteTeamIcon($teamUuid)
+    {
+        // Find the team and verify the current user is the leader
+        $team = EventTeam::where('id', $teamUuid)
+            ->where('leader_uuid', Auth::user()->uuid)
+            ->first();
+
+        if (!$team) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Team not found or you are not the leader'
+            ], 404);
+        }
+
+        // Check if team has an icon
+        if (!$team->icon) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Team does not have an icon'
+            ], 400);
+        }
+
+        // Delete the icon file
+        Storage::disk('public')->delete($team->icon);
+
+        // Update the team record
+        $team->icon = null;
+        $team->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Team icon deleted successfully'
         ]);
     }
     /**

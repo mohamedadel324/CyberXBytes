@@ -198,16 +198,37 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
      */
     public function getUnsolvedChallengesAttribute()
     {
-        // Get IDs of challenges this user has solved
-        $solvedIds = Challange::whereHas('submissions', function($query) {
+        // Get IDs of challenges the user has solved
+        $solvedIds = $this->submissions()
+            ->where('solved', true)
+            ->pluck('challange_uuid');
+        
+        // Get challenges that the user hasn't solved yet
+        return Challange::whereNotIn('uuid', $solvedIds)->get();
+    }
+    
+    /**
+     * Get regular (non-event) challenges that the user has solved
+     * 
+     * @return \Illuminate\Support\Collection
+     */
+    public function getRegularSolvedChallengesAttribute()
+    {
+        // Get regular challenges the user has solved
+        $solvedChallenges = Challange::whereHas('submissions', function($query) {
             $query->where('user_uuid', $this->uuid)
                 ->where('solved', true);
-        })->pluck('id');
+        })->with(['category', 'submissions' => function($query) {
+            $query->where('user_uuid', $this->uuid)
+                ->where('solved', true)
+                ->orderBy('created_at'); // Using created_at instead of solved_at
+        }])->get();
         
-        // Return challenges not in the solved IDs list
-        return Challange::whereNotIn('id', $solvedIds)
-            ->with('category')
-            ->get();
+        // Add solved_at attribute from the submission's created_at
+        return $solvedChallenges->map(function ($challenge) {
+            $challenge->solved_at = $challenge->submissions->first()->created_at ?? null;
+            return $challenge;
+        });
     }
     
     public function getCurrentTitleAttribute()

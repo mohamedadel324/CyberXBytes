@@ -1183,20 +1183,66 @@ class UserController extends Controller
                     $processedMultipleAllChallenges[] = $challange->uuid;
                     
                     // Check if this was a first blood for the whole challenge (all flags)
-                    $isFirstBlood = true;
+                    $isFirstBlood = false;
                     
-                    // For a first blood, the user must be the first to solve ALL flags
-                    foreach ($challange->flags as $flag) {
-                        $firstSolver = Submission::where('challange_uuid', $challange->uuid)
-                            ->where('flag', $flag->flag)
-                            ->where('solved', true)
-                            ->orderBy('created_at')
-                            ->first();
+                    // For multiple_all challenges, first blood should go to the first user who completes ALL flags
+                    // Find if any other user has previously completed all flags of this challenge
+                    $allFlags = $challange->flags->pluck('flag')->toArray();
+                    
+                    // Get all users who have completed all flags for this challenge
+                    $usersWithAllFlags = [];
+                    
+                    // For each user who has submitted for this challenge
+                    $userSubmissions = Submission::where('challange_uuid', $challange->uuid)
+                        ->where('solved', true)
+                        ->select('user_uuid')
+                        ->distinct()
+                        ->get();
+                    
+                    foreach ($userSubmissions as $userSubmission) {
+                        $tmpUserUuid = $userSubmission->user_uuid;
                         
-                        if (!$firstSolver || $firstSolver->user_uuid !== $user->uuid) {
-                            $isFirstBlood = false;
-                            break;
+                        // Get all solved flags for this user and challenge
+                        $userSolvedFlags = Submission::where('challange_uuid', $challange->uuid)
+                            ->where('user_uuid', $tmpUserUuid)
+                            ->where('solved', true)
+                            ->pluck('flag')
+                            ->unique()
+                            ->toArray();
+                        
+                        // Check if they've solved all flags
+                        $solvedAllFlags = true;
+                        foreach ($allFlags as $flagValue) {
+                            if (!in_array($flagValue, $userSolvedFlags)) {
+                                $solvedAllFlags = false;
+                                break;
+                            }
                         }
+                        
+                        // If they've solved all flags, store them with their completion time
+                        if ($solvedAllFlags) {
+                            // Get the time when this user solved their last flag
+                            $lastFlagSolveTime = Submission::where('challange_uuid', $challange->uuid)
+                                ->where('user_uuid', $tmpUserUuid)
+                                ->where('solved', true)
+                                ->orderBy('created_at', 'desc')
+                                ->first()
+                                ->created_at;
+                            
+                            $usersWithAllFlags[$tmpUserUuid] = $lastFlagSolveTime;
+                        }
+                    }
+                    
+                    // Sort users by completion time (earliest first)
+                    asort($usersWithAllFlags);
+                    
+                    // First blood goes to the first user who completed all flags
+                    if (!empty($usersWithAllFlags)) {
+                        $firstCompleteUserUuid = array_key_first($usersWithAllFlags);
+                        $isFirstBlood = ($firstCompleteUserUuid === $user->uuid);
+                    } else {
+                        // If no one has completed all flags yet, this user is the first blood
+                        $isFirstBlood = true;
                     }
                     
                     // Format date based on user's timezone
@@ -1397,20 +1443,66 @@ class UserController extends Controller
                     $processedMultipleAllChallenges[] = $key;
                     
                     // Check if this was a first blood for the whole challenge (all flags)
-                    $isFirstBlood = true;
+                    $isFirstBlood = false;
                     
-                    // For a first blood, the user must be the first to solve ALL flags
-                    foreach ($challange->flags as $flag) {
-                        $firstSolver = Submission::where('challange_uuid', $challange->uuid)
-                            ->where('flag', $flag->flag)
-                            ->where('solved', true)
-                            ->orderBy('created_at')
-                            ->first();
+                    // For multiple_all challenges, first blood should go to the first user who completes ALL flags
+                    // Find if any other user has previously completed all flags of this challenge
+                    $allFlags = $challange->flags->pluck('flag')->toArray();
+                    
+                    // Get all users who have completed all flags for this challenge
+                    $usersWithAllFlags = [];
+                    
+                    // For each user who has submitted for this challenge
+                    $userSubmissions = Submission::where('challange_uuid', $challange->uuid)
+                        ->where('solved', true)
+                        ->select('user_uuid')
+                        ->distinct()
+                        ->get();
+                    
+                    foreach ($userSubmissions as $userSubmission) {
+                        $tmpUserUuid = $userSubmission->user_uuid;
                         
-                        if (!$firstSolver || $firstSolver->user_uuid !== $user->uuid) {
-                            $isFirstBlood = false;
-                            break;
+                        // Get all solved flags for this user and challenge
+                        $userSolvedFlags = Submission::where('challange_uuid', $challange->uuid)
+                            ->where('user_uuid', $tmpUserUuid)
+                            ->where('solved', true)
+                            ->pluck('flag')
+                            ->unique()
+                            ->toArray();
+                        
+                        // Check if they've solved all flags
+                        $solvedAllFlags = true;
+                        foreach ($allFlags as $flagValue) {
+                            if (!in_array($flagValue, $userSolvedFlags)) {
+                                $solvedAllFlags = false;
+                                break;
+                            }
                         }
+                        
+                        // If they've solved all flags, store them with their completion time
+                        if ($solvedAllFlags) {
+                            // Get the time when this user solved their last flag
+                            $lastFlagSolveTime = Submission::where('challange_uuid', $challange->uuid)
+                                ->where('user_uuid', $tmpUserUuid)
+                                ->where('solved', true)
+                                ->orderBy('created_at', 'desc')
+                                ->first()
+                                ->created_at;
+                            
+                            $usersWithAllFlags[$tmpUserUuid] = $lastFlagSolveTime;
+                        }
+                    }
+                    
+                    // Sort users by completion time (earliest first)
+                    asort($usersWithAllFlags);
+                    
+                    // First blood goes to the first user who completed all flags
+                    if (!empty($usersWithAllFlags)) {
+                        $firstCompleteUserUuid = array_key_first($usersWithAllFlags);
+                        $isFirstBlood = ($firstCompleteUserUuid === $user->uuid);
+                    } else {
+                        // If no one has completed all flags yet, this user is the first blood
+                        $isFirstBlood = true;
                     }
                     
                     $solvedAt = new \DateTime($lastSolvedTime);

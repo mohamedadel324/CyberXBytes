@@ -105,6 +105,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         Route::get('{eventUuid}/check-registration', [EventRegistrationController::class, 'checkRegistration']);
         Route::get('my-registrations', [EventRegistrationController::class, 'myRegistrations']);
         Route::get('{eventUuid}/check-if-event-started', [EventController::class, 'checkIfEventStarted']);
+
         // Team management
         Route::post('{eventUuid}/teams', [EventTeamController::class, 'create']);
         Route::get('{eventUuid}/teams', [EventTeamController::class, 'listTeams']);
@@ -115,6 +116,7 @@ Route::middleware(['auth:api', 'verified'])->group(function () {
         Route::get('teams/{teamUuid}/join-secrets', [EventTeamController::class, 'listJoinSecrets']);
         Route::post('teams/join', [EventTeamController::class, 'joinWithSecret']);
         Route::post('teams/{teamUuid}', [EventTeamController::class, 'updateTeam']);
+        Route::post('teams/{teamUuid}/icon', [EventTeamController::class, 'deleteTeamIcon']);
         Route::delete('teams/{teamUuid}/leave', [EventTeamController::class, 'leave']);
         Route::delete('teams/{teamUuid}/members', [EventTeamController::class, 'removeMember']);
 

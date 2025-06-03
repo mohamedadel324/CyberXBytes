@@ -496,42 +496,67 @@ class EventController extends Controller
                     }
                 }
                 
-                // Show entries for both partial and complete multiple_all challenge solves
-                // Include percentage of completion in the challenge title for partial solves
+                // Only show entries for complete multiple_all challenge solves
                 $flagsCompleted = count(array_keys($solvedFlags));
                 $completionPercentage = round(($flagsCompleted / $totalFlags) * 100);
                 $isComplete = ($flagsCompleted == $totalFlags);
                 
-                if ($flagsCompleted > 0) {
+                if ($isComplete) {
                     // Mark this user-challenge combination as processed
                     $processedMultipleAllChallenges[] = $key;
                     
                     // Check if this was a first blood for the whole challenge (all flags)
-                    $isFirstBlood = true;
+                    $isFirstBlood = false;
                     
-                    // For a first blood, the user must be the first to solve ALL flags
-                    foreach ($challenge->flags as $flag) {
-                        // First check in the flag submissions table (more reliable)
-                        $firstFlagSolver = EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                    // For multiple_all challenges, first blood should go to the first user who completes ALL flags
+                    if ($isComplete) {
+                        // Find if any other user has previously completed all flags of this challenge
+                        $allFlagIds = $challenge->flags->pluck('id')->toArray();
+                        
+                        // Get all users who have completed all flags for this challenge
+                        $usersWithAllFlags = [];
+                        
+                        // For each user who has submitted flags for this challenge
+                        $userSubmissions = EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $allFlagIds)
                             ->where('solved', true)
-                            ->orderBy('solved_at', 'asc')
-                            ->first();
+                            ->select('user_uuid')
+                            ->distinct()
+                            ->get();
+                        
+                        foreach ($userSubmissions as $userSubmission) {
+                            $userUuid = $userSubmission->user_uuid;
                             
-                        if ($firstFlagSolver && $firstFlagSolver->user_uuid !== $user->uuid) {
-                            $isFirstBlood = false;
-                            break;
+                            // Count how many unique flags this user has solved for this challenge
+                            $userSolvedFlagsCount = EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $allFlagIds)
+                                ->where('user_uuid', $userUuid)
+                                ->where('solved', true)
+                                ->distinct('event_challange_flag_id')
+                                ->count('event_challange_flag_id');
+                            
+                            // If they've solved all flags, store them with their completion time
+                            if ($userSolvedFlagsCount == $totalFlags) {
+                                // Get the time when this user solved their last flag
+                                $lastFlagSolveTime = EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $allFlagIds)
+                                    ->where('user_uuid', $userUuid)
+                                    ->where('solved', true)
+                                    ->orderBy('solved_at', 'desc')
+                                    ->first()
+                                    ->solved_at;
+                                
+                                $usersWithAllFlags[$userUuid] = $lastFlagSolveTime;
+                            }
                         }
                         
-                        // Also check in the regular submissions table for older data
-                        $firstSolver = EventChallangeSubmission::where('event_challange_id', $challenge->id)
-                            ->where('submission', $flag->flag)
-                            ->where('solved', true)
-                            ->orderBy('created_at', 'asc')
-                            ->first();
+                        // Sort users by completion time (earliest first)
+                        asort($usersWithAllFlags);
                         
-                        if ($firstSolver && $firstSolver->user_uuid !== $user->uuid) {
-                            $isFirstBlood = false;
-                            break;
+                        // First blood goes to the first user who completed all flags
+                        if (!empty($usersWithAllFlags)) {
+                            $firstCompleteUserUuid = array_key_first($usersWithAllFlags);
+                            $isFirstBlood = ($firstCompleteUserUuid === $user->uuid);
+                        } else {
+                            // If no one has completed all flags yet, this user is the first blood
+                            $isFirstBlood = true;
                         }
                     }
                     
@@ -549,16 +574,14 @@ class EventController extends Controller
                             ->whereHas('members', function($query) use ($user) {
                                 $query->where('user_uuid', $user->uuid);
                             })->first()?->name,
-                        'challenge_title' => $isAfterFreeze ? '*****' : ($isComplete ? $challenge->title : $challenge->title . ' (' . $completionPercentage . '% complete)'),
-                        'all_flags_solved' => $isComplete,
+                        'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
+                        'all_flags_solved' => true, // Always true as we only show complete solves now
                         'challenge_uuid' => $isAfterFreeze ? '*****' : $challenge->id,
-                        'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : ($isComplete ? $challenge->bytes : 0)),
-                        'partial_bytes' => $isAfterFreeze ? '*****' : (!$isComplete ? round(($flagsCompleted / $totalFlags) * $challenge->bytes) : 0),
+                        'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $challenge->bytes),
+                        'partial_bytes' => $isAfterFreeze ? '*****' : 0, // No partial bytes as we only show complete solves
                         'is_first_blood' => $isAfterFreeze ? false : $isFirstBlood,
                         'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : 0),
-                        'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 
-                                                $challenge->firstBloodBytes : 
-                                                ($isComplete ? $challenge->bytes : round(($flagsCompleted / $totalFlags) * $challenge->bytes))),
+                        'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : $challenge->bytes),
                         'flags_solved' => $isAfterFreeze ? '*****' : $flagsCompleted,
                         'total_flags' => $isAfterFreeze ? '*****' : $totalFlags,
                         'solved_at' => $solvedAt->format('Y-m-d H:i:s'),
@@ -706,8 +729,8 @@ class EventController extends Controller
                 $completionPercentage = round(($flagsCompleted / $totalFlags) * 100);
                 $isComplete = ($flagsCompleted == $totalFlags);
                 
-                // Skip if user hasn't solved any flags or if we've already processed this user-challenge combo
-                if ($flagsCompleted == 0) {
+                // Skip if user hasn't solved all flags or if we've already processed this user-challenge combo
+                if (!$isComplete) {
                     continue;
                 }
                 
@@ -718,24 +741,56 @@ class EventController extends Controller
                 
                 $processedMultipleAllChallenges[] = $key;
                 
-                // Check if this was first blood (user was first to solve ALL flags)
-                $isFirstBlood = true;
-                
+                // Now we check for first blood since all flags are completed
                 if ($isComplete) {
-                    foreach ($challenge->flags as $flag) {
-                        $firstFlagSolver = \App\Models\EventChallangeFlagSubmission::where('event_challange_flag_id', $flag->id)
+                    // Find if any other user has previously completed all flags of this challenge
+                    $allFlagIds = $challenge->flags->pluck('id')->toArray();
+                    
+                    // Get all users who have completed all flags for this challenge
+                    $usersWithAllFlags = [];
+                    
+                    // For each user who has submitted flags for this challenge
+                    $userSubmissions = \App\Models\EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $allFlagIds)
+                        ->where('solved', true)
+                        ->select('user_uuid')
+                        ->distinct()
+                        ->get();
+                    
+                    foreach ($userSubmissions as $userSubmission) {
+                        $tmpUserUuid = $userSubmission->user_uuid;
+                        
+                        // Count how many unique flags this user has solved for this challenge
+                        $userSolvedFlagsCount = \App\Models\EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $allFlagIds)
+                            ->where('user_uuid', $tmpUserUuid)
                             ->where('solved', true)
-                            ->orderBy('solved_at', 'asc')
-                            ->first();
+                            ->distinct('event_challange_flag_id')
+                            ->count('event_challange_flag_id');
+                        
+                        // If they've solved all flags, store them with their completion time
+                        if ($userSolvedFlagsCount == $totalFlags) {
+                            // Get the time when this user solved their last flag
+                            $lastFlagSolveTime = \App\Models\EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $allFlagIds)
+                                ->where('user_uuid', $tmpUserUuid)
+                                ->where('solved', true)
+                                ->orderBy('solved_at', 'desc')
+                                ->first()
+                                ->solved_at;
                             
-                        if ($firstFlagSolver && $firstFlagSolver->user_uuid !== $userUuid) {
-                            $isFirstBlood = false;
-                            break;
+                            $usersWithAllFlags[$tmpUserUuid] = $lastFlagSolveTime;
                         }
                     }
-                } else {
-                    // Partial completion is never first blood
-                    $isFirstBlood = false;
+                    
+                    // Sort users by completion time (earliest first)
+                    asort($usersWithAllFlags);
+                    
+                    // First blood goes to the first user who completed all flags
+                    if (!empty($usersWithAllFlags)) {
+                        $firstCompleteUserUuid = array_key_first($usersWithAllFlags);
+                        $isFirstBlood = ($firstCompleteUserUuid === $userUuid);
+                    } else {
+                        // If no one has completed all flags yet, this user is the first blood
+                        $isFirstBlood = true;
+                    }
                 }
                 
                 $isAfterFreeze = $freezeTime && $latestSolvedAt > $freezeTime;
@@ -752,16 +807,15 @@ class EventController extends Controller
                         ->whereHas('members', function($query) use ($user) {
                             $query->where('user_uuid', $user->uuid);
                         })->first()?->name,
-                    'challenge_title' => $isAfterFreeze ? '*****' : ($isComplete ? $challenge->title : $challenge->title . ' (' . $completionPercentage . '% complete)'),
-                    'all_flags_solved' => $isComplete,
+                    'challenge_title' => $isAfterFreeze ? '*****' : $challenge->title,
+                    'all_flags_solved' => true, // Always true as we only show complete solves now
                     'challenge_uuid' => $isAfterFreeze ? '*****' : $challengeId,
-                    'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : ($isComplete ? $challenge->bytes : 0)),
-                    'partial_bytes' => $isAfterFreeze ? '*****' : (!$isComplete ? round(($flagsCompleted / $totalFlags) * $challenge->bytes) : 0),
+                    'bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 0 : $challenge->bytes),
+                    'partial_bytes' => $isAfterFreeze ? '*****' : 0, // No partial bytes as we only show complete solves
                     'is_first_blood' => $isAfterFreeze ? false : $isFirstBlood,
                     'first_blood_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? $challenge->firstBloodBytes : 0),
                     'total_bytes' => $isAfterFreeze ? '*****' : ($isFirstBlood ? 
-                                            $challenge->firstBloodBytes : 
-                                            ($isComplete ? $challenge->bytes : round(($flagsCompleted / $totalFlags) * $challenge->bytes))),
+                                            $challenge->firstBloodBytes : $challenge->bytes),
                     'flags_solved' => $isAfterFreeze ? '*****' : $flagsCompleted,
                     'total_flags' => $isAfterFreeze ? '*****' : $totalFlags,
                     'solved_at' => $latestSolvedAt->format('Y-m-d H:i:s'),

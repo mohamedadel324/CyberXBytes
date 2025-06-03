@@ -788,6 +788,10 @@
         fetch('/admin/backups/upload', {
           method: 'POST',
           body: formData,
+          headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            // Don't set Content-Type here - the browser will set it correctly for FormData
+          }
         })
         .then(response => response.json())
         .then(data => {

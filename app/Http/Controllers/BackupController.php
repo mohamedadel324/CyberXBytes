@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use PDO;
 use ZipArchive;
 use RecursiveIteratorIterator;
@@ -332,6 +333,14 @@ class BackupController extends Controller
                 $errorMessage .= "\nCaused by: " . $previous->getMessage();
                 $previous = $previous->getPrevious();
             }
+            
+            // Clean up temporary files if they exist
+            if (isset($tempDir) && file_exists($tempDir)) {
+                rmdir($tempDir);
+            }
+            if (isset($zipPath) && file_exists($zipPath)) {
+                unlink($zipPath);
+            }
 
             return response()->json([
                 'success' => false,
@@ -350,6 +359,29 @@ class BackupController extends Controller
                 throw new \Exception('Backup file not found');
             }
 
+            // Save any existing model_has_roles entries for admins
+            $adminRoles = [];
+            try {
+                if (Schema::hasTable('model_has_roles')) {
+                    $adminRoles = DB::table('model_has_roles')
+                        ->where('model_type', 'App\\Models\\Admin')
+                        ->orWhere('model_type', 'AppModelsAdmin')
+                        ->get()->toArray();
+                }
+            } catch (\Exception $e) {
+                \Log::info('Could not backup admin roles before restore: ' . $e->getMessage());
+            }
+
+            // Backup current admin users
+            $adminUsers = [];
+            try {
+                if (Schema::hasTable('admins')) {
+                    $adminUsers = DB::table('admins')->get()->toArray();
+                }
+            } catch (\Exception $e) {
+                \Log::info('Could not backup admin users before restore: ' . $e->getMessage());
+            }
+            
             $sql = Storage::get($path);
             
             // Split SQL by semicolon to get individual queries
@@ -359,16 +391,125 @@ class BackupController extends Controller
                 )
             );
             
+            // Filter out model_has_roles inserts to handle them separately later
+            $modelHasRolesQueries = [];
+            $otherQueries = [];
+            
+            foreach ($queries as $query) {
+                if (!empty($query)) {
+                    // Check if this is a model_has_roles insert
+                    if (strpos($query, 'INSERT INTO `model_has_roles`') !== false) {
+                        $modelHasRolesQueries[] = $query;
+                    } else {
+                        $otherQueries[] = $query;
+                    }
+                }
+            }
+            
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
             
             try {
-                foreach ($queries as $query) {
-                    if (!empty($query)) {
-                        DB::unprepared($query);
+                // Execute all non-model_has_roles queries first
+                foreach ($otherQueries as $query) {
+                    DB::unprepared($query);
+                }
+                
+                // Clear existing model_has_roles entries for admins to prevent conflicts
+                if (Schema::hasTable('model_has_roles')) {
+                    DB::table('model_has_roles')
+                        ->where('model_type', 'App\\Models\\Admin')
+                        ->orWhere('model_type', 'AppModelsAdmin')
+                        ->delete();
+                    
+                    // Extract role-model pairs from queries and insert them with consistent format
+                    $insertedPairs = [];
+                    
+                    // Handle any model_has_roles queries from the backup
+                    foreach ($modelHasRolesQueries as $query) {
+                        // Extract values using regex - looking for patterns like ('1', 'AppModelsAdmin', '8')
+                        preg_match_all("/\('(\d+)', '([^']+)', '(\d+)'\)/", $query, $matches, PREG_SET_ORDER);
+                        
+                        foreach ($matches as $match) {
+                            if (count($match) == 4) {
+                                $roleId = $match[1];
+                                $modelType = $match[2];
+                                $modelId = $match[3];
+                                
+                                // Only process admin roles
+                                if ($modelType == 'App\\Models\\Admin' || $modelType == 'AppModelsAdmin') {
+                                    $key = $roleId . '-' . $modelId;
+                                    
+                                    // Avoid duplicates
+                                    if (!in_array($key, $insertedPairs)) {
+                                        try {
+                                            DB::table('model_has_roles')->insert([
+                                                'role_id' => $roleId,
+                                                'model_id' => $modelId,
+                                                'model_type' => 'App\\Models\\Admin'
+                                            ]);
+                                            $insertedPairs[] = $key;
+                                        } catch (\Exception $e) {
+                                            \Log::warning('Failed to insert model_has_roles: ' . $e->getMessage());
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 
                 DB::statement('SET FOREIGN_KEY_CHECKS=1');
+                
+                // Restore admin users
+                if (!empty($adminUsers)) {
+                    foreach ($adminUsers as $admin) {
+                        $admin = (array) $admin;
+                        try {
+                            // Check if the admin already exists after restore
+                            $exists = DB::table('admins')->where('id', $admin['id'])->first();
+                            
+                            if (!$exists) {
+                                // If admin doesn't exist, insert it
+                                DB::table('admins')->insert($admin);
+                            } else {
+                                // If admin exists but might have different permissions, update it
+                                unset($admin['id']); // Remove ID to avoid conflicts
+                                DB::table('admins')->where('id', $admin['id'])->update($admin);
+                            }
+                        } catch (\Exception $e) {
+                            \Log::warning('Failed to restore admin user: ' . $e->getMessage());
+                        }
+                    }
+                }
+                
+                // Fix potential duplicate entries in model_has_roles table
+                if (!empty($adminRoles) && Schema::hasTable('model_has_roles')) {
+                    // First delete any admin role entries to avoid duplicates
+                    DB::table('model_has_roles')
+                        ->where('model_type', 'App\\Models\\Admin')
+                        ->orWhere('model_type', 'AppModelsAdmin')
+                        ->delete();
+                    
+                    // Now reinsert with consistent format, avoiding duplicates
+                    $processed = [];
+                    foreach ($adminRoles as $role) {
+                        $role = (array) $role;
+                        $key = $role['role_id'] . '-' . $role['model_id'];
+                        
+                        if (!in_array($key, $processed)) {
+                            try {
+                                DB::table('model_has_roles')->insert([
+                                    'role_id' => $role['role_id'],
+                                    'model_id' => $role['model_id'],
+                                    'model_type' => 'App\\Models\\Admin'
+                                ]);
+                                $processed[] = $key;
+                            } catch (\Exception $e) {
+                                \Log::warning('Failed to restore admin role: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                }
                 
             } catch (\Exception $e) {
                 DB::statement('SET FOREIGN_KEY_CHECKS=1');
@@ -377,7 +518,7 @@ class BackupController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Database restored successfully'
+                'message' => 'Database restored successfully with admin permissions preserved'
             ]);
 
         } catch (\Exception $e) {
@@ -390,9 +531,11 @@ class BackupController extends Controller
 
     public function download($filename)
     {
-        $path = storage_path('app/backups/' . $filename);
-        if (file_exists($path)) {
-            return response()->download($path);
+        if (Storage::exists('backups/' . $filename)) {
+            return Storage::download('backups/' . $filename, $filename, [
+                'Content-Type' => 'application/octet-stream',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+            ]);
         }
         abort(404);
     }
@@ -461,30 +604,89 @@ class BackupController extends Controller
                 // Regular SQL file
                 $sqlContent = Storage::get($path);
             }
-            
+
             // Execute SQL statements
             $queries = array_filter(
                 array_map('trim', 
                     preg_split("/;\s*[\r\n]+/", $sqlContent)
                 )
             );
-            
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
-            
-            try {
-                foreach ($queries as $query) {
-                    if (!empty($query)) {
-                        DB::unprepared($query);
+
+            // Filter out model_has_roles inserts to handle them separately
+            $modelHasRolesQueries = [];
+            $otherQueries = [];
+
+            foreach ($queries as $query) {
+                if (!empty($query)) {
+                    // Check if this is a model_has_roles insert
+                    if (strpos($query, 'INSERT INTO `model_has_roles`') !== false) {
+                        $modelHasRolesQueries[] = $query;
+                    } else {
+                        $otherQueries[] = $query;
                     }
                 }
-                
+            }
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
+            try {
+                // Execute all non-model_has_roles queries first
+                foreach ($otherQueries as $query) {
+                    DB::unprepared($query);
+                }
+
+                // Handle model_has_roles queries separately
+                if (Schema::hasTable('model_has_roles')) {
+                    // Clear existing model_has_roles entries for admins to prevent conflicts
+                    DB::table('model_has_roles')
+                        ->where('model_type', 'App\\Models\\Admin')
+                        ->orWhere('model_type', 'AppModelsAdmin')
+                        ->delete();
+
+                    // Extract role-model pairs from queries and insert them with consistent format
+                    $insertedPairs = [];
+
+                    // Handle any model_has_roles queries from the backup
+                    foreach ($modelHasRolesQueries as $query) {
+                        // Extract values using regex - looking for patterns like ('1', 'AppModelsAdmin', '8')
+                        preg_match_all("/\('(\d+)', '([^']+)', '(\d+)'\)/", $query, $matches, PREG_SET_ORDER);
+
+                        foreach ($matches as $match) {
+                            if (count($match) == 4) {
+                                $roleId = $match[1];
+                                $modelType = $match[2];
+                                $modelId = $match[3];
+
+                                // Only process admin roles
+                                if ($modelType == 'App\\Models\\Admin' || $modelType == 'AppModelsAdmin') {
+                                    $key = $roleId . '-' . $modelId;
+
+                                    // Avoid duplicates
+                                    if (!in_array($key, $insertedPairs)) {
+                                        try {
+                                            DB::table('model_has_roles')->insert([
+                                                'role_id' => $roleId,
+                                                'model_id' => $modelId,
+                                                'model_type' => 'App\\Models\\Admin'
+                                            ]);
+                                            $insertedPairs[] = $key;
+                                        } catch (\Exception $e) {
+                                            \Log::warning('Failed to insert model_has_roles: ' . $e->getMessage());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 DB::statement('SET FOREIGN_KEY_CHECKS=1');
-                
+
             } catch (\Exception $e) {
                 DB::statement('SET FOREIGN_KEY_CHECKS=1');
                 throw $e;
             }
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Database backup uploaded and imported successfully',

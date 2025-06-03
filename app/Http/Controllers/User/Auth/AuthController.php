@@ -205,6 +205,8 @@ class AuthController extends \Illuminate\Routing\Controller
         }
 
         $user = auth()->user()->makeHidden(['created_at', 'updated_at']);
+        $user->last_seen = now();
+        $user->save();
         return response()->json([
             'message' => 'Login Successful.',
             'user' => $user,

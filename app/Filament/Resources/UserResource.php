@@ -72,6 +72,8 @@ class UserResource extends BaseResource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('country')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('last_seen')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -136,29 +138,68 @@ class UserResource extends BaseResource
                             
                         Tabs\Tab::make('Event Submissions')
                             ->schema([
-                                Infolists\Components\RepeatableEntry::make('eventSubmissions')
+                                // Challenge submissions
+                                Infolists\Components\Section::make('Challenge Submissions')
                                     ->schema([
-                                        Infolists\Components\TextEntry::make('eventChallange.title')
-                                            ->label('Challenge'),
-                                        Infolists\Components\TextEntry::make('eventChallange.category.name')
-                                            ->label('Category'),
-                                        Infolists\Components\TextEntry::make('eventChallange.event.name')
-                                            ->label('Event'),
-                                        Infolists\Components\IconEntry::make('solved')
-                                            ->boolean(),
-                                        Infolists\Components\TextEntry::make('attempts')
-                                            ->label('Attempts'),
-                                        Infolists\Components\TextEntry::make('solved_at')
-                                            ->dateTime()
-                                            ->label('Solved At'),
-                                    ])
-                                    ->columns(6)
-                                    ->columnSpanFull(),
+                                        Infolists\Components\RepeatableEntry::make('eventSubmissions')
+                                            ->schema([
+                                                Infolists\Components\TextEntry::make('eventChallange.title')
+                                                    ->label('Challenge'),
+                                                Infolists\Components\TextEntry::make('eventChallange.category.name')
+                                                    ->label('Category'),
+                                                Infolists\Components\TextEntry::make('eventChallange.event.title')
+                                                    ->label('Event'),
+                                                Infolists\Components\IconEntry::make('solved')
+                                                    ->boolean(),
+                                                Infolists\Components\TextEntry::make('attempts')
+                                                    ->label('Attempts'),
+                                                Infolists\Components\TextEntry::make('solved_at')
+                                                    ->dateTime()
+                                                    ->label('Solved At'),
+                                                Infolists\Components\TextEntry::make('submission_type')
+                                                    ->label('Type')
+                                                    ->default('Challenge')
+                                                    ->badge()
+                                                    ->color('warning'),
+                                            ])
+                                            ->columns(7)
+                                            ->columnSpanFull()
+                                    ]),
+                                    
+                                // Flag submissions
+                                Infolists\Components\Section::make('Flag Submissions')
+                                    ->schema([
+                                        Infolists\Components\RepeatableEntry::make('flagSubmissions')
+                                            ->schema([
+                                                Infolists\Components\TextEntry::make('eventChallangeFlag.name')
+                                                    ->label('Flag'),
+                                                Infolists\Components\TextEntry::make('eventChallangeFlag.eventChallange.title')
+                                                    ->label('Challenge'),
+                                                Infolists\Components\TextEntry::make('eventChallangeFlag.eventChallange.category.name')
+                                                    ->label('Category'),
+                                                Infolists\Components\TextEntry::make('eventChallangeFlag.eventChallange.event.title')
+                                                    ->label('Event'),
+                                                Infolists\Components\IconEntry::make('solved')
+                                                    ->boolean(),
+                                                Infolists\Components\TextEntry::make('attempts')
+                                                    ->label('Attempts'),
+                                                Infolists\Components\TextEntry::make('solved_at')
+                                                    ->dateTime()
+                                                    ->label('Solved At'),
+                                                Infolists\Components\TextEntry::make('submission_type')
+                                                    ->label('Type')
+                                                    ->default('Flag')
+                                                    ->badge()
+                                                    ->color('success'),
+                                            ])
+                                            ->columns(7)
+                                            ->columnSpanFull()
+                                    ]),
                             ]),
                             
                         Tabs\Tab::make('Solved Challenges')
                             ->schema([
-                                Infolists\Components\RepeatableEntry::make('solvedChallenges')
+                                Infolists\Components\RepeatableEntry::make('regularSolvedChallenges')
                                     ->schema([
                                         Infolists\Components\TextEntry::make('title')
                                             ->label('Challenge'),
@@ -175,7 +216,7 @@ class UserResource extends BaseResource
                                             }),
                                         Infolists\Components\TextEntry::make('bytes')
                                             ->label('Points'),
-                                        Infolists\Components\TextEntry::make('pivot.solved_at')
+                                        Infolists\Components\TextEntry::make('solved_at')
                                             ->dateTime()
                                             ->label('Solved At'),
                                     ])
@@ -293,12 +334,15 @@ class UserResource extends BaseResource
             'submissions.challange.category',
             'eventSubmissions.eventChallange.category',
             'eventSubmissions.eventChallange.event',
+            'flagSubmissions.eventChallangeFlag.eventChallange.category',
+            'flagSubmissions.eventChallangeFlag.eventChallange.event',
             'solvedChallenges.category',
             'registeredEvents',
         ])
         ->withCount([
             'submissions', 
-            'eventSubmissions', 
+            'eventSubmissions',
+            'flagSubmissions', 
             'solvedChallenges',
         ]);
         

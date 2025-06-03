@@ -42,9 +42,9 @@ $superAdmin->syncPermissions(Permission::where('guard_name', 'admin')->get());
 // Step 3: Create a new admin with Super Admin role
 echo "Creating new admin account...\n";
 $admin = Admin::firstOrCreate(
-    ['email' => 'admin@cyberxbytes.com'],
+    ['email' => 'mohamedmersal858@gmail.com'],
     [
-        'name' => 'Super Admin',
+        'name' => 'Mohamed Mersal',
         'password' => Hash::make('Admin@123!'),
     ]
 );
@@ -56,6 +56,6 @@ $admin->syncRoles([$superAdmin->id]);
 echo "\n-------------------------------------------------\n";
 echo "✅ Admin restoration completed successfully!\n\n";
 echo "Login details:\n";
-echo "Email: admin@cyberxbytes.com\n";
+echo "Email: mohamedmersal858@gmail.com\n";
 echo "Password: Admin@123!\n";
 echo "-------------------------------------------------\n";
