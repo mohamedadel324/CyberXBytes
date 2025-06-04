@@ -106,11 +106,7 @@ class EventChallangeSubmissionResource extends Resource
             ])
             ->columns([
                 // Type indicator based on model class - shows Flag or Challenge
-                Tables\Columns\TextColumn::make('submission_type')
-                    ->label('Type')
-                    ->badge()
-                    ->formatStateUsing(fn ($state, $record) => $record instanceof EventChallangeFlagSubmission ? 'Flag' : 'Challenge')
-                    ->color(fn ($state, $record) => $record instanceof EventChallangeFlagSubmission ? 'success' : 'warning'),
+                
                     
                 // Event Title (for both submission types)
                 Tables\Columns\TextColumn::make('event_title')
@@ -213,13 +209,43 @@ class EventChallangeSubmissionResource extends Resource
             ->defaultSort('created_at', 'desc')
 
             ->filters([
-                
                 // Filter by solved status
                 Tables\Filters\Filter::make('solved')
                     ->toggle()
                     ->label('Show Only Solved')
                     ->query(fn (Builder $query): Builder => $query->where('solved', true)),
                 
+                // Filter by challenge (dropdown)
+                Tables\Filters\SelectFilter::make('challenge_id')
+                    ->label('Filter by Challenge')
+                    ->searchable()
+                    ->options(function() {
+                        if (request()->routeIs('*event-challange-flag-submissions*')) {
+                            return \App\Models\EventChallangeFlag::with('eventChallange')
+                                ->get()
+                                ->mapWithKeys(function($flag) {
+                                    return [$flag->id => $flag->eventChallange->title];
+                                });
+                        } else {
+                            return \App\Models\EventChallange::pluck('title', 'id');
+                        }
+                    })
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+                        
+                        $challengeId = $data['value'];
+                        
+                        if ($query->getModel() instanceof EventChallangeFlagSubmission) {
+                            return $query->whereHas('eventChallangeFlag', function ($q) use ($challengeId) {
+                                $q->where('id', $challengeId);
+                            });
+                        } else {
+                            return $query->where('event_challange_id', $challengeId);
+                        }
+                    }),
+                    
                 // Filter by user UUID
                 Tables\Filters\Filter::make('user_filter')
                     ->form([
@@ -237,7 +263,6 @@ class EventChallangeSubmissionResource extends Resource
                 Tables\Filters\SelectFilter::make('event_id')
                     ->label('Filter by Event')
                     ->options(function() {
-                        // Get all events from the database
                         return \App\Models\Event::pluck('title', 'id');
                     })
                     ->query(function (Builder $query, array $data) {
@@ -247,14 +272,11 @@ class EventChallangeSubmissionResource extends Resource
                         
                         $eventId = $data['value'];
                         
-                        // Apply different logic based on the model type
                         if ($query->getModel() instanceof EventChallangeFlagSubmission) {
-                            // For flag submissions, filter through the flag -> challenge -> event relationship
                             return $query->whereHas('eventChallangeFlag.eventChallange.event', function ($q) use ($eventId) {
                                 $q->where('id', $eventId);
                             });
                         } else {
-                            // For challenge submissions, filter through challenge -> event relationship
                             return $query->whereHas('eventChallange.event', function ($q) use ($eventId) {
                                 $q->where('id', $eventId);
                             });

@@ -47,7 +47,7 @@ class AuthController extends \Illuminate\Routing\Controller
             'email' => ['required', 'string', 'email', 'max:50', 'unique:users', 'regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/'],
             'user_name' => ['required', 'string', 'between:2,15', 'unique:users', 'regex:/^[a-zA-Z0-9]+$/'],
             'country' => ['required', 'string', 'between:2,10', 'regex:/^[a-zA-Z0-9\s\-\,\.\']+$/'],
-            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/'],
+            'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@#$!%*?&]{8,}$/'],
         ]);
 
         // Generate a unique registration ID

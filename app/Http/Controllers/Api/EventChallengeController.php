@@ -1180,7 +1180,16 @@ class EventChallengeController extends Controller
         // For multiple_all, we need user-specific solved status
         $userAllFlagsSolved = false;
         if ($challenge->flag_type === 'multiple_all') {
-            $userAllFlagsSolved = $userSolvedFlags->count() === $challenge->flags->count() && $challenge->flags->count() > 0;
+            // Check if the team has solved all flags by directly querying the database
+            // This ensures we catch all team solves regardless of the current request's context
+            $teamSolvedCount = EventChallangeFlagSubmission::whereIn('event_challange_flag_id', $challenge->flags->pluck('id'))
+                ->whereIn('user_uuid', $teamMemberUuids)
+                ->where('solved', true)
+                ->distinct('event_challange_flag_id')
+                ->count();
+                
+            $userAllFlagsSolved = ($teamSolvedCount === $challenge->flags->count() && $challenge->flags->count() > 0) || 
+                                 ($userSolvedFlags->count() === $challenge->flags->count() && $challenge->flags->count() > 0);
         } else {
             $userAllFlagsSolved = $allFlagsSolved;
         }

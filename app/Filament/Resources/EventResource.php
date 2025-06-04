@@ -292,8 +292,13 @@ class EventResource extends BaseResource
                                         }
                                         $component->state($state);
                                     }
-                                }),
-                        ]),
+                                })
+                                ->reorderable('order')
+
+                                ,
+                        ])
+
+                        ,
                     
                     Forms\Components\Wizard\Step::make('Invitations')
                         ->description('Add users to your private event')
