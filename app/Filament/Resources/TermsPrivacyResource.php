@@ -30,6 +30,7 @@ class TermsPrivacyResource extends BaseResource
                                     ->required()
                                     ->label('Terms Document')
                                     ->directory('terms')
+                                    ->downloadable()
                                     ->disk('public')
                                     ->acceptedFileTypes(['application/pdf', 'text/plain', 'text/html'])
                                     ->helperText('Upload a PDF, text, or HTML file for the terms and conditions'),
@@ -40,6 +41,7 @@ class TermsPrivacyResource extends BaseResource
                                     ->required()
                                     ->label('Privacy Policy Document')
                                     ->directory('privacy')
+                                    ->downloadable()
                                     ->disk('public')
                                     ->acceptedFileTypes(['application/pdf', 'text/plain', 'text/html'])
                                     ->helperText('Upload a PDF, text, or HTML file for the privacy policy'),

@@ -72,16 +72,26 @@ class EventRegisteredUsersWidget extends BaseWidget
                     ->modalDescription('Are you sure you want to remove this user from the event? This action cannot be undone.')
                     ->action(function ($record) {
                         try {
-                            // Find the registration and delete it
+                            // Remove user from event registration
                             EventRegistration::where('event_uuid', $this->record->uuid)
                                 ->where('user_uuid', $record->uuid)
                                 ->delete();
-                                
+
+                            // Remove user from their team in this event
+                            $team = \App\Models\EventTeam::where('event_uuid', $this->record->uuid)
+                                ->whereHas('members', function ($query) use ($record) {
+                                    $query->where('user_uuid', $record->uuid);
+                                })
+                                ->first();
+                            if ($team) {
+                                $team->members()->detach($record->uuid);
+                            }
+
                             Notification::make()
                                 ->title('User removed successfully')
                                 ->success()
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             Notification::make()
                                 ->title('Error removing user')
@@ -110,28 +120,32 @@ class EventRegisteredUsersWidget extends BaseWidget
                     ->modalDescription('Are you sure you want to remove these users from the event? This action cannot be undone.')
                     ->action(function ($records) {
                         $count = 0;
-                        
                         DB::beginTransaction();
                         try {
                             foreach ($records as $record) {
                                 EventRegistration::where('event_uuid', $this->record->uuid)
                                     ->where('user_uuid', $record->uuid)
                                     ->delete();
+                                // Remove user from their team in this event
+                                $team = \App\Models\EventTeam::where('event_uuid', $this->record->uuid)
+                                    ->whereHas('members', function ($query) use ($record) {
+                                        $query->where('user_uuid', $record->uuid);
+                                    })
+                                    ->first();
+                                if ($team) {
+                                    $team->members()->detach($record->uuid);
+                                }
                                 $count++;
                             }
-                            
                             DB::commit();
-                            
                             Notification::make()
                                 ->title("{$count} users removed successfully")
                                 ->success()
                                 ->send();
-                                
                             // Refresh the table
                             $this->refresh();
                         } catch (\Exception $e) {
                             DB::rollBack();
-                            
                             Notification::make()
                                 ->title('Error removing users')
                                 ->body('An error occurred: ' . $e->getMessage())

@@ -24,13 +24,17 @@ class EventLeaderboardWidget extends BaseWidget
     // Cache for team points to avoid recalculating
     protected Collection $teamPointsCache;
     
+    // Add a new property to store solve times
+    protected Collection $teamSolveTimesCache;
+    
     // Track the current sort direction
     protected string $sortDirection = 'desc';
     
     public function table(Table $table): Table
     {
-        // Initialize the cache
+        // Initialize the caches
         $this->teamPointsCache = collect();
+        $this->teamSolveTimesCache = collect();
         
         return $table
             ->query(function () {
@@ -59,7 +63,7 @@ class EventLeaderboardWidget extends BaseWidget
                 // Load all teams
                 $teams = $query->get();
                 
-                // Calculate points for all teams using the EventTeamController API
+                // Calculate points and solve times for all teams using the EventTeamController API
                 foreach ($teams as $team) {
                     // Use the working getTeamById method from EventTeamController to get accurate points
                     $teamController = new \App\Http\Controllers\Api\EventTeamController();
@@ -74,23 +78,45 @@ class EventLeaderboardWidget extends BaseWidget
                         // Get total bytes as points
                         $totalPoints = isset($stats['total_bytes']) ? $stats['total_bytes'] : 0;
                         $this->teamPointsCache[$team->id] = $totalPoints;
+                        
+                        // Calculate solve time for the team
+                        $this->teamSolveTimesCache[$team->id] = $this->calculateTeamAverageSolveTime($teamData['data']);
                     } else {
                         // Fallback to the old calculation method if API fails
                         $this->teamPointsCache[$team->id] = $this->calculateTeamPoints($team);
+                        $this->teamSolveTimesCache[$team->id] = PHP_INT_MAX; // Default to maximum time if we can't calculate
                     }
                 }
                 
-                // Get team IDs sorted by points
-                $sortedTeamIds = $this->teamPointsCache
-                    ->sortDesc()
-                    ->keys()
-                    ->toArray();
+                // Group teams by points for secondary sorting
+                $teamsByPoints = $this->teamPointsCache
+                    ->map(function ($points, $teamId) {
+                        return [
+                            'id' => $teamId,
+                            'points' => $points,
+                            'solve_time' => $this->teamSolveTimesCache[$teamId] ?? PHP_INT_MAX
+                        ];
+                    })
+                    ->groupBy('points')
+                    ->sortKeysDesc();
+                
+                // Create a new sorted array of team IDs
+                $sortedTeamIds = [];
+                
+                // For each group of teams with the same points
+                foreach ($teamsByPoints as $points => $teamsGroup) {
+                    // Sort teams with the same points by their solve time (ascending)
+                    // Lower solve time means they completed challenges earlier
+                    $samePointsTeams = $teamsGroup->sortBy('solve_time')->pluck('id')->toArray();
+                    
+                    // Add the sorted teams to our result array
+                    foreach ($samePointsTeams as $teamId) {
+                        $sortedTeamIds[] = $teamId;
+                    }
+                }
                 
                 // Use manual sorting instead of FIELD() since we're working with UUIDs
                 if (!empty($sortedTeamIds)) {
-                    // Convert the array to a position map for sorting
-                    $positions = array_flip($sortedTeamIds);
-                    
                     // We'll use a subquery to add a sorting column
                     $ids = array_map(function ($id) {
                         return "'" . $id . "'";
@@ -226,4 +252,35 @@ class EventLeaderboardWidget extends BaseWidget
         
         return $points;
     }
-} 
+    
+    /**
+     * Calculate the average solve time for a team
+     *
+     * @param array $teamData
+     * @return float
+     */
+    protected function calculateTeamAverageSolveTime(array $teamData): float
+    {
+        $solveTimestamps = [];
+        
+        // Process each member's challenge completions
+        foreach ($teamData['members'] as $member) {
+            if (isset($member['challenge_completions'])) {
+                foreach ($member['challenge_completions'] as $completion) {
+                    if (isset($completion['completed_at'])) {
+                        $solveTimestamps[] = strtotime($completion['completed_at']);
+                    }
+                }
+            }
+        }
+        
+        // If no challenges were solved, return a large number
+        if (empty($solveTimestamps)) {
+            return PHP_INT_MAX;
+        }
+        
+        // Return the latest solve timestamp as a measure of how quickly the team solved challenges
+        // Teams that solved all their challenges earlier will have a lower maximum timestamp
+        return max($solveTimestamps);
+    }
+}

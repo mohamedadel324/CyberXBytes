@@ -841,6 +841,7 @@ class EventChallengeController extends Controller
         }
         
         $teamsData = [];
+        $teamSolveTimesCache = [];
         
         // Process each team
         foreach ($teams as $team) {
@@ -865,6 +866,30 @@ class EventChallengeController extends Controller
                 $totalMaskedBytes = isset($stats['total_masked_bytes']) ? $stats['total_masked_bytes'] : 0;
                 $firstBloodCount = isset($stats['total_first_blood_count']) ? $stats['total_first_blood_count'] : 0;
                 $solvedChallengesCount = isset($stats['total_challenges_solved']) ? $stats['total_challenges_solved'] : 0;
+                
+                // Calculate solve time for the team
+                $solveTimestamps = [];
+                
+                // Process each member's challenge completions
+                if (isset($teamData['data']['members'])) {
+                    foreach ($teamData['data']['members'] as $member) {
+                        if (isset($member['challenge_completions'])) {
+                            foreach ($member['challenge_completions'] as $completion) {
+                                if (isset($completion['completed_at'])) {
+                                    $solveTimestamps[] = strtotime($completion['completed_at']);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // If no challenges were solved, use maximum time
+                if (empty($solveTimestamps)) {
+                    $teamSolveTimesCache[$team->id] = PHP_INT_MAX;
+                } else {
+                    // Use the latest solve timestamp as a measure of how quickly the team solved challenges
+                    $teamSolveTimesCache[$team->id] = max($solveTimestamps);
+                }
             }
             
             // Build the final team data
@@ -878,6 +903,7 @@ class EventChallengeController extends Controller
                 'total_challenges_solved' => $solvedChallengesCount,
                 'challenges_solved' => $solvedChallengesCount, // Keeping this for backward compatibility
                 'first_blood_count' => $firstBloodCount, // Keeping this for backward compatibility
+                'solve_time' => $teamSolveTimesCache[$team->id] ?? PHP_INT_MAX, // Add solve time for sorting
                 'members' => $team->members->map(function($member) {
                     return [
                         'user_name' => $member->user_name,
@@ -887,15 +913,16 @@ class EventChallengeController extends Controller
             ];
         }
         
-        // Sort teams by points first, then by first_blood_count if points are equal
+        // Sort teams by points first, then by solve time if points are equal
         usort($teamsData, function($a, $b) {
             // First sort by points
             if ($b['points'] != $a['points']) {
                 return $b['points'] - $a['points'];
             }
             
-            // If points are equal, sort by first_blood_count
-            return $b['total_first_blood_count'] - $a['total_first_blood_count'];
+            // If points are equal, sort by solve time (ascending)
+            // Lower solve time means they completed challenges earlier
+            return $a['solve_time'] - $b['solve_time'];
         });
 
         return response()->json([
@@ -1296,17 +1323,14 @@ class EventChallengeController extends Controller
         
         // Get first blood information
         $firstBlood = null;
-        if ($solvedCount > 0) {
+        if ($solvedCount > 0 && $challenge->flag_type !== 'multiple_all') {
             $firstSolverQuery = $challenge->submissions()
                 ->where('solved', true)
                 ->orderBy('created_at', 'asc');
-                
             if ($isFrozen) {
                 $firstSolverQuery->where('created_at', '<=', $freezeTime);
             }
-            
             $firstSolver = $firstSolverQuery->first();
-            
             if ($firstSolver) {
                 $firstBloodUser = User::where('uuid', $firstSolver->user_uuid)->first(['uuid', 'user_name', 'profile_image']);
                 if ($firstBloodUser) {
