@@ -42,7 +42,6 @@ class UserResource extends BaseResource
                     ->searchable()
                     ->options(CountryList::getCountries()),
                 Forms\Components\FileUpload::make('profile_image')
-                    ->image()
                     ->directory('profile_images')
                     ->disk('public')
                     ->visibility('public')

@@ -19,13 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'https://cyberxbytes.com',
-        'http://localhost:3000',
-        env('FRONTEND_URL', 'https://cyberxbytes.com'),
-    ],
+    'allowed_origins' => ['*'],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => ['*'],
 
     'allowed_headers' => ['*'],
 
